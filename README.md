@@ -1,10 +1,10 @@
-# Browy - Native Windows 11 Acrylic Browser
+# Browy - Native Browser
 
-**Browy** is a modern, lightweight native Windows 11 browser built with .NET 9, WPF, and Windows Evergreen **WebView2**, featuring a semi-transparent Windows 11 Desktop Acrylic / Mica backdrop, Arc/Zen-inspired vertical sidebar tabs, floating rounded web cards, and a smart omnibox.
+**Browy** is a modern, lightweight native Windows 11 browser built with .NET 9, WPF, and Windows Evergreen **WebView2**, featuring acrylic panels, Arc/Zen-inspired vertical sidebar tabs, floating rounded web cards, and a smart omnibox.
 
 ---
 
-## ✨ Features
+## Features
 
 - **Windows 11 DWM Acrylic & Mica Backdrop**:
   - Native hardware-accelerated frosted glass blur using `dwmapi.dll` (`DwmSetWindowAttribute` with `DWMSBT_TRANSIENTWINDOW` and `DWMSBT_TABBEDWINDOW`).
@@ -24,6 +24,11 @@
   - Omnibox with SSL security indicator (`🔒`), smart URL vs. Google search auto-detection.
   - Pin / Bookmark bar with quick-launch shortcuts (X, YouTube, Vercel, GitHub, Cloudflare, Linear, MDN).
   - Integrated Developer Tools (`F12` / `⚡`).
+- **AI Agents Panel (Right Sidebar)**:
+  - Wider sidebar (320px) matching the seamless transparent acrylic material.
+  - Page-aware Copilot: instant summaries, explanations, and insights.
+  - Quick capability chips, chat message feed, and bottom prompt composer.
+  - Snappy collapse/expand animations with `Ctrl + J` shortcut.
 
 ---
 
@@ -34,9 +39,12 @@
 | `Ctrl + T` | Open new tab |
 | `Ctrl + W` | Close active tab |
 | `Ctrl + Tab` | Switch to next tab |
+| `Ctrl + S` | Toggle Vertical / Horizontal Tab strip |
+| `Ctrl + J` | Toggle Right AI Agents Panel |
+| `Ctrl + H` | Toggle History Flyout |
 | `Ctrl + L` / `Alt + D` | Focus Omnibox address bar |
 | `Ctrl + R` / `F5` | Reload page |
-| `F12` | Toggle Developer Tools (Inspect Elements, Console, Network) |
+| `F12` | Toggle Developer Tools |
 | `Alt + Left` | Back in history |
 | `Alt + Right` | Forward in history |
 

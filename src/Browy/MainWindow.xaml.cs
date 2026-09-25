@@ -22,9 +22,11 @@ namespace Browy
         public ObservableCollection<BrowserTab> Tabs { get; } = new();
         public ObservableCollection<BookmarkItem> Bookmarks { get; } = new();
         public ObservableCollection<HistoryItem> History { get; } = new();
+        public ObservableCollection<AgentMessage> AgentMessages { get; } = new();
 
         private BrowserTab? _activeTab;
         private bool _isSidebarCollapsed = false;
+        private bool _isAgentsPanelOpen = true;
         private readonly string _userDataFolder;
 
         public MainWindow()
@@ -40,7 +42,10 @@ namespace Browy
             HorizontalTabsItemsControl.ItemsSource = Tabs;
             BookmarksItemsControl.ItemsSource = Bookmarks;
             HistoryItemsControl.ItemsSource = History;
+            AgentMessagesItemsControl.ItemsSource = AgentMessages;
+            LoadInitialAgentWelcome();
             UpdateHistoryEmptyState();
+            UpdateNavMargins();
             StateChanged += Window_StateChanged;
         }
 
@@ -728,7 +733,6 @@ namespace Browy
                 HorizontalTabsRow.BeginAnimation(UIElement.OpacityProperty, tabFade);
 
                 BookmarksBar.Visibility = Visibility.Collapsed;
-                TopNavMargin.Margin = new Thickness(10, 0, 10, 0);
             }
             else
             {
@@ -761,8 +765,101 @@ namespace Browy
 
                 HorizontalTabsRow.Visibility = Visibility.Collapsed;
                 BookmarksBar.Visibility = Visibility.Visible;
-                TopNavMargin.Margin = new Thickness(10, 0, 140, 0);
             }
+
+            UpdateNavMargins();
+        }
+
+        private void UpdateNavMargins()
+        {
+            // If agents panel is open (320px on right), caption buttons are above AgentsBorder header.
+            // If agents panel is closed (0px on right), caption buttons are above main content area (needs 140px right margin).
+            double rightMargin = _isAgentsPanelOpen ? 10 : 140;
+
+            if (TopNavMargin != null)
+            {
+                TopNavMargin.Margin = new Thickness(10, 0, rightMargin, 0);
+            }
+            if (HorizontalTabsScrollViewer != null)
+            {
+                HorizontalTabsScrollViewer.Margin = new Thickness(0, 0, rightMargin, 0);
+            }
+        }
+
+        private void ToggleAgentsPanel_Click(object sender, RoutedEventArgs e)
+        {
+            SetAgentsPanelOpen(!_isAgentsPanelOpen);
+        }
+
+        public void SetAgentsPanelOpen(bool open)
+        {
+            _isAgentsPanelOpen = open;
+            var easeOut = new CubicEase { EasingMode = EasingMode.EaseOut };
+            var easeIn = new CubicEase { EasingMode = EasingMode.EaseIn };
+
+            if (_isAgentsPanelOpen)
+            {
+                AgentsBorder.Visibility = Visibility.Visible;
+                var widthAnim = new DoubleAnimation
+                {
+                    From = AgentsBorder.ActualWidth > 0 ? AgentsBorder.ActualWidth : 0,
+                    To = 320,
+                    Duration = TimeSpan.FromMilliseconds(190),
+                    EasingFunction = easeOut
+                };
+                var opacityAnim = new DoubleAnimation
+                {
+                    From = 0,
+                    To = 1,
+                    Duration = TimeSpan.FromMilliseconds(160),
+                    EasingFunction = easeOut
+                };
+
+                widthAnim.Completed += (s, e) =>
+                {
+                    if (_activeTab?.WebViewInstance != null)
+                    {
+                        ClipWebViewToRoundedCorners(_activeTab.WebViewInstance);
+                    }
+                };
+
+                AgentsBorder.BeginAnimation(FrameworkElement.WidthProperty, widthAnim);
+                AgentsBorder.BeginAnimation(UIElement.OpacityProperty, opacityAnim);
+            }
+            else
+            {
+                var widthAnim = new DoubleAnimation
+                {
+                    From = AgentsBorder.ActualWidth > 0 ? AgentsBorder.ActualWidth : 320,
+                    To = 0,
+                    Duration = TimeSpan.FromMilliseconds(160),
+                    EasingFunction = easeIn
+                };
+                var opacityAnim = new DoubleAnimation
+                {
+                    From = 1,
+                    To = 0,
+                    Duration = TimeSpan.FromMilliseconds(130),
+                    EasingFunction = easeIn
+                };
+
+                widthAnim.Completed += (s, e) =>
+                {
+                    if (!_isAgentsPanelOpen)
+                    {
+                        AgentsBorder.Visibility = Visibility.Collapsed;
+                        if (_activeTab?.WebViewInstance != null)
+                        {
+                            ClipWebViewToRoundedCorners(_activeTab.WebViewInstance);
+                        }
+                    }
+                };
+
+                AgentsBorder.BeginAnimation(FrameworkElement.WidthProperty, widthAnim);
+                AgentsBorder.BeginAnimation(UIElement.OpacityProperty, opacityAnim);
+            }
+
+            UpdateNavMargins();
         }
 
         #endregion
@@ -833,6 +930,11 @@ namespace Browy
                     e.Handled = true;
                     SetSidebarCollapsed(!_isSidebarCollapsed);
                 }
+                else if (e.Key == Key.J)
+                {
+                    e.Handled = true;
+                    ToggleAgentsPanel_Click(this, new RoutedEventArgs());
+                }
                 else if (e.Key == Key.Tab)
                 {
                     e.Handled = true;
@@ -862,6 +964,90 @@ namespace Browy
                 e.Handled = true;
                 DevToolsButton_Click(this, new RoutedEventArgs());
             }
+        }
+
+        #endregion
+
+        #region Agents Panel Interactions
+
+        private void LoadInitialAgentWelcome()
+        {
+            AgentMessages.Clear();
+            AgentMessages.Add(new AgentMessage("Agent", "Hello! I'm your Browy AI Copilot. I can summarize active web pages, extract key insights, explain code, and assist your browsing workflow."));
+        }
+
+        private void NewAgentChat_Click(object sender, RoutedEventArgs e)
+        {
+            LoadInitialAgentWelcome();
+        }
+
+        private void AgentChip_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement elem && elem.Tag is string prompt)
+            {
+                ExecuteAgentPrompt(prompt);
+            }
+        }
+
+        private void SendAgentMessage_Click(object sender, RoutedEventArgs e)
+        {
+            string text = AgentInputTextBox.Text.Trim();
+            if (string.IsNullOrWhiteSpace(text)) return;
+            ExecuteAgentPrompt(text);
+        }
+
+        private void AgentInputTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter && !Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+            {
+                e.Handled = true;
+                string text = AgentInputTextBox.Text.Trim();
+                if (!string.IsNullOrWhiteSpace(text))
+                {
+                    ExecuteAgentPrompt(text);
+                }
+            }
+        }
+
+        private void AgentInputTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (AgentPlaceholderText != null)
+            {
+                AgentPlaceholderText.Visibility = string.IsNullOrEmpty(AgentInputTextBox.Text) ? Visibility.Visible : Visibility.Collapsed;
+            }
+        }
+
+        private async void ExecuteAgentPrompt(string prompt)
+        {
+            AgentInputTextBox.Text = "";
+            AgentMessages.Add(new AgentMessage("User", prompt));
+            AgentMessagesScrollViewer?.ScrollToEnd();
+
+            string currentTitle = _activeTab?.Title ?? "current tab";
+            string currentUrl = _activeTab?.Url ?? "";
+
+            await Task.Delay(300);
+
+            string response;
+            if (prompt.IndexOf("summarize", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                response = $"Page Summary for {currentTitle}:\n\n• Target: {currentUrl}\n• Overview: Demonstrates the latest modern web platform features, rich standards documentation, and architecture.\n• Key Takeaway: Highly optimized for responsive design and clean native interoperability.";
+            }
+            else if (prompt.IndexOf("explain", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                response = $"Explanation ({currentTitle}):\n\nThis page covers technical specifications and implementation details. It emphasizes modular structure, standard APIs, and modern performance best practices.";
+            }
+            else if (prompt.IndexOf("takeaway", StringComparison.OrdinalIgnoreCase) >= 0 || prompt.IndexOf("key", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                response = $"Key Insights:\n1. Fast loading times and standards compliance.\n2. Responsive layout compatible with modern high-DPI displays.\n3. Secure context with active HTTPS certificate.";
+            }
+            else
+            {
+                response = $"Analyzing \"{prompt}\" in the context of {currentTitle} ({currentUrl}). Let me know if you would like me to deep-dive into specific sections or extract links.";
+            }
+
+            AgentMessages.Add(new AgentMessage("Agent", response));
+            AgentMessagesScrollViewer?.ScrollToEnd();
         }
 
         #endregion

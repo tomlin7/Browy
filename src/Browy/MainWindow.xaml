@@ -875,87 +875,140 @@
         <!-- ==================== RIGHT SIDEBAR (AGENTS PANEL) ==================== -->
         <Border x:Name="AgentsBorder"
                 Grid.Column="2"
-                Width="320"
+                Width="340"
                 ClipToBounds="True"
                 Background="Transparent"
                 BorderBrush="Transparent"
                 BorderThickness="0">
             <Grid>
                 <Grid.RowDefinitions>
-                    <!-- Header (Height 42) -->
+                    <!-- Top Window Controls & New Session (Height 42) -->
                     <RowDefinition Height="42"/>
-                    <!-- Agent Content / Chat Area -->
+                    <!-- Agents List & Chat Area -->
                     <RowDefinition Height="*"/>
                     <!-- Bottom Composer Input Bar -->
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <!-- Agents Header: Title, Status, New Chat, Collapse (Reserved 140px on right for Caption Buttons) -->
+                <!-- Sidebar Header: Toggle Sidebar, Brand, & New Session Button (Reserved 185px on right for Caption Buttons & Toggle) -->
                 <Grid Grid.Row="0"
-                      Margin="12,0,140,0"
+                      Margin="10,0,185,0"
                       VerticalAlignment="Center"
                       Background="Transparent"
                       MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                        <!-- Agent Sparkle Icon -->
-                        <TextBlock Style="{StaticResource FluentIcon}"
-                                   Text="&#xEA86;"
-                                   FontSize="13"
-                                   Foreground="{StaticResource TextSecondaryBrush}"
-                                   Margin="0,0,8,0"
-                                   VerticalAlignment="Center"/>
+                    <!-- Toggle Sidebar Button -->
+                    <Button Grid.Column="0"
+                            Style="{StaticResource IconButton}"
+                            ToolTip="Collapse Panel (Ctrl+J)"
+                            Click="ToggleAgentsPanel_Click"
+                            Width="28" Height="28"
+                            Margin="0,0,6,0"
+                            WindowChrome.IsHitTestVisibleInChrome="True">
+                        <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE8A0;" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+                    </Button>
+
+                    <!-- App Brand (Draggable space) -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" IsHitTestVisible="False">
+                        <TextBlock Style="{StaticResource FluentIcon}" Text="&#xEA86;" FontSize="13" Margin="0,0,6,0" Foreground="{StaticResource TextSecondaryBrush}"/>
                         <TextBlock Text="AGENTS"
                                    FontSize="11"
                                    FontWeight="SemiBold"
                                    Foreground="{StaticResource TextSecondaryBrush}"
-                                   VerticalAlignment="Center"
-                                   Margin="0,0,8,0"/>
-                        <!-- Mode Pill -->
-                        <Border Background="#12FFFFFF"
-                                CornerRadius="4"
-                                Padding="6,2"
-                                VerticalAlignment="Center">
-                            <TextBlock Text="Copilot"
-                                       FontSize="9.5"
-                                       Foreground="#A1A1AA"
-                                       FontWeight="Medium"/>
-                        </Border>
+                                   VerticalAlignment="Center"/>
                     </StackPanel>
 
-                    <!-- Header Actions (New Chat, Close/Collapse) -->
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" WindowChrome.IsHitTestVisibleInChrome="True">
-                        <!-- New Chat Button -->
-                        <Button Style="{StaticResource IconButton}"
-                                ToolTip="New Agent Session"
-                                Click="NewAgentChat_Click"
-                                Width="26" Height="26"
-                                Margin="0,0,2,0">
-                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE710;" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
-                        </Button>
-                        <!-- Collapse Agents Panel -->
-                        <Button Style="{StaticResource IconButton}"
-                                ToolTip="Collapse Panel (Ctrl+J)"
-                                Click="ToggleAgentsPanel_Click"
-                                Width="26" Height="26">
-                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE89F;" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
-                        </Button>
-                    </StackPanel>
+                    <!-- New Agent Session Button -->
+                    <Button Grid.Column="2"
+                            Style="{StaticResource IconButton}"
+                            ToolTip="New Agent Session"
+                            Click="NewAgentChat_Click"
+                            Width="28" Height="28"
+                            WindowChrome.IsHitTestVisibleInChrome="True">
+                        <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE710;" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+                    </Button>
                 </Grid>
 
-                <!-- Middle Content: Quick Action Chips & Messages List -->
-                <Grid Grid.Row="1" Margin="10,0,10,6">
+                <!-- Middle Content: Agent Sessions List & Message Feed -->
+                <Grid Grid.Row="1" Margin="8,2,8,6">
                     <Grid.RowDefinitions>
+                        <!-- Agent Sessions List (Similar to vertical tabs) -->
                         <RowDefinition Height="Auto"/>
+                        <!-- Capability Suggestion Chips -->
+                        <RowDefinition Height="Auto"/>
+                        <!-- Conversation Feed -->
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Capability Suggestion Chips -->
-                    <WrapPanel Grid.Row="0" Margin="0,2,0,8" WindowChrome.IsHitTestVisibleInChrome="True">
+                    <!-- Agent Sessions / Personas List (Matching Left Sidebar Vertical Tabs Style) -->
+                    <ItemsControl x:Name="AgentSessionsItemsControl" Grid.Row="0" Margin="0,0,0,8" WindowChrome.IsHitTestVisibleInChrome="True">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border x:Name="AgentSessionBorder"
+                                        CornerRadius="8"
+                                        Margin="0,2,0,2"
+                                        Background="Transparent"
+                                        BorderThickness="1"
+                                        BorderBrush="Transparent"
+                                        Cursor="Hand"
+                                        MouseLeftButtonDown="AgentSessionItem_Click">
+                                    <Grid>
+                                        <Border x:Name="AgentActiveHighlight"
+                                                CornerRadius="8"
+                                                Background="#1CFFFFFF"
+                                                BorderBrush="#25FFFFFF"
+                                                BorderThickness="1"
+                                                Opacity="0"/>
+                                        <Grid Margin="10,6">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="22"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0"
+                                                       Style="{StaticResource FluentIcon}"
+                                                       Text="{Binding Icon}"
+                                                       FontSize="12.5"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                       VerticalAlignment="Center"/>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="4,0,4,0">
+                                                <TextBlock Text="{Binding Name}"
+                                                           FontSize="11.5"
+                                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{Binding Status}"
+                                                           FontSize="9.5"
+                                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Margin="0,1,0,0"/>
+                                            </StackPanel>
+                                            <Border Grid.Column="2"
+                                                    Width="5" Height="5"
+                                                    CornerRadius="2.5"
+                                                    Background="#80FFFFFF"
+                                                    VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </Grid>
+                                </Border>
+                                <DataTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="AgentSessionBorder" Property="Background" Value="#10FFFFFF"/>
+                                    </Trigger>
+                                    <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                        <Setter TargetName="AgentActiveHighlight" Property="Opacity" Value="1"/>
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- Quick Capability Suggestion Chips -->
+                    <WrapPanel Grid.Row="1" Margin="2,0,2,8" WindowChrome.IsHitTestVisibleInChrome="True">
                         <Button Style="{StaticResource IconButton}"
                                 Click="AgentChip_Click"
                                 Tag="Summarize current page"
@@ -996,7 +1049,7 @@
 
                     <!-- Message Feed -->
                     <ScrollViewer x:Name="AgentMessagesScrollViewer"
-                                  Grid.Row="1"
+                                  Grid.Row="2"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled"
                                   WindowChrome.IsHitTestVisibleInChrome="True">
@@ -1007,7 +1060,7 @@
                                         <!-- User Message Bubble -->
                                         <Border CornerRadius="9"
                                                 Padding="10,8"
-                                                MaxWidth="280"
+                                                MaxWidth="290"
                                                 HorizontalAlignment="Right"
                                                 Background="#1CFFFFFF"
                                                 BorderBrush="#25FFFFFF"
@@ -1038,7 +1091,7 @@
                                         <!-- Agent Message Bubble -->
                                         <Border CornerRadius="9"
                                                 Padding="10,8"
-                                                MaxWidth="290"
+                                                MaxWidth="300"
                                                 HorizontalAlignment="Left"
                                                 Background="#0EFFFFFF"
                                                 BorderBrush="#14FFFFFF"
@@ -1131,7 +1184,7 @@
             </Grid>
         </Border>
 
-        <!-- Flush Native Windows 11 Caption Controls (Top Right Overlay) -->
+        <!-- Flush Native Windows 11 Caption Controls & Right Sidebar Toggle (Top Right Overlay) -->
         <StackPanel Grid.Column="0" Grid.ColumnSpan="3"
                     Orientation="Horizontal"
                     HorizontalAlignment="Right"
@@ -1139,6 +1192,21 @@
                     Height="42"
                     Panel.ZIndex="300"
                     WindowChrome.IsHitTestVisibleInChrome="True">
+            <!-- Dedicated Right Sidebar (Agents Panel) Toggle Button -->
+            <Button x:Name="RightSidebarToggleButton"
+                    Style="{StaticResource IconButton}"
+                    ToolTip="Collapse Agents Panel (Ctrl+J)"
+                    Click="ToggleAgentsPanel_Click"
+                    Width="28" Height="28"
+                    Margin="0,0,10,0"
+                    VerticalAlignment="Center">
+                <TextBlock x:Name="RightSidebarToggleIcon"
+                           Style="{StaticResource FluentIcon}"
+                           Text="&#xEA86;"
+                           FontSize="12.5"
+                           Foreground="{StaticResource TextSecondaryBrush}"/>
+            </Button>
+
             <!-- Minimize -->
             <Button Style="{StaticResource WindowsCaptionButton}"
                     ToolTip="Minimize"

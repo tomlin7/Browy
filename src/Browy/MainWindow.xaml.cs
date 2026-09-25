@@ -23,6 +23,7 @@ namespace Browy
         public ObservableCollection<BookmarkItem> Bookmarks { get; } = new();
         public ObservableCollection<HistoryItem> History { get; } = new();
         public ObservableCollection<AgentMessage> AgentMessages { get; } = new();
+        public ObservableCollection<AgentSession> AgentSessions { get; } = new();
 
         private BrowserTab? _activeTab;
         private bool _isSidebarCollapsed = false;
@@ -42,7 +43,9 @@ namespace Browy
             HorizontalTabsItemsControl.ItemsSource = Tabs;
             BookmarksItemsControl.ItemsSource = Bookmarks;
             HistoryItemsControl.ItemsSource = History;
+            AgentSessionsItemsControl.ItemsSource = AgentSessions;
             AgentMessagesItemsControl.ItemsSource = AgentMessages;
+            LoadInitialAgentSessions();
             LoadInitialAgentWelcome();
             UpdateHistoryEmptyState();
             UpdateNavMargins();
@@ -772,9 +775,9 @@ namespace Browy
 
         private void UpdateNavMargins()
         {
-            // If agents panel is open (320px on right), caption buttons are above AgentsBorder header.
-            // If agents panel is closed (0px on right), caption buttons are above main content area (needs 140px right margin).
-            double rightMargin = _isAgentsPanelOpen ? 10 : 140;
+            // If agents panel is open (340px on right), caption buttons are above AgentsBorder header.
+            // If agents panel is closed (0px on right), caption buttons are above main content area (needs 185px right margin).
+            double rightMargin = _isAgentsPanelOpen ? 10 : 185;
 
             if (TopNavMargin != null)
             {
@@ -783,6 +786,18 @@ namespace Browy
             if (HorizontalTabsScrollViewer != null)
             {
                 HorizontalTabsScrollViewer.Margin = new Thickness(0, 0, rightMargin, 0);
+            }
+            if (RightSidebarToggleButton != null)
+            {
+                RightSidebarToggleButton.ToolTip = _isAgentsPanelOpen
+                    ? "Collapse Agents Panel (Ctrl+J)"
+                    : "Open Agents Panel (Ctrl+J)";
+            }
+            if (AgentsButton != null)
+            {
+                AgentsButton.ToolTip = _isAgentsPanelOpen
+                    ? "Collapse Agents Panel (Ctrl+J)"
+                    : "Open Agents Panel (Ctrl+J)";
             }
         }
 
@@ -803,7 +818,7 @@ namespace Browy
                 var widthAnim = new DoubleAnimation
                 {
                     From = AgentsBorder.ActualWidth > 0 ? AgentsBorder.ActualWidth : 0,
-                    To = 320,
+                    To = 340,
                     Duration = TimeSpan.FromMilliseconds(190),
                     EasingFunction = easeOut
                 };
@@ -830,7 +845,7 @@ namespace Browy
             {
                 var widthAnim = new DoubleAnimation
                 {
-                    From = AgentsBorder.ActualWidth > 0 ? AgentsBorder.ActualWidth : 320,
+                    From = AgentsBorder.ActualWidth > 0 ? AgentsBorder.ActualWidth : 340,
                     To = 0,
                     Duration = TimeSpan.FromMilliseconds(160),
                     EasingFunction = easeIn
@@ -969,6 +984,28 @@ namespace Browy
         #endregion
 
         #region Agents Panel Interactions
+
+        private void LoadInitialAgentSessions()
+        {
+            AgentSessions.Clear();
+            AgentSessions.Add(new AgentSession("Page Copilot", "Active · Inspects page context", "\uEA86", isActive: true));
+            AgentSessions.Add(new AgentSession("Deep Research", "Synthesizes web sources", "\uE721", isActive: false));
+            AgentSessions.Add(new AgentSession("Code Analyst", "Inspects DOM & APIs", "\uEC7A", isActive: false));
+            AgentSessions.Add(new AgentSession("Content Explainer", "Simplifies concepts", "\uE8BD", isActive: false));
+        }
+
+        private void AgentSessionItem_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is FrameworkElement elem && elem.DataContext is AgentSession session)
+            {
+                foreach (var s in AgentSessions)
+                {
+                    s.IsActive = (s == session);
+                }
+                AgentMessages.Add(new AgentMessage("Agent", $"Switched to **{session.Name}**. Ready to assist with {session.Status.ToLower()}."));
+                AgentMessagesScrollViewer?.ScrollToEnd();
+            }
+        }
 
         private void LoadInitialAgentWelcome()
         {

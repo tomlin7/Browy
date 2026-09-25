@@ -1,0 +1,141 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # -------------------------------------------------------------
+  # Job 1: Normal CI Checks (Always runs on Push & PR)
+  # -------------------------------------------------------------
+  ci-checks:
+    name: Build & Code Verification
+    runs-on: windows-latest
+    outputs:
+      version: ${{ steps.version_check.outputs.version }}
+      version_changed: ${{ steps.version_check.outputs.version_changed }}
+
+    steps:
+      - name: Checkout Code (with history for diff)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore Dependencies
+        run: dotnet restore Browy.sln
+
+      - name: Verify Build
+        run: dotnet build Browy.sln -c Release --no-restore
+
+      - name: Check if Version Changed
+        id: version_check
+        shell: pwsh
+        run: |
+          [xml]$currXml = Get-Content 'src/Browy/Browy.csproj'
+          $currentVer = $currXml.Project.PropertyGroup.Version
+          Write-Host "Current Version in Browy.csproj: $currentVer"
+
+          $verChanged = "false"
+
+          # If triggered by a version tag (e.g. refs/tags/v0.3.0)
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -or $env:GITHUB_REF -like 'refs/tags/v*') {
+              Write-Host "Triggered by release tag: $env:GITHUB_REF_NAME"
+              $verChanged = "true"
+          }
+          # If push to main, compare with HEAD~1
+          elseif ($env:GITHUB_EVENT_NAME -eq 'push') {
+              $prevCsproj = git show HEAD~1:src/Browy/Browy.csproj 2>$null
+              if ($prevCsproj) {
+                  try {
+                      [xml]$prevXml = $prevCsproj
+                      $prevVer = $prevXml.Project.PropertyGroup.Version
+                      Write-Host "Previous Version in HEAD~1: $prevVer"
+                      if ($prevVer -ne $currentVer) {
+                          $verChanged = "true"
+                          Write-Host "Version changed from $prevVer to $currentVer!"
+                      } else {
+                          Write-Host "Version unchanged ($currentVer). Skipping release artifact build."
+                      }
+                  } catch {
+                      Write-Host "Warning: Could not parse previous csproj version: $_"
+                  }
+              } else {
+                  Write-Host "No HEAD~1 available to compare. Skipping release artifact build."
+              }
+          }
+
+          # Manual dispatch allows forced release
+          if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch') {
+              $verChanged = "true"
+              Write-Host "Manual dispatch triggered: generating build artifacts."
+          }
+
+          echo "version=$currentVer" >> $env:GITHUB_OUTPUT
+          echo "version_changed=$verChanged" >> $env:GITHUB_OUTPUT
+
+  # -------------------------------------------------------------
+  # Job 2: Build & Release Artifacts (Only runs when version changes)
+  # -------------------------------------------------------------
+  build-and-release:
+    name: Build & Publish Release Artifacts
+    needs: ci-checks
+    if: needs.ci-checks.outputs.version_changed == 'true'
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore Dependencies
+        run: dotnet restore Browy.sln
+
+      - name: Publish Windows x64 Release Binary
+        run: |
+          dotnet publish src/Browy/Browy.csproj -c Release -r win-x64 --self-contained false -o publish/win-x64/
+
+      - name: Package Release ZIP
+        shell: pwsh
+        run: |
+          $ver = "${{ needs.ci-checks.outputs.version }}"
+          $zipName = "Browy-v$ver-win-x64.zip"
+          Compress-Archive -Path publish/win-x64/* -DestinationPath $zipName -Force
+          Write-Host "Created release archive: $zipName"
+
+      - name: Upload GitHub Actions Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Browy-v${{ needs.ci-checks.outputs.version }}-win-x64
+          path: Browy-v*.zip
+          retention-days: 30
+
+      - name: Create or Update GitHub Release
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.ci-checks.outputs.version }}
+          name: Browy v${{ needs.ci-checks.outputs.version }}
+          files: Browy-v*.zip
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -15,23 +15,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Reference Include="Microsoft.Web.WebView2.Core">
-      <HintPath>C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\PrivateAssemblies\Microsoft.Web.WebView2.Core.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Microsoft.Web.WebView2.Wpf">
-      <HintPath>C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\PrivateAssemblies\Microsoft.Web.WebView2.Wpf.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\PrivateAssemblies\WebView2Loader.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\PrivateAssemblies\WebView2Loader.dll" Link="runtimes\win-x64\native\WebView2Loader.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4191.47" />
   </ItemGroup>
 
 </Project>

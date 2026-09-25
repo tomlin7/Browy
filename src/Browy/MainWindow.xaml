@@ -1,0 +1,907 @@
+<Window x:Class="Browy.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Browy"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        mc:Ignorable="d"
+        Title="Browy"
+        Height="800" Width="1200"
+        MinHeight="500" MinWidth="750"
+        WindowStartupLocation="CenterScreen"
+        Background="Transparent"
+        Foreground="{StaticResource TextPrimaryBrush}"
+        Loaded="Window_Loaded"
+        KeyDown="Window_KeyDown"
+        WindowStyle="None">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome GlassFrameThickness="-1"
+                      CaptionHeight="42"
+                      CornerRadius="0"
+                      ResizeBorderThickness="6"
+                      UseAeroCaptionButtons="False" />
+    </WindowChrome.WindowChrome>
+
+    <!-- Main Container overlaying the Windows 11 DWM Acrylic Backdrop -->
+    <Grid Background="#140A0A0E">
+        <Grid.ColumnDefinitions>
+            <!-- Left Sidebar (Tabs & Spaces) - Auto-sized for smooth width animation -->
+            <ColumnDefinition x:Name="SidebarColumn" Width="Auto"/>
+            <!-- Main Content Area -->
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ==================== LEFT SIDEBAR (VERTICAL TABS) ==================== -->
+        <Border x:Name="SidebarBorder"
+                Grid.Column="0"
+                Width="240"
+                ClipToBounds="True"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                BorderThickness="0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <!-- Top Window Controls & New Tab (Height 42) -->
+                    <RowDefinition Height="42"/>
+                    <!-- Vertical Tab List -->
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Sidebar Header: Toggle Sidebar, App Brand, & New Tab Button -->
+                <Grid Grid.Row="0"
+                      Margin="10,0,10,0"
+                      VerticalAlignment="Center"
+                      Background="Transparent"
+                      MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Toggle Sidebar Button -->
+                    <Button Grid.Column="0"
+                            Style="{StaticResource IconButton}"
+                            ToolTip="Collapse Sidebar (Ctrl+S)"
+                            Click="ToggleSidebar_Click"
+                            Width="28" Height="28"
+                            Margin="0,0,6,0"
+                            WindowChrome.IsHitTestVisibleInChrome="True">
+                        <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE8A0;" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+                    </Button>
+
+                    <!-- App Brand (Draggable space) -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" IsHitTestVisible="False">
+                        <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE774;" FontSize="13" Margin="0,0,6,0" Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBlock Text="BROWY"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <!-- New Tab Button -->
+                    <Button Grid.Column="2"
+                            Style="{StaticResource IconButton}"
+                            ToolTip="New Tab (Ctrl+T)"
+                            Click="NewTabButton_Click"
+                            Width="28" Height="28"
+                            WindowChrome.IsHitTestVisibleInChrome="True">
+                        <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE710;" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+                    </Button>
+                </Grid>
+
+                <!-- Vertical Tab List (Arc / Zen Style) -->
+                <ScrollViewer Grid.Row="1"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              Margin="6,4,6,6"
+                              WindowChrome.IsHitTestVisibleInChrome="True">
+                    <ItemsControl x:Name="TabsItemsControl">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border x:Name="TabBorder"
+                                        CornerRadius="8"
+                                        Margin="0,2,0,2"
+                                        Background="Transparent"
+                                        BorderThickness="1"
+                                        BorderBrush="Transparent"
+                                        Cursor="Hand"
+                                        MouseLeftButtonDown="TabItem_MouseLeftButtonDown">
+                                    <Grid>
+                                        <!-- Snappy Animated Active Highlight Layer -->
+                                        <Border x:Name="ActiveHighlight"
+                                                CornerRadius="8"
+                                                Background="#1CFFFFFF"
+                                                BorderBrush="#25FFFFFF"
+                                                BorderThickness="1"
+                                                Opacity="0"/>
+
+                                        <Grid Margin="10,7">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="20"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="22"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- Fetched Real Favicon or Monochrome Fallback Icon -->
+                                            <Grid Grid.Column="0" Width="16" Height="16" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                <TextBlock Text="&#xE774;"
+                                                           FontSize="12"
+                                                           VerticalAlignment="Center"
+                                                           HorizontalAlignment="Center"
+                                                           Foreground="{StaticResource TextSecondaryBrush}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock" BasedOn="{StaticResource FluentIcon}">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding HasFaviconImage}" Value="False">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <Image Source="{Binding FaviconImage}"
+                                                       Width="16" Height="16"
+                                                       RenderOptions.BitmapScalingMode="HighQuality"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center">
+                                                    <Image.Style>
+                                                        <Style TargetType="Image">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding HasFaviconImage}" Value="False">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Image.Style>
+                                                </Image>
+                                            </Grid>
+
+                                            <!-- Tab Title -->
+                                            <TextBlock x:Name="TabTitleText"
+                                                       Grid.Column="1"
+                                                       Text="{Binding Title}"
+                                                       FontSize="12"
+                                                       FontWeight="Normal"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       VerticalAlignment="Center"
+                                                       Margin="6,0,4,0"/>
+
+                                            <!-- Close Tab Button -->
+                                            <Button Grid.Column="2"
+                                                    x:Name="CloseTabBtn"
+                                                    Style="{StaticResource IconButton}"
+                                                    Padding="2"
+                                                    Width="20" Height="20"
+                                                    Click="CloseTab_Click"
+                                                    Tag="{Binding}"
+                                                    ToolTip="Close Tab (Ctrl+W)">
+                                                <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE711;" FontSize="9" Foreground="#80FFFFFF"/>
+                                            </Button>
+                                        </Grid>
+                                    </Grid>
+                                </Border>
+                                <DataTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="TabBorder" Property="Background" Value="#10FFFFFF"/>
+                                    </Trigger>
+                                    <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                        <DataTrigger.EnterActions>
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetName="ActiveHighlight"
+                                                                     Storyboard.TargetProperty="Opacity"
+                                                                     To="1" Duration="0:0:0.14">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseOut"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </DataTrigger.EnterActions>
+                                        <DataTrigger.ExitActions>
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetName="ActiveHighlight"
+                                                                     Storyboard.TargetProperty="Opacity"
+                                                                     To="0" Duration="0:0:0.10"/>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </DataTrigger.ExitActions>
+                                        <Setter TargetName="TabTitleText" Property="Foreground" Value="#F3F4F6"/>
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+
+        <!-- ==================== MAIN CONTENT AREA ==================== -->
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <!-- Row 0: Top Horizontal Tabs Strip (Visible when Sidebar is Collapsed - Screenshot 1) -->
+                <RowDefinition x:Name="HorizontalTabsRowDef" Height="Auto"/>
+                <!-- Row 1: Nav & Omnibox Header (Height 42) -->
+                <RowDefinition Height="42"/>
+                <!-- Row 2: Bookmarks / Quick Pins Bar -->
+                <RowDefinition Height="Auto"/>
+                <!-- Row 3: Floating Web View Canvas Card -->
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- ROW 0: Horizontal Tabs Bar (Displayed when Sidebar is Collapsed, matching Screenshot 1) -->
+            <Grid x:Name="HorizontalTabsRow"
+                  Grid.Row="0"
+                  Height="38"
+                  Visibility="Collapsed"
+                  Background="Transparent"
+                  MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Grid.ColumnDefinitions>
+                    <!-- Sidebar Toggle Button to Uncollapse -->
+                    <ColumnDefinition Width="Auto"/>
+                    <!-- Horizontal Tabs Strip -->
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Sidebar Restore Button -->
+                <Button Grid.Column="0"
+                        Style="{StaticResource IconButton}"
+                        ToolTip="Expand Sidebar (Ctrl+S)"
+                        Click="ToggleSidebar_Click"
+                        Width="28" Height="28"
+                        Margin="8,0,4,0"
+                        VerticalAlignment="Center"
+                        WindowChrome.IsHitTestVisibleInChrome="True">
+                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE8A0;" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+                </Button>
+
+                <!-- Horizontal Tabs ScrollViewer (Reserved 140px margin on right for caption buttons) -->
+                <ScrollViewer x:Name="HorizontalTabsScrollViewer"
+                              Grid.Column="1"
+                              HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Disabled"
+                              Margin="0,0,140,0"
+                              VerticalAlignment="Center"
+                              PreviewMouseLeftButtonDown="HorizontalTabsScrollViewer_PreviewMouseLeftButtonDown">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <ItemsControl x:Name="HorizontalTabsItemsControl">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border x:Name="HorizTabBorder"
+                                            CornerRadius="7"
+                                            Margin="0,0,4,0"
+                                            Background="Transparent"
+                                            BorderThickness="1"
+                                            BorderBrush="Transparent"
+                                            Cursor="Hand"
+                                            WindowChrome.IsHitTestVisibleInChrome="True"
+                                            MouseLeftButtonDown="TabItem_MouseLeftButtonDown">
+                                        <Grid>
+                                            <!-- Snappy Animated Active Highlight Layer -->
+                                            <Border x:Name="ActiveHighlight"
+                                                    CornerRadius="7"
+                                                    Background="#1EFFFFFF"
+                                                    BorderBrush="#25FFFFFF"
+                                                    BorderThickness="1"
+                                                    Opacity="0"/>
+
+                                            <Grid Margin="8,5">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="18"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="20"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Favicon / Tab Icon -->
+                                                <Grid Grid.Column="0" Width="16" Height="16" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                    <TextBlock Text="&#xE774;"
+                                                               FontSize="11"
+                                                               VerticalAlignment="Center"
+                                                               HorizontalAlignment="Center"
+                                                               Foreground="{StaticResource TextSecondaryBrush}">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock" BasedOn="{StaticResource FluentIcon}">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding HasFaviconImage}" Value="False">
+                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    <Image Source="{Binding FaviconImage}"
+                                                           Width="16" Height="16"
+                                                           RenderOptions.BitmapScalingMode="HighQuality"
+                                                           VerticalAlignment="Center"
+                                                           HorizontalAlignment="Center">
+                                                        <Image.Style>
+                                                            <Style TargetType="Image">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding HasFaviconImage}" Value="False">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Image.Style>
+                                                    </Image>
+                                                </Grid>
+
+                                                <!-- Tab Title -->
+                                                <TextBlock x:Name="HorizTitleText"
+                                                           Grid.Column="1"
+                                                           Text="{Binding Title}"
+                                                           FontSize="11.5"
+                                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           MaxWidth="130"
+                                                           VerticalAlignment="Center"
+                                                           Margin="6,0,4,0"/>
+
+                                                <!-- Close Button -->
+                                                <Button Grid.Column="2"
+                                                        Style="{StaticResource IconButton}"
+                                                        Padding="2"
+                                                        Width="18" Height="18"
+                                                        Click="CloseTab_Click"
+                                                        Tag="{Binding}"
+                                                        ToolTip="Close Tab">
+                                                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE711;" FontSize="8" Foreground="#80FFFFFF"/>
+                                                </Button>
+                                            </Grid>
+                                        </Grid>
+                                    </Border>
+                                    <DataTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="HorizTabBorder" Property="Background" Value="#10FFFFFF"/>
+                                        </Trigger>
+                                        <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                            <DataTrigger.EnterActions>
+                                                <BeginStoryboard>
+                                                    <Storyboard>
+                                                        <DoubleAnimation Storyboard.TargetName="ActiveHighlight"
+                                                                         Storyboard.TargetProperty="Opacity"
+                                                                         To="1" Duration="0:0:0.14">
+                                                            <DoubleAnimation.EasingFunction>
+                                                                <CubicEase EasingMode="EaseOut"/>
+                                                            </DoubleAnimation.EasingFunction>
+                                                        </DoubleAnimation>
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </DataTrigger.EnterActions>
+                                            <DataTrigger.ExitActions>
+                                                <BeginStoryboard>
+                                                    <Storyboard>
+                                                        <DoubleAnimation Storyboard.TargetName="ActiveHighlight"
+                                                                         Storyboard.TargetProperty="Opacity"
+                                                                         To="0" Duration="0:0:0.10"/>
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </DataTrigger.ExitActions>
+                                            <Setter TargetName="HorizTitleText" Property="Foreground" Value="#F3F4F6"/>
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- Add New Tab Button in horizontal strip -->
+                        <Button Style="{StaticResource IconButton}"
+                                ToolTip="New Tab (Ctrl+T)"
+                                Click="NewTabButton_Click"
+                                Width="26" Height="26"
+                                Margin="2,0,0,0"
+                                VerticalAlignment="Center"
+                                WindowChrome.IsHitTestVisibleInChrome="True">
+                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE710;" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                        </Button>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+
+            <!-- ROW 1: Navigation Controls & Omnibox Header -->
+            <Grid x:Name="TopNavRow" Grid.Row="1" Background="Transparent" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Grid x:Name="TopNavMargin" Margin="10,0,140,0" VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <!-- Nav Controls (Back, Forward, Refresh) -->
+                        <ColumnDefinition Width="Auto"/>
+                        <!-- Omnibox URL Input -->
+                        <ColumnDefinition Width="*"/>
+                        <!-- Tools Controls (DevTools, History) -->
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Navigation Controls: Back, Forward, Refresh (Rounded Chevrons & Monochrome Icons) -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center"
+                                WindowChrome.IsHitTestVisibleInChrome="True" Margin="0,0,8,0">
+                        <!-- Back Button (Smooth Rounded ChevronLeft) -->
+                        <Button x:Name="BackButton"
+                                Style="{StaticResource IconButton}"
+                                ToolTip="Back (Alt+Left)"
+                                Click="BackButton_Click"
+                                Width="28" Height="28"
+                                Margin="0,0,2,0">
+                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE76B;" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                        </Button>
+
+                        <!-- Forward Button (Smooth Rounded ChevronRight) -->
+                        <Button x:Name="ForwardButton"
+                                Style="{StaticResource IconButton}"
+                                ToolTip="Forward (Alt+Right)"
+                                Click="ForwardButton_Click"
+                                Width="28" Height="28"
+                                Margin="0,0,2,0">
+                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE76C;" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                        </Button>
+
+                        <!-- Reload / Stop Button -->
+                        <Button x:Name="ReloadButton"
+                                Style="{StaticResource IconButton}"
+                                ToolTip="Reload (Ctrl+R / F5)"
+                                Click="ReloadButton_Click"
+                                Width="28" Height="28">
+                            <TextBlock x:Name="ReloadIconText" Style="{StaticResource FluentIcon}" Text="&#xE72C;" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Omnibox (Address & Search Bar) with Low-Alpha Background over Acrylic -->
+                    <Grid Grid.Column="1" VerticalAlignment="Center" Margin="4,0,8,0">
+                        <Border x:Name="OmniboxBorder"
+                                Background="#10FFFFFF"
+                                BorderBrush="#18FFFFFF"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Height="32"
+                                WindowChrome.IsHitTestVisibleInChrome="True">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <!-- Security Lock Icon -->
+                                    <ColumnDefinition Width="30"/>
+                                    <!-- URL TextBox -->
+                                    <ColumnDefinition Width="*"/>
+                                    <!-- Bookmark Star -->
+                                    <ColumnDefinition Width="30"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Monochrome SSL Security Indicator -->
+                                <TextBlock x:Name="SecurityIconText"
+                                           Grid.Column="0"
+                                           Style="{StaticResource FluentIcon}"
+                                           Text="&#xE72E;"
+                                           FontSize="11"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+
+                                <!-- URL Input TextBox -->
+                                <TextBox x:Name="UrlTextBox"
+                                         Grid.Column="1"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         Foreground="{StaticResource TextPrimaryBrush}"
+                                         CaretBrush="#FFFFFF"
+                                         FontSize="12.5"
+                                         VerticalAlignment="Center"
+                                         KeyDown="UrlTextBox_KeyDown"
+                                         GotFocus="UrlTextBox_GotFocus"/>
+
+                                <!-- Placeholder Text -->
+                                <TextBlock x:Name="UrlPlaceholderText"
+                                           Grid.Column="1"
+                                           Text="Search or type a URL..."
+                                           Foreground="#40FFFFFF"
+                                           FontSize="12.5"
+                                           VerticalAlignment="Center"
+                                           IsHitTestVisible="False"
+                                           Visibility="Collapsed"/>
+
+                                <!-- Monochrome Bookmark Star Button -->
+                                <Button Grid.Column="2"
+                                        Style="{StaticResource IconButton}"
+                                        ToolTip="Bookmark this page (Ctrl+D)"
+                                        Click="BookmarkCurrentPage_Click"
+                                        Width="26" Height="26">
+                                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE734;" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                </Button>
+                            </Grid>
+                        </Border>
+                    </Grid>
+
+                    <!-- Tool Buttons (DevTools & History) -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center"
+                                WindowChrome.IsHitTestVisibleInChrome="True">
+                        <!-- History Button -->
+                        <Button x:Name="HistoryButton"
+                                Style="{StaticResource IconButton}"
+                                ToolTip="History (Ctrl+H)"
+                                Click="HistoryButton_Click"
+                                Width="28" Height="28"
+                                Margin="0,0,3,0">
+                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE81C;" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+                        </Button>
+
+                        <!-- DevTools Button -->
+                        <Button Style="{StaticResource IconButton}"
+                                ToolTip="DevTools (F12)"
+                                Click="DevToolsButton_Click"
+                                Width="28" Height="28">
+                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xEC7A;" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+
+            <!-- ROW 2: Favorites / Bookmarks Bar (Matching Screenshot 2 - Low Alpha Unified Styling) -->
+            <Border x:Name="BookmarksBar"
+                    Grid.Row="2"
+                    Margin="10,2,12,6"
+                    WindowChrome.IsHitTestVisibleInChrome="True">
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                    <ItemsControl x:Name="BookmarksItemsControl">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Style="{StaticResource IconButton}"
+                                        Click="BookmarkItem_Click"
+                                        Tag="{Binding Url}"
+                                        Margin="0,0,5,0"
+                                        Padding="0">
+                                    <Border Background="#10FFFFFF"
+                                            BorderBrush="#14FFFFFF"
+                                            BorderThickness="1"
+                                            CornerRadius="6"
+                                            Padding="7,4">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <!-- Real Fetched Favicon (16x16) or Monochrome Fallback -->
+                                            <Grid Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center">
+                                                <TextBlock Text="&#xE774;"
+                                                           FontSize="11"
+                                                           VerticalAlignment="Center"
+                                                           HorizontalAlignment="Center"
+                                                           Foreground="{StaticResource TextSecondaryBrush}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock" BasedOn="{StaticResource FluentIcon}">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Favicon}" Value="{x:Null}">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <Image Source="{Binding Favicon}"
+                                                       Width="16" Height="16"
+                                                       RenderOptions.BitmapScalingMode="HighQuality"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center">
+                                                    <Image.Style>
+                                                        <Style TargetType="Image">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Favicon}" Value="{x:Null}">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Image.Style>
+                                                </Image>
+                                            </Grid>
+                                            <!-- Bookmark Title -->
+                                            <TextBlock Text="{Binding Title}"
+                                                       FontSize="11.5"
+                                                       Foreground="#E5E7EB"
+                                                       FontWeight="Normal"
+                                                       VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+
+            <!-- ROW 3: Floating Web Content Canvas (Matching Reference Screenshot Rounded Card) -->
+            <Border Grid.Row="3"
+                    Margin="10,2,14,14"
+                    CornerRadius="14"
+                    BorderThickness="1"
+                    BorderBrush="#25FFFFFF"
+                    Background="{StaticResource CardBgBrush}"
+                    ClipToBounds="True">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="24" ShadowDepth="3" Direction="270" Color="#000000" Opacity="0.55"/>
+                </Border.Effect>
+                <Grid>
+                    <!-- Loading Progress Bar (Subtle Monochrome Minimal Bar) -->
+                    <ProgressBar x:Name="PageProgressBar"
+                                 Height="2"
+                                 VerticalAlignment="Top"
+                                 HorizontalAlignment="Stretch"
+                                 Background="Transparent"
+                                 Foreground="#50FFFFFF"
+                                 BorderThickness="0"
+                                 IsIndeterminate="True"
+                                 Visibility="Collapsed"
+                                 Panel.ZIndex="10"/>
+
+                    <!-- Web Content Host Container -->
+                    <Grid x:Name="WebContentGrid" SizeChanged="WebContentGrid_SizeChanged">
+                        <!-- WebView2 controls hosted here -->
+                    </Grid>
+
+                    <!-- Speed Dial / Start Page Overlay when no active tab -->
+                    <Grid x:Name="StartPageGrid" Visibility="Collapsed" Background="#141418">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock Text="Browy"
+                                       FontSize="38"
+                                       FontWeight="Bold"
+                                       HorizontalAlignment="Center"
+                                       Foreground="#E2E8F0"
+                                       Margin="0,0,0,6"/>
+                            <TextBlock Text="Search or jump to a site"
+                                       FontSize="13"
+                                       HorizontalAlignment="Center"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Margin="0,0,0,26"/>
+
+                            <!-- Quick Action Tiles with fetched favicons -->
+                            <WrapPanel HorizontalAlignment="Center" MaxWidth="500">
+                                <Button Style="{StaticResource IconButton}" Click="SpeedDial_Click" Tag="https://github.com" Margin="6">
+                                    <Border Background="#12FFFFFF" BorderBrush="#15FFFFFF" BorderThickness="1" CornerRadius="8" Padding="14,10" Width="100">
+                                        <StackPanel HorizontalAlignment="Center">
+                                            <Image Source="https://www.google.com/s2/favicons?domain=github.com&amp;sz=64" Width="26" Height="26" RenderOptions.BitmapScalingMode="HighQuality" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="GitHub" FontSize="11" Foreground="#FFF" HorizontalAlignment="Center" Margin="0,6,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Button>
+                                <Button Style="{StaticResource IconButton}" Click="SpeedDial_Click" Tag="https://developer.mozilla.org" Margin="6">
+                                    <Border Background="#12FFFFFF" BorderBrush="#15FFFFFF" BorderThickness="1" CornerRadius="8" Padding="14,10" Width="100">
+                                        <StackPanel HorizontalAlignment="Center">
+                                            <Image Source="https://www.google.com/s2/favicons?domain=developer.mozilla.org&amp;sz=64" Width="26" Height="26" RenderOptions.BitmapScalingMode="HighQuality" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="MDN Docs" FontSize="11" Foreground="#FFF" HorizontalAlignment="Center" Margin="0,6,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Button>
+                                <Button Style="{StaticResource IconButton}" Click="SpeedDial_Click" Tag="https://youtube.com" Margin="6">
+                                    <Border Background="#12FFFFFF" BorderBrush="#15FFFFFF" BorderThickness="1" CornerRadius="8" Padding="14,10" Width="100">
+                                        <StackPanel HorizontalAlignment="Center">
+                                            <Image Source="https://www.google.com/s2/favicons?domain=youtube.com&amp;sz=64" Width="26" Height="26" RenderOptions.BitmapScalingMode="HighQuality" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="YouTube" FontSize="11" Foreground="#FFF" HorizontalAlignment="Center" Margin="0,6,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Button>
+                                <Button Style="{StaticResource IconButton}" Click="SpeedDial_Click" Tag="https://x.com" Margin="6">
+                                    <Border Background="#12FFFFFF" BorderBrush="#15FFFFFF" BorderThickness="1" CornerRadius="8" Padding="14,10" Width="100">
+                                        <StackPanel HorizontalAlignment="Center">
+                                            <Image Source="https://www.google.com/s2/favicons?domain=x.com&amp;sz=64" Width="26" Height="26" RenderOptions.BitmapScalingMode="HighQuality" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="X / Web" FontSize="11" Foreground="#FFF" HorizontalAlignment="Center" Margin="0,6,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Button>
+                            </WrapPanel>
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <!-- Flush Native Windows 11 Caption Controls (Top Right Overlay) -->
+            <StackPanel Grid.Row="0" Grid.RowSpan="2"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        Height="42"
+                        Panel.ZIndex="150"
+                        WindowChrome.IsHitTestVisibleInChrome="True">
+                <!-- Minimize -->
+                <Button Style="{StaticResource WindowsCaptionButton}"
+                        ToolTip="Minimize"
+                        Click="MinimizeButton_Click">
+                    <Path Data="M 0,0 L 10,0"
+                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                          StrokeThickness="1"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"/>
+                </Button>
+
+                <!-- Maximize / Restore -->
+                <Button x:Name="MaximizeBtn"
+                        Style="{StaticResource WindowsCaptionButton}"
+                        ToolTip="Maximize / Restore"
+                        Click="MaximizeButton_Click">
+                    <Path x:Name="MaximizePath"
+                          Data="M 0.5,0.5 L 9.5,0.5 L 9.5,9.5 L 0.5,9.5 Z"
+                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                          StrokeThickness="1"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"/>
+                </Button>
+
+                <!-- Close -->
+                <Button Style="{StaticResource WindowsCloseButton}"
+                        ToolTip="Close (Alt+F4)"
+                        Click="CloseButton_Click">
+                    <Path Data="M 0,0 L 9.5,9.5 M 9.5,0 L 0,9.5"
+                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                          StrokeThickness="1"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"/>
+                </Button>
+            </StackPanel>
+
+            <!-- History Popup (Floating Win32 topmost window over WebView2 HWND - Fixes Airspace bug!) -->
+            <Popup x:Name="HistoryPopup"
+                   PlacementTarget="{Binding ElementName=HistoryButton}"
+                   Placement="Bottom"
+                   HorizontalOffset="-260"
+                   VerticalOffset="8"
+                   AllowsTransparency="True"
+                   StaysOpen="False"
+                   PopupAnimation="Fade">
+                <Border Width="320"
+                        MaxHeight="460"
+                        Background="#F414141A"
+                        BorderBrush="{StaticResource GlassBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="12"
+                        Padding="14,12">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="28" ShadowDepth="4" Direction="270" Color="#000000" Opacity="0.75"/>
+                    </Border.Effect>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <!-- Header -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- Empty message -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- History List -->
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- History Header -->
+                        <Grid Grid.Row="0" Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE81C;" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,8,0"/>
+                                <TextBlock Text="History" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            </StackPanel>
+
+                            <!-- Clear History -->
+                            <Button Grid.Column="1"
+                                    Style="{StaticResource IconButton}"
+                                    ToolTip="Clear History"
+                                    Click="ClearHistory_Click"
+                                    Margin="0,0,4,0"
+                                    Width="26" Height="26">
+                                <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE74D;" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                            </Button>
+
+                            <!-- Close Panel -->
+                            <Button Grid.Column="2"
+                                    Style="{StaticResource IconButton}"
+                                    ToolTip="Close History"
+                                    Click="CloseHistory_Click"
+                                    Width="26" Height="26">
+                                <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE711;" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}"/>
+                            </Button>
+                        </Grid>
+
+                        <!-- Empty State Text -->
+                        <TextBlock x:Name="HistoryEmptyText"
+                                   Grid.Row="1"
+                                   Text="No browsing history yet"
+                                   FontSize="12"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,20,0,0"
+                                   Visibility="Collapsed"/>
+
+                        <!-- History List -->
+                        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <ItemsControl x:Name="HistoryItemsControl">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Style="{StaticResource IconButton}"
+                                                Click="HistoryItem_Click"
+                                                Tag="{Binding Url}"
+                                                HorizontalContentAlignment="Stretch"
+                                                Margin="0,0,0,4"
+                                                Padding="8,6">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="20"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Fetched Favicon -->
+                                                <Grid Grid.Column="0" Width="16" Height="16" VerticalAlignment="Center">
+                                                    <TextBlock Text="&#xE774;"
+                                                               FontSize="11"
+                                                               VerticalAlignment="Center"
+                                                               HorizontalAlignment="Center"
+                                                               Foreground="{StaticResource TextSecondaryBrush}">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock" BasedOn="{StaticResource FluentIcon}">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Favicon}" Value="{x:Null}">
+                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    <Image Source="{Binding Favicon}"
+                                                           Width="16" Height="16"
+                                                           RenderOptions.BitmapScalingMode="HighQuality"
+                                                           VerticalAlignment="Center"
+                                                           HorizontalAlignment="Center">
+                                                        <Image.Style>
+                                                            <Style TargetType="Image">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Favicon}" Value="{x:Null}">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Image.Style>
+                                                    </Image>
+                                                </Grid>
+
+                                                <!-- Title & URL -->
+                                                <StackPanel Grid.Column="1" Margin="8,0,8,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Title}"
+                                                               FontSize="11.5"
+                                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="{Binding Url}"
+                                                               FontSize="9.5"
+                                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               Margin="0,1,0,0"/>
+                                                </StackPanel>
+
+                                                <!-- Timestamp -->
+                                                <TextBlock Grid.Column="2"
+                                                           Text="{Binding FormattedTime}"
+                                                           FontSize="10"
+                                                           Foreground="#70FFFFFF"
+                                                           VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+            </Popup>
+        </Grid>
+    </Grid>
+</Window>

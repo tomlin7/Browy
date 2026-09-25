@@ -1,0 +1,48 @@
+# Build and compilation outputs
+[Bb]in/
+[Oo]bj/
+[Aa]rms/
+[Aa]rm64/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+
+# Visual Studio & VS Code cache and temporary files
+.vs/
+.vscode/
+*.user
+*.userprefs
+*.suo
+*.userosscache
+*.sln.docstates
+*.DotSettings.user
+
+# NuGet Packages
+*.nupkg
+*.snupkg
+**/packages/*
+!**/packages/build/
+
+# Test Results & Code Coverage
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+# WebView2 Browser Cache & Profile Data
+**/WebView2Data/
+**/EBWebView/
+**/session_storage/
+**/Local Storage/
+
+# Crash dumps & logs
+*.stackdump
+*.log
+*.tmp
+*.bak
+
+# Windows OS Generated Files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store

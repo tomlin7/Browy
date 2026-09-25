@@ -1,34 +1,35 @@
-# Browy - Native Browser
+# Browy - Native Windows 11 Acrylic Browser
 
-**Browy** is a modern, lightweight native Windows 11 browser built with .NET 9, WPF, and Windows Evergreen **WebView2**, featuring acrylic panels, Arc/Zen-inspired vertical sidebar tabs, floating rounded web cards, and a smart omnibox.
+**Browy** is a modern, lightweight native Windows 11 browser built with .NET 9, WPF, and Windows Evergreen **WebView2**, featuring seamless DWM acrylic panels, Arc/Zen-inspired vertical sidebar tabs, floating rounded web cards, a smart omnibox, and an integrated right-side AI Agents panel.
 
 ---
 
-## Features
+## ✨ Features
 
-- **Windows 11 DWM Acrylic & Mica Backdrop**:
-  - Native hardware-accelerated frosted glass blur using `dwmapi.dll` (`DwmSetWindowAttribute` with `DWMSBT_TRANSIENTWINDOW` and `DWMSBT_TABBEDWINDOW`).
-  - Interactive backdrop switcher (Acrylic 💧 / Mica Alt 💎 / Mica 🌌).
+- **Windows 11 DWM Desktop Acrylic Backdrop**:
+  - Native hardware-accelerated frosted glass blur using `dwmapi.dll` (`DwmSetWindowAttribute`).
+  - Seamless, unified transparent styling with zero split divider lines.
   - Immersive Dark Mode.
 - **Arc / Zen Inspired Vertical Sidebar Tabs**:
-  - Sleek collapsible translucent sidebar.
+  - Sleek collapsible translucent sidebar with snappy slide animations.
   - Multi-tab management with individual persistent web instances.
   - Live tab titles, favicons, active indicator cards, and quick close buttons.
-  - New tab creation (`+`) and compact mode toggle.
+  - Snappy collapse to horizontal tabs with `Ctrl + S`.
+- **AI Agents Panel (Right Sidebar)**:
+  - Dedicated wider assistant panel (320px) on the right with seamless acrylic material.
+  - Page-aware Copilot: instant summaries, explanations, and insights based on the active tab.
+  - Capability suggestion chips, conversation bubble feed, and bottom prompt composer.
+  - Snappy slide animations toggleable with `Ctrl + J` or top-nav icon.
 - **Floating Rounded Web View Card**:
   - The web content floats in an elegant card with `CornerRadius="14"`, subtle glass border, and soft drop shadow.
   - Native Windows Evergreen WebView2 engine (no standalone bloated Chromium/Firefox download needed).
   - Fast, secure, full HTML5, WebGL, WebGPU, and modern web API support.
 - **Smart Omnibox & Navigation**:
-  - Navigation controls: Back (`◀`), Forward (`▶`), Reload/Stop (`↻`/`✕`), Home (`⌂`).
+  - Navigation controls: Back (`◀`), Forward (`▶`), Reload/Stop (`↻`/`✕`).
   - Omnibox with SSL security indicator (`🔒`), smart URL vs. Google search auto-detection.
-  - Pin / Bookmark bar with quick-launch shortcuts (X, YouTube, Vercel, GitHub, Cloudflare, Linear, MDN).
-  - Integrated Developer Tools (`F12` / `⚡`).
-- **AI Agents Panel (Right Sidebar)**:
-  - Wider sidebar (320px) matching the seamless transparent acrylic material.
-  - Page-aware Copilot: instant summaries, explanations, and insights.
-  - Quick capability chips, chat message feed, and bottom prompt composer.
-  - Snappy collapse/expand animations with `Ctrl + J` shortcut.
+  - Bookmark bar with quick-launch shortcuts (X, YouTube, Vercel, GitHub, Cloudflare, Linear, MDN).
+  - Top-level floating History flyout (`Ctrl + H`) floating over web content without clipping.
+  - Integrated Developer Tools (`F12`).
 
 ---
 

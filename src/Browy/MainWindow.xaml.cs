@@ -43,7 +43,7 @@ namespace Browy
             HorizontalTabsItemsControl.ItemsSource = Tabs;
             BookmarksItemsControl.ItemsSource = Bookmarks;
             HistoryItemsControl.ItemsSource = History;
-            AgentSessionsItemsControl.ItemsSource = AgentSessions;
+            AgentPickerItemsControl.ItemsSource = AgentSessions;
             AgentMessagesItemsControl.ItemsSource = AgentMessages;
             LoadInitialAgentSessions();
             LoadInitialAgentWelcome();
@@ -793,12 +793,6 @@ namespace Browy
                     ? "Collapse Agents Panel (Ctrl+J)"
                     : "Open Agents Panel (Ctrl+J)";
             }
-            if (AgentsButton != null)
-            {
-                AgentsButton.ToolTip = _isAgentsPanelOpen
-                    ? "Collapse Agents Panel (Ctrl+J)"
-                    : "Open Agents Panel (Ctrl+J)";
-            }
         }
 
         private void ToggleAgentsPanel_Click(object sender, RoutedEventArgs e)
@@ -988,13 +982,22 @@ namespace Browy
         private void LoadInitialAgentSessions()
         {
             AgentSessions.Clear();
-            AgentSessions.Add(new AgentSession("Page Copilot", "Active · Inspects page context", "\uEA86", isActive: true));
+            var defaultSession = new AgentSession("Page Copilot", "Active · Inspects page context", "\uEA86", isActive: true);
+            AgentSessions.Add(defaultSession);
             AgentSessions.Add(new AgentSession("Deep Research", "Synthesizes web sources", "\uE721", isActive: false));
             AgentSessions.Add(new AgentSession("Code Analyst", "Inspects DOM & APIs", "\uEC7A", isActive: false));
             AgentSessions.Add(new AgentSession("Content Explainer", "Simplifies concepts", "\uE8BD", isActive: false));
+
+            if (SelectedAgentText != null) SelectedAgentText.Text = defaultSession.Name;
+            if (SelectedAgentIcon != null) SelectedAgentIcon.Text = defaultSession.Icon;
         }
 
-        private void AgentSessionItem_Click(object sender, MouseButtonEventArgs e)
+        private void AgentPickerButton_Click(object sender, RoutedEventArgs e)
+        {
+            AgentPickerPopup.IsOpen = !AgentPickerPopup.IsOpen;
+        }
+
+        private void AgentPickerItem_Click(object sender, MouseButtonEventArgs e)
         {
             if (sender is FrameworkElement elem && elem.DataContext is AgentSession session)
             {
@@ -1002,6 +1005,10 @@ namespace Browy
                 {
                     s.IsActive = (s == session);
                 }
+                if (SelectedAgentText != null) SelectedAgentText.Text = session.Name;
+                if (SelectedAgentIcon != null) SelectedAgentIcon.Text = session.Icon;
+                AgentPickerPopup.IsOpen = false;
+
                 AgentMessages.Add(new AgentMessage("Agent", $"Switched to **{session.Name}**. Ready to assist with {session.Status.ToLower()}."));
                 AgentMessagesScrollViewer?.ScrollToEnd();
             }

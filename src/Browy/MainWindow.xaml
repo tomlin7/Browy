@@ -523,19 +523,9 @@
                         </Border>
                     </Grid>
 
-                    <!-- Tool Buttons (Agents, History, DevTools) -->
+                    <!-- Tool Buttons (History, DevTools) -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center"
                                 WindowChrome.IsHitTestVisibleInChrome="True">
-                        <!-- Agents Button -->
-                        <Button x:Name="AgentsButton"
-                                Style="{StaticResource IconButton}"
-                                ToolTip="AI Agents (Ctrl+J)"
-                                Click="ToggleAgentsPanel_Click"
-                                Width="28" Height="28"
-                                Margin="0,0,3,0">
-                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xEA86;" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
-                        </Button>
-
                         <!-- History Button -->
                         <Button x:Name="HistoryButton"
                                 Style="{StaticResource IconButton}"
@@ -928,81 +918,17 @@
                     </Button>
                 </Grid>
 
-                <!-- Middle Content: Agent Sessions List & Message Feed -->
+                <!-- Middle Content: Suggestion Chips & Message Feed -->
                 <Grid Grid.Row="1" Margin="6,0,6,4">
                     <Grid.RowDefinitions>
-                        <!-- Agent Sessions List (Similar to vertical tabs) -->
-                        <RowDefinition Height="Auto"/>
                         <!-- Capability Suggestion Chips -->
                         <RowDefinition Height="Auto"/>
                         <!-- Conversation Feed -->
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Agent Sessions / Personas List (Matching Left Sidebar Vertical Tabs Style) -->
-                    <ItemsControl x:Name="AgentSessionsItemsControl" Grid.Row="0" Margin="0,0,0,4" WindowChrome.IsHitTestVisibleInChrome="True">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border x:Name="AgentSessionBorder"
-                                        CornerRadius="7"
-                                        Margin="0,1,0,1"
-                                        Background="Transparent"
-                                        BorderThickness="1"
-                                        BorderBrush="Transparent"
-                                        Cursor="Hand"
-                                        MouseLeftButtonDown="AgentSessionItem_Click">
-                                    <Grid>
-                                        <Border x:Name="AgentActiveHighlight"
-                                                CornerRadius="7"
-                                                Background="#1CFFFFFF"
-                                                BorderBrush="#25FFFFFF"
-                                                BorderThickness="1"
-                                                Opacity="0"/>
-                                        <Grid Margin="8,4">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="20"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0"
-                                                       Style="{StaticResource FluentIcon}"
-                                                       Text="{Binding Icon}"
-                                                       FontSize="11.5"
-                                                       Foreground="{StaticResource TextSecondaryBrush}"
-                                                       VerticalAlignment="Center"/>
-                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="3,0,3,0">
-                                                <TextBlock Text="{Binding Name}"
-                                                           FontSize="11"
-                                                           Foreground="{StaticResource TextPrimaryBrush}"
-                                                           TextTrimming="CharacterEllipsis"/>
-                                                <TextBlock Text="{Binding Status}"
-                                                           FontSize="9"
-                                                           Foreground="{StaticResource TextSecondaryBrush}"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           Margin="0,1,0,0"/>
-                                            </StackPanel>
-                                            <Border Grid.Column="2"
-                                                    Width="4.5" Height="4.5"
-                                                    CornerRadius="2.25"
-                                                    Background="#80FFFFFF"
-                                                    VerticalAlignment="Center"/>
-                                        </Grid>
-                                    </Grid>
-                                </Border>
-                                <DataTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="AgentSessionBorder" Property="Background" Value="#10FFFFFF"/>
-                                    </Trigger>
-                                    <DataTrigger Binding="{Binding IsActive}" Value="True">
-                                        <Setter TargetName="AgentActiveHighlight" Property="Opacity" Value="1"/>
-                                    </DataTrigger>
-                                </DataTemplate.Triggers>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-
                     <!-- Quick Capability Suggestion Chips -->
-                    <WrapPanel Grid.Row="1" Margin="0,0,0,6" WindowChrome.IsHitTestVisibleInChrome="True">
+                    <WrapPanel Grid.Row="0" Margin="0,0,0,6" WindowChrome.IsHitTestVisibleInChrome="True">
                         <Button Style="{StaticResource IconButton}"
                                 Click="AgentChip_Click"
                                 Tag="Summarize current page"
@@ -1043,7 +969,7 @@
 
                     <!-- Message Feed -->
                     <ScrollViewer x:Name="AgentMessagesScrollViewer"
-                                  Grid.Row="2"
+                                  Grid.Row="1"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled"
                                   WindowChrome.IsHitTestVisibleInChrome="True">
@@ -1124,55 +1050,184 @@
                     </ScrollViewer>
                 </Grid>
 
-                <!-- Bottom Input Composer Bar -->
+                <!-- Bottom Input Composer Bar with Integrated Agent Dropdown -->
                 <Border Grid.Row="2"
                         Margin="6,2,6,6"
                         Background="#0DFFFFFF"
                         BorderBrush="#16FFFFFF"
                         BorderThickness="1"
                         CornerRadius="8"
-                        Padding="6,4"
+                        Padding="7,6"
                         WindowChrome.IsHitTestVisibleInChrome="True">
                     <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <!-- Input Text Area -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- Action Bar: Agent Dropdown & Send -->
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
 
-                        <!-- Input TextBox -->
-                        <TextBox x:Name="AgentInputTextBox"
-                                 Grid.Column="0"
-                                 Background="Transparent"
-                                 BorderThickness="0"
-                                 Foreground="{StaticResource TextPrimaryBrush}"
-                                 CaretBrush="#FFFFFF"
-                                 FontSize="11.5"
-                                 VerticalAlignment="Center"
-                                 TextWrapping="Wrap"
-                                 MaxHeight="60"
-                                 KeyDown="AgentInputTextBox_KeyDown"
-                                 TextChanged="AgentInputTextBox_TextChanged"/>
+                        <!-- Input TextBox & Placeholder -->
+                        <Grid Grid.Row="0" Margin="0,0,0,6">
+                            <TextBox x:Name="AgentInputTextBox"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     Foreground="{StaticResource TextPrimaryBrush}"
+                                     CaretBrush="#FFFFFF"
+                                     FontSize="11.5"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     MinHeight="20"
+                                     MaxHeight="70"
+                                     VerticalScrollBarVisibility="Auto"
+                                     KeyDown="AgentInputTextBox_KeyDown"
+                                     TextChanged="AgentInputTextBox_TextChanged"/>
 
-                        <!-- Placeholder -->
-                        <TextBlock x:Name="AgentPlaceholderText"
-                                   Grid.Column="0"
-                                   Text="Ask agent or summarize..."
-                                   Foreground="#40FFFFFF"
-                                   FontSize="11.5"
-                                   VerticalAlignment="Center"
-                                   IsHitTestVisible="False"
-                                   Margin="2,0,0,0"/>
+                            <TextBlock x:Name="AgentPlaceholderText"
+                                       Text="Ask agent or summarize..."
+                                       Foreground="#40FFFFFF"
+                                       FontSize="11.5"
+                                       VerticalAlignment="Top"
+                                       IsHitTestVisible="False"
+                                       Margin="2,1,0,0"/>
+                        </Grid>
 
-                        <!-- Send Button -->
-                        <Button Grid.Column="1"
-                                Style="{StaticResource IconButton}"
-                                ToolTip="Send message (Enter)"
-                                Click="SendAgentMessage_Click"
-                                Width="24" Height="24"
-                                Margin="3,0,0,0"
-                                VerticalAlignment="Bottom">
-                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE724;" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}"/>
-                        </Button>
+                        <!-- Bottom Action Bar -->
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <!-- Agent Picker Dropdown Button -->
+                                <ColumnDefinition Width="Auto"/>
+                                <!-- Spacer -->
+                                <ColumnDefinition Width="*"/>
+                                <!-- Send Button -->
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Agent Selector Dropdown Pill -->
+                            <Button x:Name="AgentPickerButton"
+                                    Grid.Column="0"
+                                    Style="{StaticResource IconButton}"
+                                    ToolTip="Choose agent persona"
+                                    Click="AgentPickerButton_Click"
+                                    Height="22"
+                                    Padding="6,0"
+                                    Background="#14FFFFFF"
+                                    BorderBrush="#1AFFFFFF"
+                                    BorderThickness="1">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock x:Name="SelectedAgentIcon"
+                                               Style="{StaticResource FluentIcon}"
+                                               Text="&#xEA86;"
+                                               FontSize="10"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               Margin="0,0,4,0"/>
+                                    <TextBlock x:Name="SelectedAgentText"
+                                               Text="Page Copilot"
+                                               FontSize="10"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               Margin="0,0,4,0"/>
+                                    <TextBlock Style="{StaticResource FluentIcon}"
+                                               Text="&#xE70D;"
+                                               FontSize="7"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Send Message Button -->
+                            <Button Grid.Column="2"
+                                    Style="{StaticResource IconButton}"
+                                    ToolTip="Send message (Enter)"
+                                    Click="SendAgentMessage_Click"
+                                    Width="24" Height="22"
+                                    Background="#14FFFFFF"
+                                    BorderBrush="#1AFFFFFF"
+                                    BorderThickness="1">
+                                <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE724;" FontSize="10" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            </Button>
+                        </Grid>
+
+                        <!-- Agent Persona Dropdown Popup -->
+                        <Popup x:Name="AgentPickerPopup"
+                               PlacementTarget="{Binding ElementName=AgentPickerButton}"
+                               Placement="Top"
+                               StaysOpen="False"
+                               AllowsTransparency="True"
+                               VerticalOffset="-5"
+                               PopupAnimation="Fade">
+                            <Border Background="#202024"
+                                    BorderBrush="#25FFFFFF"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="4"
+                                    Width="210"
+                                    SnapsToDevicePixels="True">
+                                <StackPanel>
+                                    <TextBlock Text="SELECT AGENT"
+                                               FontSize="8.5"
+                                               FontWeight="SemiBold"
+                                               Foreground="#60FFFFFF"
+                                               Margin="6,3,6,4"/>
+                                    <ItemsControl x:Name="AgentPickerItemsControl">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border x:Name="PickerItemBorder"
+                                                        CornerRadius="5"
+                                                        Padding="6,4"
+                                                        Margin="0,1"
+                                                        Background="Transparent"
+                                                        Cursor="Hand"
+                                                        MouseLeftButtonDown="AgentPickerItem_Click">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="18"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0"
+                                                                   Style="{StaticResource FluentIcon}"
+                                                                   Text="{Binding Icon}"
+                                                                   FontSize="11"
+                                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                                   VerticalAlignment="Center"/>
+                                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="2,0,4,0">
+                                                            <TextBlock Text="{Binding Name}"
+                                                                       FontSize="10.5"
+                                                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                                                            <TextBlock Text="{Binding Status}"
+                                                                       FontSize="8.5"
+                                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                                       Margin="0,1,0,0"/>
+                                                        </StackPanel>
+                                                        <TextBlock Grid.Column="2"
+                                                                   Text="&#xE73E;"
+                                                                   FontSize="9"
+                                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                                   VerticalAlignment="Center">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock" BasedOn="{StaticResource FluentIcon}">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </Grid>
+                                                </Border>
+                                                <DataTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="PickerItemBorder" Property="Background" Value="#15FFFFFF"/>
+                                                    </Trigger>
+                                                </DataTemplate.Triggers>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                        </Popup>
                     </Grid>
                 </Border>
             </Grid>

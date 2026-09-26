@@ -775,9 +775,9 @@ namespace Browy
 
         private void UpdateNavMargins()
         {
-            // If agents panel is open (340px on right), caption buttons are above AgentsBorder header.
-            // If agents panel is closed (0px on right), caption buttons are above main content area (needs 185px right margin).
-            double rightMargin = _isAgentsPanelOpen ? 10 : 185;
+            // If agents panel is open (320px on right), caption buttons are above AgentsBorder header.
+            // If agents panel is closed (0px on right), caption buttons are above main content area (needs 172px right margin).
+            double rightMargin = _isAgentsPanelOpen ? 10 : 172;
 
             if (TopNavMargin != null)
             {
@@ -818,7 +818,7 @@ namespace Browy
                 var widthAnim = new DoubleAnimation
                 {
                     From = AgentsBorder.ActualWidth > 0 ? AgentsBorder.ActualWidth : 0,
-                    To = 340,
+                    To = 320,
                     Duration = TimeSpan.FromMilliseconds(190),
                     EasingFunction = easeOut
                 };
@@ -845,7 +845,7 @@ namespace Browy
             {
                 var widthAnim = new DoubleAnimation
                 {
-                    From = AgentsBorder.ActualWidth > 0 ? AgentsBorder.ActualWidth : 340,
+                    From = AgentsBorder.ActualWidth > 0 ? AgentsBorder.ActualWidth : 320,
                     To = 0,
                     Duration = TimeSpan.FromMilliseconds(160),
                     EasingFunction = easeIn

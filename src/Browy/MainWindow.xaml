@@ -875,7 +875,7 @@
         <!-- ==================== RIGHT SIDEBAR (AGENTS PANEL) ==================== -->
         <Border x:Name="AgentsBorder"
                 Grid.Column="2"
-                Width="340"
+                Width="320"
                 ClipToBounds="True"
                 Background="Transparent"
                 BorderBrush="Transparent"
@@ -890,9 +890,10 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <!-- Sidebar Header: Toggle Sidebar, Brand, & New Session Button (Reserved 185px on right for Caption Buttons & Toggle) -->
+                <!-- Sidebar Header: Brand & New Session Button (Reserved 172px on right for Caption Buttons & Toggle) -->
                 <Grid Grid.Row="0"
-                      Margin="10,0,185,0"
+                      Height="42"
+                      Margin="8,0,172,0"
                       VerticalAlignment="Center"
                       Background="Transparent"
                       MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
@@ -902,20 +903,9 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- Toggle Sidebar Button -->
-                    <Button Grid.Column="0"
-                            Style="{StaticResource IconButton}"
-                            ToolTip="Collapse Panel (Ctrl+J)"
-                            Click="ToggleAgentsPanel_Click"
-                            Width="28" Height="28"
-                            Margin="0,0,6,0"
-                            WindowChrome.IsHitTestVisibleInChrome="True">
-                        <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE8A0;" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
-                    </Button>
-
                     <!-- App Brand (Draggable space) -->
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" IsHitTestVisible="False">
-                        <TextBlock Style="{StaticResource FluentIcon}" Text="&#xEA86;" FontSize="13" Margin="0,0,6,0" Foreground="{StaticResource TextSecondaryBrush}"/>
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" IsHitTestVisible="False">
+                        <TextBlock Style="{StaticResource FluentIcon}" Text="&#xEA86;" FontSize="12.5" Margin="0,0,5,0" Foreground="{StaticResource TextSecondaryBrush}"/>
                         <TextBlock Text="AGENTS"
                                    FontSize="11"
                                    FontWeight="SemiBold"
@@ -923,19 +913,23 @@
                                    VerticalAlignment="Center"/>
                     </StackPanel>
 
+                    <!-- Center Draggable Area -->
+                    <Border Grid.Column="1" Background="Transparent"/>
+
                     <!-- New Agent Session Button -->
                     <Button Grid.Column="2"
                             Style="{StaticResource IconButton}"
                             ToolTip="New Agent Session"
                             Click="NewAgentChat_Click"
-                            Width="28" Height="28"
+                            Width="26" Height="26"
+                            Margin="0,0,4,0"
                             WindowChrome.IsHitTestVisibleInChrome="True">
-                        <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE710;" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE710;" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
                     </Button>
                 </Grid>
 
                 <!-- Middle Content: Agent Sessions List & Message Feed -->
-                <Grid Grid.Row="1" Margin="8,2,8,6">
+                <Grid Grid.Row="1" Margin="6,0,6,4">
                     <Grid.RowDefinitions>
                         <!-- Agent Sessions List (Similar to vertical tabs) -->
                         <RowDefinition Height="Auto"/>
@@ -946,12 +940,12 @@
                     </Grid.RowDefinitions>
 
                     <!-- Agent Sessions / Personas List (Matching Left Sidebar Vertical Tabs Style) -->
-                    <ItemsControl x:Name="AgentSessionsItemsControl" Grid.Row="0" Margin="0,0,0,8" WindowChrome.IsHitTestVisibleInChrome="True">
+                    <ItemsControl x:Name="AgentSessionsItemsControl" Grid.Row="0" Margin="0,0,0,4" WindowChrome.IsHitTestVisibleInChrome="True">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border x:Name="AgentSessionBorder"
-                                        CornerRadius="8"
-                                        Margin="0,2,0,2"
+                                        CornerRadius="7"
+                                        Margin="0,1,0,1"
                                         Background="Transparent"
                                         BorderThickness="1"
                                         BorderBrush="Transparent"
@@ -959,37 +953,37 @@
                                         MouseLeftButtonDown="AgentSessionItem_Click">
                                     <Grid>
                                         <Border x:Name="AgentActiveHighlight"
-                                                CornerRadius="8"
+                                                CornerRadius="7"
                                                 Background="#1CFFFFFF"
                                                 BorderBrush="#25FFFFFF"
                                                 BorderThickness="1"
                                                 Opacity="0"/>
-                                        <Grid Margin="10,6">
+                                        <Grid Margin="8,4">
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="22"/>
+                                                <ColumnDefinition Width="20"/>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
                                             <TextBlock Grid.Column="0"
                                                        Style="{StaticResource FluentIcon}"
                                                        Text="{Binding Icon}"
-                                                       FontSize="12.5"
+                                                       FontSize="11.5"
                                                        Foreground="{StaticResource TextSecondaryBrush}"
                                                        VerticalAlignment="Center"/>
-                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="4,0,4,0">
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="3,0,3,0">
                                                 <TextBlock Text="{Binding Name}"
-                                                           FontSize="11.5"
+                                                           FontSize="11"
                                                            Foreground="{StaticResource TextPrimaryBrush}"
                                                            TextTrimming="CharacterEllipsis"/>
                                                 <TextBlock Text="{Binding Status}"
-                                                           FontSize="9.5"
+                                                           FontSize="9"
                                                            Foreground="{StaticResource TextSecondaryBrush}"
                                                            TextTrimming="CharacterEllipsis"
                                                            Margin="0,1,0,0"/>
                                             </StackPanel>
                                             <Border Grid.Column="2"
-                                                    Width="5" Height="5"
-                                                    CornerRadius="2.5"
+                                                    Width="4.5" Height="4.5"
+                                                    CornerRadius="2.25"
                                                     Background="#80FFFFFF"
                                                     VerticalAlignment="Center"/>
                                         </Grid>
@@ -1008,40 +1002,40 @@
                     </ItemsControl>
 
                     <!-- Quick Capability Suggestion Chips -->
-                    <WrapPanel Grid.Row="1" Margin="2,0,2,8" WindowChrome.IsHitTestVisibleInChrome="True">
+                    <WrapPanel Grid.Row="1" Margin="0,0,0,6" WindowChrome.IsHitTestVisibleInChrome="True">
                         <Button Style="{StaticResource IconButton}"
                                 Click="AgentChip_Click"
                                 Tag="Summarize current page"
-                                Margin="0,0,5,5"
+                                Margin="0,0,4,4"
                                 Padding="0">
-                            <Border Background="#10FFFFFF" BorderBrush="#14FFFFFF" BorderThickness="1" CornerRadius="6" Padding="8,4">
+                            <Border Background="#10FFFFFF" BorderBrush="#14FFFFFF" BorderThickness="1" CornerRadius="5" Padding="7,3">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE890;" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,5,0"/>
-                                    <TextBlock Text="Summarize" FontSize="10.5" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE890;" FontSize="9.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,4,0"/>
+                                    <TextBlock Text="Summarize" FontSize="10" Foreground="{StaticResource TextPrimaryBrush}"/>
                                 </StackPanel>
                             </Border>
                         </Button>
                         <Button Style="{StaticResource IconButton}"
                                 Click="AgentChip_Click"
                                 Tag="Explain this webpage"
-                                Margin="0,0,5,5"
+                                Margin="0,0,4,4"
                                 Padding="0">
-                            <Border Background="#10FFFFFF" BorderBrush="#14FFFFFF" BorderThickness="1" CornerRadius="6" Padding="8,4">
+                            <Border Background="#10FFFFFF" BorderBrush="#14FFFFFF" BorderThickness="1" CornerRadius="5" Padding="7,3">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE8BD;" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,5,0"/>
-                                    <TextBlock Text="Explain" FontSize="10.5" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE8BD;" FontSize="9.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,4,0"/>
+                                    <TextBlock Text="Explain" FontSize="10" Foreground="{StaticResource TextPrimaryBrush}"/>
                                 </StackPanel>
                             </Border>
                         </Button>
                         <Button Style="{StaticResource IconButton}"
                                 Click="AgentChip_Click"
                                 Tag="Find key takeaways"
-                                Margin="0,0,0,5"
+                                Margin="0,0,0,4"
                                 Padding="0">
-                            <Border Background="#10FFFFFF" BorderBrush="#14FFFFFF" BorderThickness="1" CornerRadius="6" Padding="8,4">
+                            <Border Background="#10FFFFFF" BorderBrush="#14FFFFFF" BorderThickness="1" CornerRadius="5" Padding="7,3">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE721;" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,5,0"/>
-                                    <TextBlock Text="Takeaways" FontSize="10.5" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE721;" FontSize="9.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,4,0"/>
+                                    <TextBlock Text="Takeaways" FontSize="10" Foreground="{StaticResource TextPrimaryBrush}"/>
                                 </StackPanel>
                             </Border>
                         </Button>
@@ -1056,11 +1050,11 @@
                         <ItemsControl x:Name="AgentMessagesItemsControl">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Grid Margin="0,0,0,10">
+                                    <Grid Margin="0,0,0,6">
                                         <!-- User Message Bubble -->
-                                        <Border CornerRadius="9"
-                                                Padding="10,8"
-                                                MaxWidth="290"
+                                        <Border CornerRadius="8"
+                                                Padding="8,6"
+                                                MaxWidth="270"
                                                 HorizontalAlignment="Right"
                                                 Background="#1CFFFFFF"
                                                 BorderBrush="#25FFFFFF"
@@ -1077,21 +1071,21 @@
                                             </Border.Style>
                                             <StackPanel>
                                                 <TextBlock Text="{Binding Content}"
-                                                           FontSize="12"
+                                                           FontSize="11.5"
                                                            Foreground="#FFFFFF"
                                                            TextWrapping="Wrap"/>
                                                 <TextBlock Text="{Binding FormattedTime}"
-                                                           FontSize="9"
+                                                           FontSize="8.5"
                                                            Foreground="#60FFFFFF"
                                                            HorizontalAlignment="Right"
-                                                           Margin="0,3,0,0"/>
+                                                           Margin="0,2,0,0"/>
                                             </StackPanel>
                                         </Border>
 
                                         <!-- Agent Message Bubble -->
-                                        <Border CornerRadius="9"
-                                                Padding="10,8"
-                                                MaxWidth="300"
+                                        <Border CornerRadius="8"
+                                                Padding="8,6"
+                                                MaxWidth="280"
                                                 HorizontalAlignment="Left"
                                                 Background="#0EFFFFFF"
                                                 BorderBrush="#14FFFFFF"
@@ -1107,20 +1101,20 @@
                                                 </Style>
                                             </Border.Style>
                                             <StackPanel>
-                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xEA86;" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,5,0"/>
-                                                    <TextBlock Text="Agent" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xEA86;" FontSize="9.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,4,0"/>
+                                                    <TextBlock Text="Agent" FontSize="9.5" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}"/>
                                                 </StackPanel>
                                                 <TextBlock Text="{Binding Content}"
-                                                           FontSize="12"
+                                                           FontSize="11.5"
                                                            Foreground="#E2E8F0"
                                                            TextWrapping="Wrap"
-                                                           LineHeight="17"/>
+                                                           LineHeight="16"/>
                                                 <TextBlock Text="{Binding FormattedTime}"
-                                                           FontSize="9"
+                                                           FontSize="8.5"
                                                            Foreground="#50FFFFFF"
                                                            HorizontalAlignment="Right"
-                                                           Margin="0,4,0,0"/>
+                                                           Margin="0,2,0,0"/>
                                             </StackPanel>
                                         </Border>
                                     </Grid>
@@ -1132,12 +1126,12 @@
 
                 <!-- Bottom Input Composer Bar -->
                 <Border Grid.Row="2"
-                        Margin="10,4,10,12"
+                        Margin="6,2,6,6"
                         Background="#0DFFFFFF"
                         BorderBrush="#16FFFFFF"
                         BorderThickness="1"
-                        CornerRadius="9"
-                        Padding="8,6"
+                        CornerRadius="8"
+                        Padding="6,4"
                         WindowChrome.IsHitTestVisibleInChrome="True">
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -1152,10 +1146,10 @@
                                  BorderThickness="0"
                                  Foreground="{StaticResource TextPrimaryBrush}"
                                  CaretBrush="#FFFFFF"
-                                 FontSize="12"
+                                 FontSize="11.5"
                                  VerticalAlignment="Center"
                                  TextWrapping="Wrap"
-                                 MaxHeight="70"
+                                 MaxHeight="60"
                                  KeyDown="AgentInputTextBox_KeyDown"
                                  TextChanged="AgentInputTextBox_TextChanged"/>
 
@@ -1164,7 +1158,7 @@
                                    Grid.Column="0"
                                    Text="Ask agent or summarize..."
                                    Foreground="#40FFFFFF"
-                                   FontSize="12"
+                                   FontSize="11.5"
                                    VerticalAlignment="Center"
                                    IsHitTestVisible="False"
                                    Margin="2,0,0,0"/>
@@ -1174,10 +1168,10 @@
                                 Style="{StaticResource IconButton}"
                                 ToolTip="Send message (Enter)"
                                 Click="SendAgentMessage_Click"
-                                Width="26" Height="26"
-                                Margin="4,0,0,0"
+                                Width="24" Height="24"
+                                Margin="3,0,0,0"
                                 VerticalAlignment="Bottom">
-                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE724;" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE724;" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}"/>
                         </Button>
                     </Grid>
                 </Border>
@@ -1198,7 +1192,7 @@
                     ToolTip="Collapse Agents Panel (Ctrl+J)"
                     Click="ToggleAgentsPanel_Click"
                     Width="28" Height="28"
-                    Margin="0,0,10,0"
+                    Margin="0,0,6,0"
                     VerticalAlignment="Center">
                 <TextBlock x:Name="RightSidebarToggleIcon"
                            Style="{StaticResource FluentIcon}"

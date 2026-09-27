@@ -8,8 +8,8 @@
         <Color x:Key="GlassBorderColor">#25FFFFFF</Color>
         <Color x:Key="CardBgColor">#1A1A1E</Color>
         <Color x:Key="AccentColor">#3B82F6</Color>
-        <Color x:Key="TextPrimary">#F3F4F6</Color>
-        <Color x:Key="TextSecondary">#9CA3AF</Color>
+        <Color x:Key="TextPrimary">#FFFFFF</Color>
+        <Color x:Key="TextSecondary">#E2E8F0</Color>
 
         <SolidColorBrush x:Key="AcrylicTintDarkBrush" Color="{StaticResource AcrylicTintDark}" />
         <SolidColorBrush x:Key="GlassBorderBrush" Color="{StaticResource GlassBorderColor}" />
@@ -24,6 +24,7 @@
         <Style x:Key="FluentIcon" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="{StaticResource FluentIcons}"/>
             <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="HorizontalAlignment" Value="Center"/>
         </Style>
@@ -32,7 +33,7 @@
         <Style x:Key="IconButton" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Padding" Value="6"/>
             <Setter Property="Template">
@@ -65,7 +66,7 @@
             <Setter Property="Height" Value="44"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="WindowChrome.IsHitTestVisibleInChrome" Value="True"/>

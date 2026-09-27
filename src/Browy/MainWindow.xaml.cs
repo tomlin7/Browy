@@ -430,7 +430,7 @@ namespace Browy
                     StartPageGrid.Visibility = Visibility.Visible;
                     UrlTextBox.Text = "";
                     SecurityIconText.Text = "\uE72E";
-                    SecurityIconText.Foreground = (Brush)FindResource("TextSecondaryBrush");
+                    SecurityIconText.Foreground = (Brush)FindResource("TextPrimaryBrush");
                     BackButton.IsEnabled = false;
                     ForwardButton.IsEnabled = false;
                     ReloadButton.IsEnabled = false;
@@ -443,7 +443,7 @@ namespace Browy
             UrlTextBox.Text = tab.Url;
             bool isSecure = NavigationHelper.IsSecure(tab.Url);
             SecurityIconText.Text = isSecure ? "\uE72E" : "\uE7BA";
-            SecurityIconText.Foreground = (Brush)FindResource("TextSecondaryBrush");
+            SecurityIconText.Foreground = (Brush)FindResource("TextPrimaryBrush");
 
             BackButton.IsEnabled = tab.CanGoBack;
             ForwardButton.IsEnabled = tab.CanGoForward;

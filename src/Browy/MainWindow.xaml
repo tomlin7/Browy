@@ -71,16 +71,16 @@
                             Width="28" Height="28"
                             Margin="0,0,6,0"
                             WindowChrome.IsHitTestVisibleInChrome="True">
-                        <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE8A0;" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE8A0;" FontSize="12" Foreground="#FFFFFF"/>
                     </Button>
 
                     <!-- App Brand (Draggable space) -->
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" IsHitTestVisible="False">
-                        <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE774;" FontSize="13" Margin="0,0,6,0" Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE774;" FontSize="13" Margin="0,0,6,0" Foreground="#FFFFFF"/>
                         <TextBlock Text="BROWY"
                                    FontSize="11"
                                    FontWeight="SemiBold"
-                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Foreground="#FFFFFF"
                                    VerticalAlignment="Center"/>
                     </StackPanel>
 
@@ -91,7 +91,7 @@
                             Click="NewTabButton_Click"
                             Width="28" Height="28"
                             WindowChrome.IsHitTestVisibleInChrome="True">
-                        <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE710;" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE710;" FontSize="12" Foreground="#FFFFFF"/>
                     </Button>
                 </Grid>
 
@@ -134,7 +134,7 @@
                                                            FontSize="12"
                                                            VerticalAlignment="Center"
                                                            HorizontalAlignment="Center"
-                                                           Foreground="{StaticResource TextSecondaryBrush}">
+                                                           Foreground="#FFFFFF">
                                                     <TextBlock.Style>
                                                         <Style TargetType="TextBlock" BasedOn="{StaticResource FluentIcon}">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
@@ -170,7 +170,7 @@
                                                        Text="{Binding Title}"
                                                        FontSize="12"
                                                        FontWeight="Normal"
-                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                       Foreground="#FFFFFF"
                                                        TextTrimming="CharacterEllipsis"
                                                        VerticalAlignment="Center"
                                                        Margin="6,0,4,0"/>
@@ -184,7 +184,7 @@
                                                     Click="CloseTab_Click"
                                                     Tag="{Binding}"
                                                     ToolTip="Close Tab (Ctrl+W)">
-                                                <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE711;" FontSize="9" Foreground="#80FFFFFF"/>
+                                                <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE711;" FontSize="9" Foreground="#CCFFFFFF"/>
                                             </Button>
                                         </Grid>
                                     </Grid>
@@ -216,7 +216,8 @@
                                                 </Storyboard>
                                             </BeginStoryboard>
                                         </DataTrigger.ExitActions>
-                                        <Setter TargetName="TabTitleText" Property="Foreground" Value="#F3F4F6"/>
+                                        <Setter TargetName="TabTitleText" Property="Foreground" Value="#FFFFFF"/>
+                                        <Setter TargetName="TabTitleText" Property="FontWeight" Value="SemiBold"/>
                                     </DataTrigger>
                                 </DataTemplate.Triggers>
                             </DataTemplate>
@@ -289,7 +290,7 @@
                         Margin="8,0,4,0"
                         VerticalAlignment="Center"
                         WindowChrome.IsHitTestVisibleInChrome="True">
-                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE8A0;" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE8A0;" FontSize="12" Foreground="#FFFFFF"/>
                 </Button>
 
                 <!-- Horizontal Tabs ScrollViewer (Reserved 140px margin on right for caption buttons) -->
@@ -340,7 +341,7 @@
                                                                FontSize="11"
                                                                VerticalAlignment="Center"
                                                                HorizontalAlignment="Center"
-                                                               Foreground="{StaticResource TextSecondaryBrush}">
+                                                               Foreground="#FFFFFF">
                                                         <TextBlock.Style>
                                                             <Style TargetType="TextBlock" BasedOn="{StaticResource FluentIcon}">
                                                                 <Setter Property="Visibility" Value="Collapsed"/>
@@ -375,7 +376,7 @@
                                                            Grid.Column="1"
                                                            Text="{Binding Title}"
                                                            FontSize="11.5"
-                                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                                           Foreground="#FFFFFF"
                                                            TextTrimming="CharacterEllipsis"
                                                            MaxWidth="130"
                                                            VerticalAlignment="Center"
@@ -389,7 +390,7 @@
                                                         Click="CloseTab_Click"
                                                         Tag="{Binding}"
                                                         ToolTip="Close Tab">
-                                                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE711;" FontSize="8" Foreground="#80FFFFFF"/>
+                                                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE711;" FontSize="8" Foreground="#CCFFFFFF"/>
                                                 </Button>
                                             </Grid>
                                         </Grid>
@@ -421,7 +422,8 @@
                                                     </Storyboard>
                                                 </BeginStoryboard>
                                             </DataTrigger.ExitActions>
-                                            <Setter TargetName="HorizTitleText" Property="Foreground" Value="#F3F4F6"/>
+                                            <Setter TargetName="HorizTitleText" Property="Foreground" Value="#FFFFFF"/>
+                                            <Setter TargetName="HorizTitleText" Property="FontWeight" Value="SemiBold"/>
                                         </DataTrigger>
                                     </DataTemplate.Triggers>
                                 </DataTemplate>
@@ -436,7 +438,7 @@
                                 Margin="2,0,0,0"
                                 VerticalAlignment="Center"
                                 WindowChrome.IsHitTestVisibleInChrome="True">
-                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE710;" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE710;" FontSize="11" Foreground="#FFFFFF"/>
                         </Button>
                     </StackPanel>
                 </ScrollViewer>
@@ -464,7 +466,7 @@
                                 Click="BackButton_Click"
                                 Width="28" Height="28"
                                 Margin="0,0,2,0">
-                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE76B;" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE76B;" FontSize="11" Foreground="#FFFFFF"/>
                         </Button>
 
                         <!-- Forward Button (Smooth Rounded ChevronRight) -->
@@ -474,7 +476,7 @@
                                 Click="ForwardButton_Click"
                                 Width="28" Height="28"
                                 Margin="0,0,2,0">
-                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE76C;" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE76C;" FontSize="11" Foreground="#FFFFFF"/>
                         </Button>
 
                         <!-- Reload / Stop Button -->
@@ -483,7 +485,7 @@
                                 ToolTip="Reload (Ctrl+R / F5)"
                                 Click="ReloadButton_Click"
                                 Width="28" Height="28">
-                            <TextBlock x:Name="ReloadIconText" Style="{StaticResource FluentIcon}" Text="&#xE72C;" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                            <TextBlock x:Name="ReloadIconText" Style="{StaticResource FluentIcon}" Text="&#xE72C;" FontSize="11" Foreground="#FFFFFF"/>
                         </Button>
                     </StackPanel>
 
@@ -512,7 +514,7 @@
                                            Style="{StaticResource FluentIcon}"
                                            Text="&#xE72E;"
                                            FontSize="11"
-                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           Foreground="#FFFFFF"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"/>
 
@@ -544,7 +546,7 @@
                                         ToolTip="Bookmark this page (Ctrl+D)"
                                         Click="BookmarkCurrentPage_Click"
                                         Width="26" Height="26">
-                                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE734;" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE734;" FontSize="11" Foreground="#FFFFFF"/>
                                 </Button>
                             </Grid>
                         </Border>
@@ -560,7 +562,7 @@
                                 Click="HistoryButton_Click"
                                 Width="28" Height="28"
                                 Margin="0,0,3,0">
-                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE81C;" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE81C;" FontSize="12" Foreground="#FFFFFF"/>
                         </Button>
 
                         <!-- DevTools Button -->
@@ -568,7 +570,7 @@
                                 ToolTip="DevTools (F12)"
                                 Click="DevToolsButton_Click"
                                 Width="28" Height="28">
-                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xEC7A;" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xEC7A;" FontSize="12" Foreground="#FFFFFF"/>
                         </Button>
                     </StackPanel>
                 </Grid>
@@ -605,7 +607,7 @@
                                                            FontSize="11"
                                                            VerticalAlignment="Center"
                                                            HorizontalAlignment="Center"
-                                                           Foreground="{StaticResource TextSecondaryBrush}">
+                                                           Foreground="#FFFFFF">
                                                     <TextBlock.Style>
                                                         <Style TargetType="TextBlock" BasedOn="{StaticResource FluentIcon}">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
@@ -637,7 +639,7 @@
                                             <!-- Bookmark Title -->
                                             <TextBlock Text="{Binding Title}"
                                                        FontSize="11.5"
-                                                       Foreground="#E5E7EB"
+                                                       Foreground="#FFFFFF"
                                                        FontWeight="Normal"
                                                        VerticalAlignment="Center"/>
                                         </StackPanel>
@@ -690,7 +692,7 @@
                             <TextBlock Text="Search or jump to a site"
                                        FontSize="13"
                                        HorizontalAlignment="Center"
-                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Foreground="#CBD5E1"
                                        Margin="0,0,0,26"/>
 
                             <!-- Quick Action Tiles with fetched favicons -->
@@ -771,7 +773,7 @@
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE81C;" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,8,0"/>
+                                <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE81C;" FontSize="13" Foreground="#FFFFFF" Margin="0,0,8,0"/>
                                 <TextBlock Text="History" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
                             </StackPanel>
 
@@ -782,7 +784,7 @@
                                     Click="ClearHistory_Click"
                                     Margin="0,0,4,0"
                                     Width="26" Height="26">
-                                <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE74D;" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE74D;" FontSize="11" Foreground="#FFFFFF"/>
                             </Button>
 
                             <!-- Close Panel -->
@@ -791,7 +793,7 @@
                                     ToolTip="Close History"
                                     Click="CloseHistory_Click"
                                     Width="26" Height="26">
-                                <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE711;" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE711;" FontSize="10" Foreground="#FFFFFF"/>
                             </Button>
                         </Grid>
 
@@ -800,7 +802,7 @@
                                    Grid.Row="1"
                                    Text="No browsing history yet"
                                    FontSize="12"
-                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Foreground="#E2E8F0"
                                    HorizontalAlignment="Center"
                                    Margin="0,20,0,0"
                                    Visibility="Collapsed"/>
@@ -829,7 +831,7 @@
                                                                FontSize="11"
                                                                VerticalAlignment="Center"
                                                                HorizontalAlignment="Center"
-                                                               Foreground="{StaticResource TextSecondaryBrush}">
+                                                               Foreground="#FFFFFF">
                                                         <TextBlock.Style>
                                                             <Style TargetType="TextBlock" BasedOn="{StaticResource FluentIcon}">
                                                                 <Setter Property="Visibility" Value="Collapsed"/>
@@ -867,7 +869,7 @@
                                                                TextTrimming="CharacterEllipsis"/>
                                                     <TextBlock Text="{Binding Url}"
                                                                FontSize="9.5"
-                                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                                               Foreground="#CBD5E1"
                                                                TextTrimming="CharacterEllipsis"
                                                                Margin="0,1,0,0"/>
                                                 </StackPanel>
@@ -922,11 +924,11 @@
 
                     <!-- App Brand (Draggable space) -->
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" IsHitTestVisible="False">
-                        <TextBlock Style="{StaticResource FluentIcon}" Text="&#xEA86;" FontSize="12.5" Margin="0,0,5,0" Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBlock Style="{StaticResource FluentIcon}" Text="&#xEA86;" FontSize="12.5" Margin="0,0,5,0" Foreground="#FFFFFF"/>
                         <TextBlock Text="AGENTS"
                                    FontSize="11"
                                    FontWeight="SemiBold"
-                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Foreground="#FFFFFF"
                                    VerticalAlignment="Center"/>
                     </StackPanel>
 
@@ -941,7 +943,7 @@
                             Width="26" Height="26"
                             Margin="0,0,4,0"
                             WindowChrome.IsHitTestVisibleInChrome="True">
-                        <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE710;" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE710;" FontSize="11" Foreground="#FFFFFF"/>
                     </Button>
                 </Grid>
 
@@ -963,7 +965,7 @@
                                 Padding="0">
                             <Border Background="#10FFFFFF" BorderBrush="#14FFFFFF" BorderThickness="1" CornerRadius="5" Padding="7,3">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE890;" FontSize="9.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,4,0"/>
+                                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE890;" FontSize="9.5" Foreground="#FFFFFF" Margin="0,0,4,0"/>
                                     <TextBlock Text="Summarize" FontSize="10" Foreground="{StaticResource TextPrimaryBrush}"/>
                                 </StackPanel>
                             </Border>
@@ -975,7 +977,7 @@
                                 Padding="0">
                             <Border Background="#10FFFFFF" BorderBrush="#14FFFFFF" BorderThickness="1" CornerRadius="5" Padding="7,3">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE8BD;" FontSize="9.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,4,0"/>
+                                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE8BD;" FontSize="9.5" Foreground="#FFFFFF" Margin="0,0,4,0"/>
                                     <TextBlock Text="Explain" FontSize="10" Foreground="{StaticResource TextPrimaryBrush}"/>
                                 </StackPanel>
                             </Border>
@@ -987,7 +989,7 @@
                                 Padding="0">
                             <Border Background="#10FFFFFF" BorderBrush="#14FFFFFF" BorderThickness="1" CornerRadius="5" Padding="7,3">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE721;" FontSize="9.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,4,0"/>
+                                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE721;" FontSize="9.5" Foreground="#FFFFFF" Margin="0,0,4,0"/>
                                     <TextBlock Text="Takeaways" FontSize="10" Foreground="{StaticResource TextPrimaryBrush}"/>
                                 </StackPanel>
                             </Border>
@@ -1055,8 +1057,8 @@
                                             </Border.Style>
                                             <StackPanel>
                                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
-                                                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xEA86;" FontSize="9.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,4,0"/>
-                                                    <TextBlock Text="Agent" FontSize="9.5" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xEA86;" FontSize="9.5" Foreground="#FFFFFF" Margin="0,0,4,0"/>
+                                                    <TextBlock Text="Agent" FontSize="9.5" FontWeight="SemiBold" Foreground="#FFFFFF"/>
                                                 </StackPanel>
                                                 <TextBlock Text="{Binding Content}"
                                                            FontSize="11.5"
@@ -1146,7 +1148,7 @@
                                                Style="{StaticResource FluentIcon}"
                                                Text="&#xEA86;"
                                                FontSize="10"
-                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               Foreground="#FFFFFF"
                                                Margin="0,0,4,0"/>
                                     <TextBlock x:Name="SelectedAgentText"
                                                Text="Page Copilot"
@@ -1156,7 +1158,7 @@
                                     <TextBlock Style="{StaticResource FluentIcon}"
                                                Text="&#xE70D;"
                                                FontSize="7"
-                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               Foreground="#FFFFFF"
                                                VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
@@ -1215,7 +1217,7 @@
                                                                    Style="{StaticResource FluentIcon}"
                                                                    Text="{Binding Icon}"
                                                                    FontSize="11"
-                                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                                   Foreground="#FFFFFF"
                                                                    VerticalAlignment="Center"/>
                                                         <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="2,0,4,0">
                                                             <TextBlock Text="{Binding Name}"
@@ -1223,7 +1225,7 @@
                                                                        Foreground="{StaticResource TextPrimaryBrush}"/>
                                                             <TextBlock Text="{Binding Status}"
                                                                        FontSize="8.5"
-                                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                                       Foreground="#CBD5E1"
                                                                        Margin="0,1,0,0"/>
                                                         </StackPanel>
                                                         <TextBlock Grid.Column="2"
@@ -1307,7 +1309,7 @@
                            Style="{StaticResource FluentIcon}"
                            Text="&#xEA86;"
                            FontSize="12.5"
-                           Foreground="{StaticResource TextSecondaryBrush}"/>
+                           Foreground="#FFFFFF"/>
             </Button>
 
             <!-- Minimize -->

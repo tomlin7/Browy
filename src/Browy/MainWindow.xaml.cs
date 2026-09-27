@@ -35,6 +35,8 @@ namespace Browy
         private double _dragStartX = 0;
         private double _dragStartWidth = 0;
         private readonly string _userDataFolder;
+        private readonly Stack<string> _recentlyClosedUrls = new();
+        private CommandPaletteWindow? _commandPalette;
 
         public MainWindow()
         {
@@ -158,13 +160,12 @@ namespace Browy
 
         private void LoadInitialBookmarks()
         {
-            Bookmarks.Add(new BookmarkItem("X", "https://x.com"));
-            Bookmarks.Add(new BookmarkItem("YouTube", "https://youtube.com"));
-            Bookmarks.Add(new BookmarkItem("Vercel", "https://vercel.com"));
-            Bookmarks.Add(new BookmarkItem("GitHub", "https://github.com"));
-            Bookmarks.Add(new BookmarkItem("Cloudflare", "https://cloudflare.com"));
-            Bookmarks.Add(new BookmarkItem("Linear", "https://linear.app"));
-            Bookmarks.Add(new BookmarkItem("MDN Blog", "https://developer.mozilla.org"));
+            Bookmarks.Clear();
+            var loaded = BookmarkService.LoadBookmarks();
+            foreach (var b in loaded)
+            {
+                Bookmarks.Add(b);
+            }
         }
 
         private void BookmarkItem_Click(object sender, RoutedEventArgs e)
@@ -179,11 +180,78 @@ namespace Browy
         {
             if (_activeTab != null && !string.IsNullOrWhiteSpace(_activeTab.Url))
             {
-                string title = string.IsNullOrWhiteSpace(_activeTab.Title) ? "Bookmark" : _activeTab.Title;
-                if (title.Length > 20) title = title.Substring(0, 18) + "..";
+                string currentUrl = _activeTab.Url;
+                var existing = Bookmarks.FirstOrDefault(b => BookmarkService.IsUrlBookmarked(new[] { b }, currentUrl));
+                if (existing != null)
+                {
+                    // Already bookmarked -> remove
+                    Bookmarks.Remove(existing);
+                }
+                else
+                {
+                    // Add new bookmark
+                    string title = string.IsNullOrWhiteSpace(_activeTab.Title) || _activeTab.Title == "New Tab"
+                        ? NavigationHelper.ExtractDomain(currentUrl)
+                        : _activeTab.Title;
+                    if (title.Length > 24) title = title.Substring(0, 22) + "..";
 
-                var bookmark = new BookmarkItem(title, _activeTab.Url, _activeTab.FaviconImage, "#1E222D", "#E2E8F0");
-                Bookmarks.Add(bookmark);
+                    var bookmark = new BookmarkItem(title, currentUrl, _activeTab.FaviconImage);
+                    Bookmarks.Add(bookmark);
+                }
+
+                BookmarkService.SaveBookmarks(Bookmarks);
+                UpdateBookmarkStarUI();
+            }
+        }
+
+        public void UpdateBookmarkStarUI()
+        {
+            if (BookmarkStarIcon == null) return;
+            bool isBookmarked = _activeTab != null && BookmarkService.IsUrlBookmarked(Bookmarks, _activeTab.Url);
+            BookmarkStarIcon.Text = isBookmarked ? "\uE735" : "\uE734"; // filled star vs outline
+        }
+
+        private void OpenBookmarkInNewTab_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem mi && mi.DataContext is BookmarkItem item && !string.IsNullOrEmpty(item.Url))
+            {
+                _ = CreateNewTabAsync(item.Url, switchTo: true);
+            }
+        }
+
+        private void CopyBookmarkUrl_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem mi && mi.DataContext is BookmarkItem item && !string.IsNullOrEmpty(item.Url))
+            {
+                Clipboard.SetText(item.Url);
+            }
+        }
+
+        private void DeleteBookmark_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem mi && mi.DataContext is BookmarkItem item)
+            {
+                Bookmarks.Remove(item);
+                BookmarkService.SaveBookmarks(Bookmarks);
+                UpdateBookmarkStarUI();
+            }
+        }
+
+        private void BookmarksScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if (BookmarksScrollViewer != null)
+            {
+                BookmarksScrollViewer.ScrollToHorizontalOffset(BookmarksScrollViewer.HorizontalOffset - (e.Delta * 0.7));
+                e.Handled = true;
+            }
+        }
+
+        private void HorizontalTabsScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if (HorizontalTabsScrollViewer != null)
+            {
+                HorizontalTabsScrollViewer.ScrollToHorizontalOffset(HorizontalTabsScrollViewer.HorizontalOffset - (e.Delta * 0.7));
+                e.Handled = true;
             }
         }
 
@@ -406,6 +474,11 @@ namespace Browy
             int index = Tabs.IndexOf(tab);
             if (index < 0) return;
 
+            if (!string.IsNullOrWhiteSpace(tab.Url) && !tab.Url.StartsWith("about:", StringComparison.OrdinalIgnoreCase))
+            {
+                _recentlyClosedUrls.Push(tab.Url);
+            }
+
             // Clean up WebView instance
             if (tab.WebViewInstance != null)
             {
@@ -436,6 +509,8 @@ namespace Browy
                     ReloadButton.IsEnabled = false;
                 }
             }
+
+            UpdateBookmarkStarUI();
         }
 
         private void UpdateNavigationUI(BrowserTab tab)
@@ -451,6 +526,8 @@ namespace Browy
 
             ReloadIconText.Text = tab.IsLoading ? "\uE711" : "\uE72C";
             PageProgressBar.Visibility = tab.IsLoading ? Visibility.Visible : Visibility.Collapsed;
+
+            UpdateBookmarkStarUI();
         }
 
         #endregion
@@ -606,6 +683,211 @@ namespace Browy
         {
             _activeTab?.WebViewInstance?.CoreWebView2?.OpenDevToolsWindow();
         }
+
+        #region Command Palette & Browser Actions
+
+        private void CommandPaletteButton_Click(object sender, RoutedEventArgs e)
+        {
+            OpenCommandPalette();
+        }
+
+        public void OpenCommandPalette()
+        {
+            if (_commandPalette != null && _commandPalette.IsLoaded)
+            {
+                _commandPalette.Activate();
+                return;
+            }
+
+            _commandPalette = new CommandPaletteWindow(this);
+            _commandPalette.Closed += (s, e) => _commandPalette = null;
+            _commandPalette.Show();
+        }
+
+        public void AddNewTab(string? url = null)
+        {
+            _ = CreateNewTabAsync(string.IsNullOrEmpty(url) ? "https://www.google.com" : url, switchTo: true);
+        }
+
+        public void CloseCurrentTab()
+        {
+            if (_activeTab != null)
+            {
+                CloseTab(_activeTab);
+            }
+        }
+
+        public void ReopenClosedTab()
+        {
+            if (_recentlyClosedUrls.Count > 0)
+            {
+                string url = _recentlyClosedUrls.Pop();
+                _ = CreateNewTabAsync(url, switchTo: true);
+            }
+        }
+
+        public void DuplicateCurrentTab()
+        {
+            if (_activeTab != null && !string.IsNullOrEmpty(_activeTab.Url))
+            {
+                _ = CreateNewTabAsync(_activeTab.Url, switchTo: true);
+            }
+        }
+
+        public void SelectNextTab()
+        {
+            if (Tabs.Count > 1 && _activeTab != null)
+            {
+                int idx = Tabs.IndexOf(_activeTab);
+                SwitchToTab(Tabs[(idx + 1) % Tabs.Count]);
+            }
+        }
+
+        public void SelectPreviousTab()
+        {
+            if (Tabs.Count > 1 && _activeTab != null)
+            {
+                int idx = Tabs.IndexOf(_activeTab);
+                SwitchToTab(Tabs[(idx - 1 + Tabs.Count) % Tabs.Count]);
+            }
+        }
+
+        public void GoBack()
+        {
+            if (_activeTab?.WebViewInstance?.CoreWebView2 != null && _activeTab.WebViewInstance.CoreWebView2.CanGoBack)
+                _activeTab.WebViewInstance.CoreWebView2.GoBack();
+        }
+
+        public void GoForward()
+        {
+            if (_activeTab?.WebViewInstance?.CoreWebView2 != null && _activeTab.WebViewInstance.CoreWebView2.CanGoForward)
+                _activeTab.WebViewInstance.CoreWebView2.GoForward();
+        }
+
+        public void ReloadCurrentPage()
+        {
+            _activeTab?.WebViewInstance?.CoreWebView2?.Reload();
+        }
+
+        public void HardReloadCurrentPage()
+        {
+            if (_activeTab?.WebViewInstance?.CoreWebView2 != null)
+            {
+                _activeTab.WebViewInstance.CoreWebView2.ExecuteScriptAsync("location.reload(true);");
+            }
+        }
+
+        public void OpenStartPage()
+        {
+            StartPageGrid.Visibility = Visibility.Visible;
+            UrlTextBox.Text = string.Empty;
+        }
+
+        public void FocusAddressBar()
+        {
+            UrlTextBox.Focus();
+            UrlTextBox.SelectAll();
+        }
+
+        public void CopyCurrentUrl()
+        {
+            if (_activeTab != null && !string.IsNullOrEmpty(_activeTab.Url))
+            {
+                Clipboard.SetText(_activeTab.Url);
+            }
+        }
+
+        public void ToggleSidebar()
+        {
+            SetSidebarCollapsed(!_isSidebarCollapsed);
+        }
+
+        public void ToggleAgentsPanel()
+        {
+            ToggleAgentsPanel_Click(this, new RoutedEventArgs());
+        }
+
+        public void ToggleBookmarksBar()
+        {
+            BookmarksBar.Visibility = (BookmarksBar.Visibility == Visibility.Visible) ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        public void ZoomIn()
+        {
+            if (_activeTab?.WebViewInstance != null)
+            {
+                double z = Math.Min(3.0, _activeTab.WebViewInstance.ZoomFactor + 0.1);
+                _activeTab.WebViewInstance.ZoomFactor = Math.Round(z, 2);
+            }
+        }
+
+        public void ZoomOut()
+        {
+            if (_activeTab?.WebViewInstance != null)
+            {
+                double z = Math.Max(0.25, _activeTab.WebViewInstance.ZoomFactor - 0.1);
+                _activeTab.WebViewInstance.ZoomFactor = Math.Round(z, 2);
+            }
+        }
+
+        public void ResetZoom()
+        {
+            if (_activeTab?.WebViewInstance != null)
+            {
+                _activeTab.WebViewInstance.ZoomFactor = 1.0;
+            }
+        }
+
+        public void OpenDevTools()
+        {
+            _activeTab?.WebViewInstance?.CoreWebView2?.OpenDevToolsWindow();
+        }
+
+        public void ViewPageSource()
+        {
+            if (_activeTab != null && !string.IsNullOrEmpty(_activeTab.Url))
+            {
+                _ = CreateNewTabAsync("view-source:" + _activeTab.Url, switchTo: true);
+            }
+        }
+
+        public void PrintCurrentPage()
+        {
+            _activeTab?.WebViewInstance?.CoreWebView2?.ShowPrintUI(CoreWebView2PrintDialogKind.Browser);
+        }
+
+        public void BookmarkCurrentPage()
+        {
+            BookmarkCurrentPage_Click(this, new RoutedEventArgs());
+        }
+
+        public void ToggleHistory()
+        {
+            HistoryPopup.IsOpen = !HistoryPopup.IsOpen;
+            UpdateHistoryEmptyState();
+        }
+
+        public void ClearAllHistory()
+        {
+            ClearHistory_Click(this, new RoutedEventArgs());
+        }
+
+        public void StartNewAgentChat()
+        {
+            NewAgentChat_Click(this, new RoutedEventArgs());
+        }
+
+        public void TriggerAgentPrompt(string prompt)
+        {
+            if (!_isAgentsPanelOpen)
+            {
+                ToggleAgentsPanel_Click(this, new RoutedEventArgs());
+            }
+            AgentInputTextBox.Text = prompt;
+            SendAgentMessage_Click(this, new RoutedEventArgs());
+        }
+
+        #endregion
 
         private void UrlTextBox_GotFocus(object sender, RoutedEventArgs e)
         {
@@ -1039,10 +1321,60 @@ namespace Browy
                     BookmarksBar.Visibility = (BookmarksBar.Visibility == Visibility.Visible) ? Visibility.Collapsed : Visibility.Visible;
                     e.Handled = true;
                 }
+                else if (e.Key == Key.P)
+                {
+                    OpenCommandPalette();
+                    e.Handled = true;
+                }
+                else if (e.Key == Key.T)
+                {
+                    ReopenClosedTab();
+                    e.Handled = true;
+                }
+                else if (e.Key == Key.R)
+                {
+                    HardReloadCurrentPage();
+                    e.Handled = true;
+                }
             }
             else if (Keyboard.Modifiers == ModifierKeys.Control)
             {
-                if (e.Key == Key.T)
+                if (e.Key == Key.K)
+                {
+                    OpenCommandPalette();
+                    e.Handled = true;
+                }
+                else if (e.Key == Key.D)
+                {
+                    BookmarkCurrentPage();
+                    e.Handled = true;
+                }
+                else if (e.Key == Key.P)
+                {
+                    PrintCurrentPage();
+                    e.Handled = true;
+                }
+                else if (e.Key == Key.U)
+                {
+                    ViewPageSource();
+                    e.Handled = true;
+                }
+                else if (e.Key == Key.OemPlus || e.Key == Key.Add)
+                {
+                    ZoomIn();
+                    e.Handled = true;
+                }
+                else if (e.Key == Key.OemMinus || e.Key == Key.Subtract)
+                {
+                    ZoomOut();
+                    e.Handled = true;
+                }
+                else if (e.Key == Key.D0 || e.Key == Key.NumPad0)
+                {
+                    ResetZoom();
+                    e.Handled = true;
+                }
+                else if (e.Key == Key.T)
                 {
                     e.Handled = true;
                     await CreateNewTabAsync("https://www.google.com", switchTo: true);
@@ -1111,7 +1443,7 @@ namespace Browy
             else if (e.Key == Key.F12)
             {
                 e.Handled = true;
-                DevToolsButton_Click(this, new RoutedEventArgs());
+                OpenDevTools();
             }
         }
 
@@ -1122,7 +1454,7 @@ namespace Browy
         private void LoadInitialAgentSessions()
         {
             AgentSessions.Clear();
-            var defaultSession = new AgentSession("Page Copilot", "Active · Inspects page context", "\uEA86", isActive: true);
+            var defaultSession = new AgentSession("Page Copilot", "Active · Inspects page context", "\uF4A5", isActive: true);
             AgentSessions.Add(defaultSession);
             AgentSessions.Add(new AgentSession("Deep Research", "Synthesizes web sources", "\uE721", isActive: false));
             AgentSessions.Add(new AgentSession("Code Analyst", "Inspects DOM & APIs", "\uEC7A", isActive: false));

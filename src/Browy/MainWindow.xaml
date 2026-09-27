@@ -300,6 +300,7 @@
                               VerticalScrollBarVisibility="Disabled"
                               Margin="0,0,140,0"
                               VerticalAlignment="Center"
+                              PreviewMouseWheel="HorizontalTabsScrollViewer_PreviewMouseWheel"
                               PreviewMouseLeftButtonDown="HorizontalTabsScrollViewer_PreviewMouseLeftButtonDown">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <ItemsControl x:Name="HorizontalTabsItemsControl">
@@ -546,13 +547,13 @@
                                         ToolTip="Bookmark this page (Ctrl+D)"
                                         Click="BookmarkCurrentPage_Click"
                                         Width="26" Height="26">
-                                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE734;" FontSize="11" Foreground="#FFFFFF"/>
+                                    <TextBlock x:Name="BookmarkStarIcon" Style="{StaticResource FluentIcon}" Text="&#xE734;" FontSize="11" Foreground="#FFFFFF"/>
                                 </Button>
                             </Grid>
                         </Border>
                     </Grid>
 
-                    <!-- Tool Buttons (History, DevTools) -->
+                    <!-- Tool Buttons (History, Command Palette) -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center"
                                 WindowChrome.IsHitTestVisibleInChrome="True">
                         <!-- History Button -->
@@ -565,12 +566,13 @@
                             <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE81C;" FontSize="12" Foreground="#FFFFFF"/>
                         </Button>
 
-                        <!-- DevTools Button -->
-                        <Button Style="{StaticResource IconButton}"
-                                ToolTip="DevTools (F12)"
-                                Click="DevToolsButton_Click"
+                        <!-- Command Palette & Options (Ellipsis Button) -->
+                        <Button x:Name="CommandPaletteButton"
+                                Style="{StaticResource IconButton}"
+                                ToolTip="Command Palette &amp; Options (Ctrl+K / Ctrl+Shift+P)"
+                                Click="CommandPaletteButton_Click"
                                 Width="28" Height="28">
-                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xEC7A;" FontSize="12" Foreground="#FFFFFF"/>
+                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE712;" FontSize="12" Foreground="#FFFFFF"/>
                         </Button>
                     </StackPanel>
                 </Grid>
@@ -581,7 +583,10 @@
                     Grid.Row="2"
                     Margin="10,2,12,6"
                     WindowChrome.IsHitTestVisibleInChrome="True">
-                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                <ScrollViewer x:Name="BookmarksScrollViewer"
+                              HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Disabled"
+                              PreviewMouseWheel="BookmarksScrollViewer_PreviewMouseWheel">
                     <ItemsControl x:Name="BookmarksItemsControl">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -594,7 +599,16 @@
                                         Click="BookmarkItem_Click"
                                         Tag="{Binding Url}"
                                         Margin="0,0,5,0"
-                                        Padding="0">
+                                        Padding="0"
+                                        ToolTip="{Binding Url}">
+                                    <Button.ContextMenu>
+                                        <ContextMenu Background="#202024" BorderBrush="#25FFFFFF" BorderThickness="1">
+                                            <MenuItem Header="Open in New Tab" Click="OpenBookmarkInNewTab_Click" Foreground="#FFFFFF"/>
+                                            <MenuItem Header="Copy Link Address" Click="CopyBookmarkUrl_Click" Foreground="#FFFFFF"/>
+                                            <Separator Background="#25FFFFFF"/>
+                                            <MenuItem Header="Delete Bookmark" Click="DeleteBookmark_Click" Foreground="#EF4444"/>
+                                        </ContextMenu>
+                                    </Button.ContextMenu>
                                     <Border Background="#10FFFFFF"
                                             BorderBrush="#14FFFFFF"
                                             BorderThickness="1"
@@ -924,7 +938,7 @@
 
                     <!-- App Brand (Draggable space) -->
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" IsHitTestVisible="False">
-                        <TextBlock Style="{StaticResource FluentIcon}" Text="&#xEA86;" FontSize="12.5" Margin="0,0,5,0" Foreground="#FFFFFF"/>
+                        <TextBlock Style="{StaticResource FluentIcon}" Text="&#xF4A5;" FontSize="12.5" Margin="0,0,5,0" Foreground="#FFFFFF"/>
                         <TextBlock Text="AGENTS"
                                    FontSize="11"
                                    FontWeight="SemiBold"
@@ -1001,6 +1015,7 @@
                                   Grid.Row="1"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled"
+                                  Padding="0,0,4,0"
                                   WindowChrome.IsHitTestVisibleInChrome="True">
                         <ItemsControl x:Name="AgentMessagesItemsControl">
                             <ItemsControl.ItemTemplate>
@@ -1057,7 +1072,7 @@
                                             </Border.Style>
                                             <StackPanel>
                                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
-                                                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xEA86;" FontSize="9.5" Foreground="#FFFFFF" Margin="0,0,4,0"/>
+                                                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xF4A5;" FontSize="9.5" Foreground="#FFFFFF" Margin="0,0,4,0"/>
                                                     <TextBlock Text="Agent" FontSize="9.5" FontWeight="SemiBold" Foreground="#FFFFFF"/>
                                                 </StackPanel>
                                                 <TextBlock Text="{Binding Content}"
@@ -1146,7 +1161,7 @@
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <TextBlock x:Name="SelectedAgentIcon"
                                                Style="{StaticResource FluentIcon}"
-                                               Text="&#xEA86;"
+                                               Text="&#xF4A5;"
                                                FontSize="10"
                                                Foreground="#FFFFFF"
                                                Margin="0,0,4,0"/>
@@ -1307,7 +1322,7 @@
                     VerticalAlignment="Center">
                 <TextBlock x:Name="RightSidebarToggleIcon"
                            Style="{StaticResource FluentIcon}"
-                           Text="&#xEA86;"
+                           Text="&#xF4A5;"
                            FontSize="12.5"
                            Foreground="#FFFFFF"/>
             </Button>

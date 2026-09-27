@@ -50,5 +50,19 @@ namespace Browy.Services
             if (string.IsNullOrEmpty(url)) return false;
             return url.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
         }
+
+        public static string ExtractDomain(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url)) return "";
+            try
+            {
+                var uri = new Uri(url);
+                return uri.Host;
+            }
+            catch
+            {
+                return url;
+            }
+        }
     }
 }

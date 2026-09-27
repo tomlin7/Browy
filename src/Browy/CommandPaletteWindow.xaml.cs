@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -48,6 +49,52 @@ namespace Browy
             }
         }
 
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        private bool _isClosing;
+
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            base.OnClosing(e);
+            _isClosing = true;
+
+            try
+            {
+                if (_mainWindow != null)
+                {
+                    var helper = new WindowInteropHelper(_mainWindow);
+                    if (helper.Handle != IntPtr.Zero)
+                    {
+                        SetForegroundWindow(helper.Handle);
+                    }
+                    _mainWindow.Activate();
+                }
+            }
+            catch { }
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            base.OnClosed(e);
+
+            try
+            {
+                if (_mainWindow != null)
+                {
+                    var helper = new WindowInteropHelper(_mainWindow);
+                    if (helper.Handle != IntPtr.Zero)
+                    {
+                        SetForegroundWindow(helper.Handle);
+                    }
+                    _mainWindow.Activate();
+                    _mainWindow.FocusActiveContent();
+                }
+            }
+            catch { }
+        }
+
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             SearchTextBox.Focus();
@@ -55,8 +102,17 @@ namespace Browy
 
         private void Window_Deactivated(object sender, EventArgs e)
         {
-            // Auto dismiss on click outside
-            Close();
+            if (_isClosing) return;
+
+            // Auto dismiss on click outside - dispatch to allow the activating window (MainWindow)
+            // to receive and process the click message cleanly without the closing window aborting it.
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (!_isClosing)
+                {
+                    Close();
+                }
+            }), System.Windows.Threading.DispatcherPriority.Input);
         }
 
         private void Window_KeyDown(object sender, KeyEventArgs e)

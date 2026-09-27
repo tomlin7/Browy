@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
@@ -58,6 +59,28 @@ namespace Browy
             UpdateHistoryEmptyState();
             UpdateNavMargins();
             StateChanged += Window_StateChanged;
+        }
+
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+            var source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
+            source?.AddHook(WndProc);
+        }
+
+        private const int WM_MOUSEACTIVATE = 0x0021;
+        private const int MA_ACTIVATE = 1;
+
+        private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            if (msg == WM_MOUSEACTIVATE)
+            {
+                // When an inactive window or child WebView receives a mouse click,
+                // activate and DO NOT eat the click (MA_ACTIVATE = 1).
+                handled = true;
+                return (IntPtr)MA_ACTIVATE;
+            }
+            return IntPtr.Zero;
         }
 
         private void Window_StateChanged(object? sender, EventArgs e)
@@ -691,6 +714,40 @@ namespace Browy
             OpenCommandPalette();
         }
 
+        public void FocusActiveContent()
+        {
+            try
+            {
+                if (WindowState != WindowState.Minimized)
+                {
+                    Activate();
+                    Focus();
+                    if (_activeTab?.WebViewInstance != null)
+                    {
+                        _activeTab.WebViewInstance.Focus();
+                    }
+                }
+            }
+            catch { }
+
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                try
+                {
+                    if (WindowState != WindowState.Minimized)
+                    {
+                        Activate();
+                        Focus();
+                        if (_activeTab?.WebViewInstance != null)
+                        {
+                            _activeTab.WebViewInstance.Focus();
+                        }
+                    }
+                }
+                catch { }
+            }), System.Windows.Threading.DispatcherPriority.Input);
+        }
+
         public void OpenCommandPalette()
         {
             if (_commandPalette != null && _commandPalette.IsLoaded)
@@ -700,7 +757,11 @@ namespace Browy
             }
 
             _commandPalette = new CommandPaletteWindow(this);
-            _commandPalette.Closed += (s, e) => _commandPalette = null;
+            _commandPalette.Closed += (s, e) =>
+            {
+                _commandPalette = null;
+                FocusActiveContent();
+            };
             _commandPalette.Show();
         }
 

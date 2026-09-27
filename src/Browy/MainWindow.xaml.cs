@@ -28,6 +28,12 @@ namespace Browy
         private BrowserTab? _activeTab;
         private bool _isSidebarCollapsed = false;
         private bool _isAgentsPanelOpen = true;
+        private double _sidebarWidth = 240;
+        private double _agentsWidth = 320;
+        private bool _isDraggingLeftSplitter = false;
+        private bool _isDraggingRightSplitter = false;
+        private double _dragStartX = 0;
+        private double _dragStartWidth = 0;
         private readonly string _userDataFolder;
 
         public MainWindow()
@@ -697,7 +703,7 @@ namespace Browy
             {
                 var widthAnim = new DoubleAnimation
                 {
-                    From = SidebarBorder.ActualWidth > 0 ? SidebarBorder.ActualWidth : 240,
+                    From = SidebarBorder.ActualWidth > 0 ? SidebarBorder.ActualWidth : _sidebarWidth,
                     To = 0,
                     Duration = TimeSpan.FromMilliseconds(160),
                     EasingFunction = easeIn
@@ -743,7 +749,7 @@ namespace Browy
                 var widthAnim = new DoubleAnimation
                 {
                     From = SidebarBorder.ActualWidth > 0 ? SidebarBorder.ActualWidth : 0,
-                    To = 240,
+                    To = _sidebarWidth,
                     Duration = TimeSpan.FromMilliseconds(190),
                     EasingFunction = easeOut
                 };
@@ -775,7 +781,7 @@ namespace Browy
 
         private void UpdateNavMargins()
         {
-            // If agents panel is open (320px on right), caption buttons are above AgentsBorder header.
+            // If agents panel is open, caption buttons are above AgentsBorder header.
             // If agents panel is closed (0px on right), caption buttons are above main content area (needs 172px right margin).
             double rightMargin = _isAgentsPanelOpen ? 10 : 172;
 
@@ -812,7 +818,7 @@ namespace Browy
                 var widthAnim = new DoubleAnimation
                 {
                     From = AgentsBorder.ActualWidth > 0 ? AgentsBorder.ActualWidth : 0,
-                    To = 320,
+                    To = _agentsWidth,
                     Duration = TimeSpan.FromMilliseconds(190),
                     EasingFunction = easeOut
                 };
@@ -839,7 +845,7 @@ namespace Browy
             {
                 var widthAnim = new DoubleAnimation
                 {
-                    From = AgentsBorder.ActualWidth > 0 ? AgentsBorder.ActualWidth : 320,
+                    From = AgentsBorder.ActualWidth > 0 ? AgentsBorder.ActualWidth : _agentsWidth,
                     To = 0,
                     Duration = TimeSpan.FromMilliseconds(160),
                     EasingFunction = easeIn
@@ -869,6 +875,140 @@ namespace Browy
             }
 
             UpdateNavMargins();
+        }
+
+        #endregion
+
+        #region Sidebar Resizing
+
+        private void LeftSidebarSplitter_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ClickCount == 2)
+            {
+                LeftSidebarSplitter_MouseDoubleClick(sender, e);
+                return;
+            }
+
+            _isDraggingLeftSplitter = true;
+            _dragStartX = e.GetPosition(this).X;
+            _dragStartWidth = SidebarBorder.ActualWidth;
+            SidebarBorder.BeginAnimation(FrameworkElement.WidthProperty, null);
+            LeftSidebarSplitter.CaptureMouse();
+            e.Handled = true;
+        }
+
+        private void LeftSidebarSplitter_PreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            if (_isDraggingLeftSplitter)
+            {
+                double currentX = e.GetPosition(this).X;
+                double delta = currentX - _dragStartX;
+                double maxAllowed = Math.Min(500, ActualWidth - (_isAgentsPanelOpen ? AgentsBorder.ActualWidth : 0) - 350);
+                double newWidth = Math.Clamp(_dragStartWidth + delta, 160, Math.Max(160, maxAllowed));
+                SidebarBorder.Width = newWidth;
+                _sidebarWidth = newWidth;
+
+                if (_activeTab?.WebViewInstance != null)
+                {
+                    ClipWebViewToRoundedCorners(_activeTab.WebViewInstance);
+                }
+                e.Handled = true;
+            }
+        }
+
+        private void LeftSidebarSplitter_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (_isDraggingLeftSplitter)
+            {
+                _isDraggingLeftSplitter = false;
+                LeftSidebarSplitter.ReleaseMouseCapture();
+                _sidebarWidth = SidebarBorder.Width;
+                if (_activeTab?.WebViewInstance != null)
+                {
+                    ClipWebViewToRoundedCorners(_activeTab.WebViewInstance);
+                }
+                e.Handled = true;
+            }
+        }
+
+        private void LeftSidebarSplitter_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            _sidebarWidth = 240;
+            SidebarBorder.BeginAnimation(FrameworkElement.WidthProperty, null);
+            SidebarBorder.Width = 240;
+            if (_activeTab?.WebViewInstance != null)
+            {
+                ClipWebViewToRoundedCorners(_activeTab.WebViewInstance);
+            }
+            e.Handled = true;
+        }
+
+        private void RightSidebarSplitter_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ClickCount == 2)
+            {
+                RightSidebarSplitter_MouseDoubleClick(sender, e);
+                return;
+            }
+
+            _isDraggingRightSplitter = true;
+            _dragStartX = e.GetPosition(this).X;
+            _dragStartWidth = AgentsBorder.ActualWidth;
+            AgentsBorder.BeginAnimation(FrameworkElement.WidthProperty, null);
+            RightSidebarSplitter.CaptureMouse();
+            e.Handled = true;
+        }
+
+        private void RightSidebarSplitter_PreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            if (_isDraggingRightSplitter)
+            {
+                double currentX = e.GetPosition(this).X;
+                double delta = _dragStartX - currentX; // Moving left increases right sidebar width
+                double maxAllowed = Math.Min(600, ActualWidth - (!_isSidebarCollapsed ? SidebarBorder.ActualWidth : 0) - 350);
+                double newWidth = Math.Clamp(_dragStartWidth + delta, 220, Math.Max(220, maxAllowed));
+                AgentsBorder.Width = newWidth;
+                _agentsWidth = newWidth;
+
+                if (_activeTab?.WebViewInstance != null)
+                {
+                    ClipWebViewToRoundedCorners(_activeTab.WebViewInstance);
+                }
+                e.Handled = true;
+            }
+        }
+
+        private void RightSidebarSplitter_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (_isDraggingRightSplitter)
+            {
+                _isDraggingRightSplitter = false;
+                RightSidebarSplitter.ReleaseMouseCapture();
+                _agentsWidth = AgentsBorder.Width;
+                if (_activeTab?.WebViewInstance != null)
+                {
+                    ClipWebViewToRoundedCorners(_activeTab.WebViewInstance);
+                }
+                e.Handled = true;
+            }
+        }
+
+        private void RightSidebarSplitter_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            _agentsWidth = 320;
+            AgentsBorder.BeginAnimation(FrameworkElement.WidthProperty, null);
+            AgentsBorder.Width = 320;
+            if (_activeTab?.WebViewInstance != null)
+            {
+                ClipWebViewToRoundedCorners(_activeTab.WebViewInstance);
+            }
+            e.Handled = true;
+        }
+
+        private void Splitter_LostMouseCapture(object sender, MouseEventArgs e)
+        {
+            _isDraggingLeftSplitter = false;
+            _isDraggingRightSplitter = false;
         }
 
         #endregion

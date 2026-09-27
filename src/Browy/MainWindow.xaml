@@ -223,6 +223,33 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </ScrollViewer>
+
+                <!-- Left Sidebar Resize Splitter (Right Edge) -->
+                <Border x:Name="LeftSidebarSplitter"
+                        Grid.Row="0"
+                        Grid.RowSpan="2"
+                        Width="7"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Stretch"
+                        Cursor="SizeWE"
+                        Background="Transparent"
+                        Panel.ZIndex="100"
+                        WindowChrome.IsHitTestVisibleInChrome="True"
+                        PreviewMouseLeftButtonDown="LeftSidebarSplitter_PreviewMouseLeftButtonDown"
+                        PreviewMouseMove="LeftSidebarSplitter_PreviewMouseMove"
+                        PreviewMouseLeftButtonUp="LeftSidebarSplitter_PreviewMouseLeftButtonUp"
+                        LostMouseCapture="Splitter_LostMouseCapture">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="Transparent"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#30FFFFFF"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                </Border>
             </Grid>
         </Border>
 
@@ -1229,6 +1256,33 @@
                             </Border>
                         </Popup>
                     </Grid>
+                </Border>
+
+                <!-- Right Sidebar Resize Splitter (Left Edge) -->
+                <Border x:Name="RightSidebarSplitter"
+                        Grid.Row="0"
+                        Grid.RowSpan="3"
+                        Width="7"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Stretch"
+                        Cursor="SizeWE"
+                        Background="Transparent"
+                        Panel.ZIndex="100"
+                        WindowChrome.IsHitTestVisibleInChrome="True"
+                        PreviewMouseLeftButtonDown="RightSidebarSplitter_PreviewMouseLeftButtonDown"
+                        PreviewMouseMove="RightSidebarSplitter_PreviewMouseMove"
+                        PreviewMouseLeftButtonUp="RightSidebarSplitter_PreviewMouseLeftButtonUp"
+                        LostMouseCapture="Splitter_LostMouseCapture">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="Transparent"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#30FFFFFF"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
                 </Border>
             </Grid>
         </Border>

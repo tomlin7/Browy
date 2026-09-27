@@ -1416,6 +1416,11 @@ namespace Browy
                     e.Handled = true;
                     ToggleAgentsPanel_Click(this, new RoutedEventArgs());
                 }
+                else if (e.Key == Key.K || (e.Key == Key.P && Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)))
+                {
+                    e.Handled = true;
+                    OpenCommandPalette();
+                }
                 else if (e.Key == Key.Tab)
                 {
                     e.Handled = true;

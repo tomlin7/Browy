@@ -5,6 +5,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using Browy.Models;
 using Browy.Services;
 
@@ -29,8 +30,15 @@ namespace Browy
 
         private void Window_SourceInitialized(object sender, EventArgs e)
         {
+            var handle = new WindowInteropHelper(this).EnsureHandle();
+            var source = HwndSource.FromHwnd(handle);
+            if (source?.CompositionTarget != null)
+            {
+                source.CompositionTarget.BackgroundColor = System.Windows.Media.Colors.Transparent;
+            }
+
             // Apply full hardware-accelerated Windows 11 Desktop Acrylic backdrop
-            WindowsBackdropService.ApplyBackdrop(this, BackdropType.Acrylic, isDarkMode: true);
+            WindowsBackdropService.ApplyBackdrop(this, BackdropType.Acrylic, isDarkMode: true, WindowCornerPreference.Round);
 
             // Position gracefully in upper third of owner window
             if (Owner != null)

@@ -14,9 +14,18 @@ namespace Browy.Services
         MicaAlt = 4
     }
 
+    public enum WindowCornerPreference
+    {
+        Default = 0,
+        DoNotRound = 1,
+        Round = 2,
+        RoundSmall = 3
+    }
+
     public static class WindowsBackdropService
     {
         private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+        private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
         private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
 
         [StructLayout(LayoutKind.Sequential)]
@@ -34,7 +43,7 @@ namespace Browy.Services
         [DllImport("dwmapi.dll")]
         private static extern int DwmExtendFrameIntoClientArea(IntPtr hWnd, ref MARGINS pMarInset);
 
-        public static bool ApplyBackdrop(Window window, BackdropType backdropType, bool isDarkMode = true)
+        public static bool ApplyBackdrop(Window window, BackdropType backdropType, bool isDarkMode = true, WindowCornerPreference cornerPreference = WindowCornerPreference.Round)
         {
             try
             {
@@ -46,7 +55,11 @@ namespace Browy.Services
                 int darkModeVal = isDarkMode ? 1 : 0;
                 DwmSetWindowAttribute(handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref darkModeVal, sizeof(int));
 
-                // 2. Extend Frame into entire client area
+                // 2. Set Corner Preference (native Windows 11 rounded corners + shadow)
+                int cornerVal = (int)cornerPreference;
+                DwmSetWindowAttribute(handle, DWMWA_WINDOW_CORNER_PREFERENCE, ref cornerVal, sizeof(int));
+
+                // 3. Extend Frame into entire client area
                 MARGINS margins = new MARGINS
                 {
                     cxLeftWidth = -1,
@@ -56,7 +69,7 @@ namespace Browy.Services
                 };
                 DwmExtendFrameIntoClientArea(handle, ref margins);
 
-                // 3. Set System Backdrop Type (Acrylic, Mica, or MicaAlt)
+                // 4. Set System Backdrop Type (Acrylic, Mica, or MicaAlt)
                 int backdropVal = (int)backdropType;
                 int hr = DwmSetWindowAttribute(handle, DWMWA_SYSTEMBACKDROP_TYPE, ref backdropVal, sizeof(int));
 

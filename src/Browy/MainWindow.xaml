@@ -501,23 +501,31 @@
                                 WindowChrome.IsHitTestVisibleInChrome="True">
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <!-- Security Lock Icon -->
+                                    <!-- Security Lock Icon Button -->
                                     <ColumnDefinition Width="30"/>
                                     <!-- URL TextBox -->
                                     <ColumnDefinition Width="*"/>
+                                    <!-- Page Zoom Level Indicator -->
+                                    <ColumnDefinition Width="Auto"/>
                                     <!-- Bookmark Star -->
                                     <ColumnDefinition Width="30"/>
                                 </Grid.ColumnDefinitions>
 
-                                <!-- Monochrome SSL Security Indicator -->
-                                <TextBlock x:Name="SecurityIconText"
-                                           Grid.Column="0"
-                                           Style="{StaticResource FluentIcon}"
-                                           Text="&#xE72E;"
-                                           FontSize="11"
-                                           Foreground="#FFFFFF"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"/>
+                                <!-- Monochrome SSL Security Indicator Button -->
+                                <Button x:Name="SecurityButton"
+                                        Grid.Column="0"
+                                        Style="{StaticResource IconButton}"
+                                        ToolTip="View site information"
+                                        Click="SecurityButton_Click"
+                                        Width="26" Height="26">
+                                    <TextBlock x:Name="SecurityIconText"
+                                               Style="{StaticResource FluentIcon}"
+                                               Text="&#xE72E;"
+                                               FontSize="11"
+                                               Foreground="#FFFFFF"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"/>
+                                </Button>
 
                                 <!-- URL Input TextBox -->
                                 <TextBox x:Name="UrlTextBox"
@@ -528,7 +536,9 @@
                                          CaretBrush="#FFFFFF"
                                          FontSize="12.5"
                                          VerticalAlignment="Center"
+                                         TextChanged="UrlTextBox_TextChanged"
                                          KeyDown="UrlTextBox_KeyDown"
+                                         PreviewKeyDown="UrlTextBox_PreviewKeyDown"
                                          GotFocus="UrlTextBox_GotFocus"/>
 
                                 <!-- Placeholder Text -->
@@ -541,8 +551,27 @@
                                            IsHitTestVisible="False"
                                            Visibility="Collapsed"/>
 
+                                <!-- Page Zoom Level Indicator Pill -->
+                                <Button x:Name="ZoomIndicatorButton"
+                                        Grid.Column="2"
+                                        Style="{StaticResource IconButton}"
+                                        ToolTip="Page Zoom Level"
+                                        Click="ZoomIndicatorButton_Click"
+                                        Height="22"
+                                        Padding="5,0"
+                                        Margin="0,0,4,0"
+                                        Visibility="Collapsed">
+                                    <Border Background="#20FFFFFF" CornerRadius="4" Padding="5,1">
+                                        <TextBlock x:Name="ZoomIndicatorText"
+                                                   Text="100%"
+                                                   FontSize="10"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="#FFFFFF"/>
+                                    </Border>
+                                </Button>
+
                                 <!-- Monochrome Bookmark Star Button -->
-                                <Button Grid.Column="2"
+                                <Button Grid.Column="3"
                                         Style="{StaticResource IconButton}"
                                         ToolTip="Bookmark this page (Ctrl+D)"
                                         Click="BookmarkCurrentPage_Click"
@@ -551,6 +580,123 @@
                                 </Button>
                             </Grid>
                         </Border>
+
+                        <!-- Omnibox Autocomplete & Suggestions Popup -->
+                        <Popup x:Name="OmniboxSuggestionsPopup"
+                               PlacementTarget="{Binding ElementName=OmniboxBorder}"
+                               Placement="Bottom"
+                               VerticalOffset="4"
+                               Width="{Binding ActualWidth, ElementName=OmniboxBorder}"
+                               AllowsTransparency="True"
+                               StaysOpen="False"
+                               PopupAnimation="Fade">
+                            <Border MaxHeight="320"
+                                    Background="#F414141A"
+                                    BorderBrush="{StaticResource GlassBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="10"
+                                    Padding="6,4">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="24" ShadowDepth="4" Direction="270" Color="#000000" Opacity="0.75"/>
+                                </Border.Effect>
+                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                    <ListBox x:Name="OmniboxSuggestionsListBox"
+                                             Background="Transparent"
+                                             BorderThickness="0"
+                                             SelectionMode="Single"
+                                             PreviewMouseLeftButtonUp="OmniboxSuggestionsListBox_PreviewMouseLeftButtonUp"
+                                             MouseDoubleClick="OmniboxSuggestionsListBox_MouseDoubleClick"
+                                             PreviewKeyDown="OmniboxSuggestionsListBox_PreviewKeyDown">
+                                        <ListBox.ItemContainerStyle>
+                                            <Style TargetType="ListBoxItem">
+                                                <Setter Property="Background" Value="Transparent"/>
+                                                <Setter Property="BorderThickness" Value="0"/>
+                                                <Setter Property="Padding" Value="0"/>
+                                                <Setter Property="Margin" Value="0,1"/>
+                                                <Setter Property="Cursor" Value="Hand"/>
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="ListBoxItem">
+                                                            <Border x:Name="ItemBorder"
+                                                                    Background="{TemplateBinding Background}"
+                                                                    BorderBrush="Transparent"
+                                                                    BorderThickness="1"
+                                                                    CornerRadius="6"
+                                                                    Padding="8,6"
+                                                                    Margin="2,1">
+                                                                <ContentPresenter/>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="ItemBorder" Property="Background" Value="#18FFFFFF"/>
+                                                                </Trigger>
+                                                                <Trigger Property="IsSelected" Value="True">
+                                                                    <Setter TargetName="ItemBorder" Property="Background" Value="#2AFFFFFF"/>
+                                                                    <Setter TargetName="ItemBorder" Property="BorderBrush" Value="#40FFFFFF"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </ListBox.ItemContainerStyle>
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="22"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <TextBlock Grid.Column="0"
+                                                               Style="{StaticResource FluentIcon}"
+                                                               Text="{Binding IconGlyph}"
+                                                               FontSize="11"
+                                                               Foreground="#94A3B8"
+                                                               HorizontalAlignment="Left"
+                                                               VerticalAlignment="Center"/>
+
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="4,0,8,0">
+                                                        <TextBlock Text="{Binding Title}"
+                                                                   FontSize="11.5"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="#FFFFFF"
+                                                                   TextTrimming="CharacterEllipsis"/>
+                                                        <TextBlock Text="{Binding Url}"
+                                                                   FontSize="9.5"
+                                                                   Foreground="#94A3B8"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   Margin="0,1,0,0">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding HasUrl}" Value="True">
+                                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </StackPanel>
+
+                                                    <Border Grid.Column="2"
+                                                            Background="#15FFFFFF"
+                                                            CornerRadius="4"
+                                                            Padding="5,1"
+                                                            VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding TypeBadge}"
+                                                                   FontSize="8.5"
+                                                                   Foreground="#CBD5E1"/>
+                                                    </Border>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </ScrollViewer>
+                            </Border>
+                        </Popup>
                     </Grid>
 
                     <!-- Tool Buttons (History, Downloads, Command Palette) -->
@@ -1261,6 +1407,170 @@
                                 Click="FindClose_Click"
                                 Width="22" Height="22">
                             <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE711;" FontSize="9" Foreground="#FFFFFF"/>
+                        </Button>
+                    </Grid>
+                </Border>
+            </Popup>
+
+            <!-- Site Security & Permissions Popup -->
+            <Popup x:Name="SecurityPopup"
+                   PlacementTarget="{Binding ElementName=SecurityButton}"
+                   Placement="Bottom"
+                   HorizontalOffset="-10"
+                   VerticalOffset="8"
+                   AllowsTransparency="True"
+                   StaysOpen="False"
+                   PopupAnimation="Fade">
+                <Border Width="300"
+                        Background="#F414141A"
+                        BorderBrush="{StaticResource GlassBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="12"
+                        Padding="14,12">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="28" ShadowDepth="4" Direction="270" Color="#000000" Opacity="0.75"/>
+                    </Border.Effect>
+                    <StackPanel>
+                        <!-- Connection status header -->
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="26"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0"
+                                    Width="22" Height="22"
+                                    Background="#1510B981"
+                                    CornerRadius="6"
+                                    VerticalAlignment="Center">
+                                <TextBlock x:Name="SecurityDialogIcon"
+                                           Style="{StaticResource FluentIcon}"
+                                           Text="&#xE72E;"
+                                           FontSize="11"
+                                           Foreground="#10B981"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="6,0,0,0" VerticalAlignment="Center">
+                                <TextBlock x:Name="SecurityStatusTitle"
+                                           Text="Connection is secure"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Foreground="#FFFFFF"/>
+                                <TextBlock x:Name="SecurityStatusDomain"
+                                           Text="example.com"
+                                           FontSize="9.5"
+                                           Foreground="#94A3B8"
+                                           TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Border Height="1" Background="#18FFFFFF" Margin="0,0,0,10"/>
+
+                        <!-- Certificate info -->
+                        <TextBlock Text="CERTIFICATE INFORMATION" FontSize="8.5" FontWeight="SemiBold" Foreground="#60FFFFFF" Margin="0,0,0,4"/>
+                        <TextBlock x:Name="SecurityCertText"
+                                   Text="Valid SSL Certificate (HTTPS encryption active)"
+                                   FontSize="10"
+                                   Foreground="#CBD5E1"
+                                   Margin="0,0,0,10"/>
+
+                        <Border Height="1" Background="#18FFFFFF" Margin="0,0,0,10"/>
+
+                        <!-- Permissions summary -->
+                        <TextBlock Text="SITE PERMISSIONS" FontSize="8.5" FontWeight="SemiBold" Foreground="#60FFFFFF" Margin="0,0,0,6"/>
+                        <Grid Margin="0,0,0,6">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE714;" FontSize="10" Foreground="#CBD5E1" Margin="0,0,6,0"/>
+                                <TextBlock Text="Camera" FontSize="10.5" Foreground="#FFFFFF"/>
+                            </StackPanel>
+                            <TextBlock Text="Ask (Default)" FontSize="9.5" Foreground="#94A3B8" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+                        <Grid Margin="0,0,0,6">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE720;" FontSize="10" Foreground="#CBD5E1" Margin="0,0,6,0"/>
+                                <TextBlock Text="Microphone" FontSize="10.5" Foreground="#FFFFFF"/>
+                            </StackPanel>
+                            <TextBlock Text="Ask (Default)" FontSize="9.5" Foreground="#94A3B8" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+                        <Grid Margin="0,0,0,10">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE707;" FontSize="10" Foreground="#CBD5E1" Margin="0,0,6,0"/>
+                                <TextBlock Text="Location" FontSize="10.5" Foreground="#FFFFFF"/>
+                            </StackPanel>
+                            <TextBlock Text="Ask (Default)" FontSize="9.5" Foreground="#94A3B8" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <Border Height="1" Background="#18FFFFFF" Margin="0,0,0,10"/>
+
+                        <!-- Clear site data action -->
+                        <Button Style="{StaticResource SecondaryButton}"
+                                Click="ClearSiteData_Click"
+                                HorizontalAlignment="Stretch"
+                                Padding="8,5">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE74D;" FontSize="10" Margin="0,0,6,0"/>
+                                <TextBlock Text="Clear Cookies and Site Data" FontSize="10.5"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Border>
+            </Popup>
+
+            <!-- Zoom Flyout Popup -->
+            <Popup x:Name="ZoomPopup"
+                   PlacementTarget="{Binding ElementName=ZoomIndicatorButton}"
+                   Placement="Bottom"
+                   HorizontalOffset="-40"
+                   VerticalOffset="8"
+                   AllowsTransparency="True"
+                   StaysOpen="False"
+                   PopupAnimation="Fade">
+                <Border Width="160"
+                        Background="#F414141A"
+                        BorderBrush="{StaticResource GlassBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="10,8">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="20" ShadowDepth="3" Direction="270" Color="#000000" Opacity="0.75"/>
+                    </Border.Effect>
+                    <Grid VerticalAlignment="Center">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="26"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="26"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Zoom Out Button -->
+                        <Button Grid.Column="0"
+                                Style="{StaticResource IconButton}"
+                                ToolTip="Zoom Out (Ctrl+-)"
+                                Click="ZoomOutPopup_Click"
+                                Width="24" Height="24">
+                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE738;" FontSize="10" Foreground="#FFFFFF"/>
+                        </Button>
+
+                        <!-- Reset Zoom Button / Percentage -->
+                        <Button Grid.Column="1"
+                                Style="{StaticResource IconButton}"
+                                ToolTip="Reset Zoom (Ctrl+0)"
+                                Click="ResetZoomPopup_Click"
+                                Height="24"
+                                Margin="2,0">
+                            <TextBlock x:Name="ZoomPopupPercentageText"
+                                       Text="100%"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="#FFFFFF"/>
+                        </Button>
+
+                        <!-- Zoom In Button -->
+                        <Button Grid.Column="2"
+                                Style="{StaticResource IconButton}"
+                                ToolTip="Zoom In (Ctrl++)"
+                                Click="ZoomInPopup_Click"
+                                Width="24" Height="24">
+                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE710;" FontSize="10" Foreground="#FFFFFF"/>
                         </Button>
                     </Grid>
                 </Border>

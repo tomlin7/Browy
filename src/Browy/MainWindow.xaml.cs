@@ -27,6 +27,8 @@ namespace Browy
         public ObservableCollection<AgentMessage> AgentMessages { get; } = new();
         public ObservableCollection<AgentSession> AgentSessions { get; } = new();
         public ObservableCollection<DownloadItem> Downloads { get; } = new();
+        public ObservableCollection<OmniboxSuggestion> OmniboxSuggestions { get; } = new();
+        private CancellationTokenSource? _suggestionCts;
 
         private BrowserTab? _activeTab;
         private bool _isSidebarCollapsed = false;
@@ -56,6 +58,7 @@ namespace Browy
             BookmarksItemsControl.ItemsSource = Bookmarks;
             HistoryItemsControl.ItemsSource = History;
             DownloadsItemsControl.ItemsSource = Downloads;
+            OmniboxSuggestionsListBox.ItemsSource = OmniboxSuggestions;
             AgentPickerItemsControl.ItemsSource = AgentSessions;
             AgentMessagesItemsControl.ItemsSource = AgentMessages;
             LoadInitialAgentSessions();
@@ -493,6 +496,17 @@ namespace Browy
                     });
                 };
 
+                tab.WebViewInstance.ZoomFactorChanged += (s, args) =>
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        if (_activeTab == tab)
+                        {
+                            UpdateZoomUI();
+                        }
+                    });
+                };
+
                 // Navigate to initial target
                 if (!string.IsNullOrEmpty(initialUrl))
                 {
@@ -581,6 +595,7 @@ namespace Browy
                     BackButton.IsEnabled = false;
                     ForwardButton.IsEnabled = false;
                     ReloadButton.IsEnabled = false;
+                    UpdateZoomUI();
                 }
             }
 
@@ -592,7 +607,9 @@ namespace Browy
             UrlTextBox.Text = tab.Url;
             bool isSecure = NavigationHelper.IsSecure(tab.Url);
             SecurityIconText.Text = isSecure ? "\uE72E" : "\uE7BA";
-            SecurityIconText.Foreground = (Brush)FindResource("TextPrimaryBrush");
+            SecurityIconText.Foreground = isSecure
+                ? new SolidColorBrush(Color.FromRgb(0x10, 0xB9, 0x81))
+                : new SolidColorBrush(Color.FromRgb(0xEF, 0x44, 0x44));
 
             BackButton.IsEnabled = tab.CanGoBack;
             ForwardButton.IsEnabled = tab.CanGoForward;
@@ -602,6 +619,7 @@ namespace Browy
             PageProgressBar.Visibility = tab.IsLoading ? Visibility.Visible : Visibility.Collapsed;
 
             UpdateBookmarkStarUI();
+            UpdateZoomUI();
         }
 
         #endregion
@@ -698,9 +716,181 @@ namespace Browy
         {
             if (e.Key == Key.Enter)
             {
+                OmniboxSuggestionsPopup.IsOpen = false;
                 NavigateActiveTab(UrlTextBox.Text);
                 FocusManager.SetFocusedElement(this, null);
                 Keyboard.ClearFocus();
+            }
+        }
+
+        private async void UrlTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (UrlPlaceholderText != null)
+            {
+                UrlPlaceholderText.Visibility = string.IsNullOrEmpty(UrlTextBox.Text) ? Visibility.Visible : Visibility.Collapsed;
+            }
+
+            if (!UrlTextBox.IsFocused)
+            {
+                return;
+            }
+
+            string query = UrlTextBox.Text;
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                OmniboxSuggestionsPopup.IsOpen = false;
+                OmniboxSuggestions.Clear();
+                return;
+            }
+
+            _suggestionCts?.Cancel();
+            _suggestionCts = new CancellationTokenSource();
+            var token = _suggestionCts.Token;
+
+            try
+            {
+                await Task.Delay(120, token);
+                var suggestions = await SuggestionService.GetSuggestionsAsync(query, History, Bookmarks, token);
+                if (token.IsCancellationRequested) return;
+
+                OmniboxSuggestions.Clear();
+                foreach (var s in suggestions)
+                {
+                    OmniboxSuggestions.Add(s);
+                }
+
+                OmniboxSuggestionsPopup.IsOpen = OmniboxSuggestions.Count > 0;
+            }
+            catch (OperationCanceledException) { }
+            catch { }
+        }
+
+        private void UrlTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Down && OmniboxSuggestionsPopup.IsOpen && OmniboxSuggestions.Count > 0)
+            {
+                e.Handled = true;
+                OmniboxSuggestionsListBox.Focus();
+                OmniboxSuggestionsListBox.SelectedIndex = 0;
+            }
+            else if (e.Key == Key.Escape && OmniboxSuggestionsPopup.IsOpen)
+            {
+                e.Handled = true;
+                OmniboxSuggestionsPopup.IsOpen = false;
+            }
+        }
+
+        private void OmniboxSuggestionsListBox_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                e.Handled = true;
+                ExecuteSelectedSuggestion();
+            }
+            else if (e.Key == Key.Up && OmniboxSuggestionsListBox.SelectedIndex == 0)
+            {
+                e.Handled = true;
+                OmniboxSuggestionsListBox.SelectedIndex = -1;
+                UrlTextBox.Focus();
+                UrlTextBox.CaretIndex = UrlTextBox.Text.Length;
+            }
+            else if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
+                OmniboxSuggestionsPopup.IsOpen = false;
+                UrlTextBox.Focus();
+            }
+        }
+
+        private void OmniboxSuggestionsListBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            ExecuteSelectedSuggestion();
+        }
+
+        private void OmniboxSuggestionsListBox_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (e.OriginalSource is DependencyObject dep)
+            {
+                var item = FindVisualAncestor<ListBoxItem>(dep);
+                if (item?.DataContext is OmniboxSuggestion suggestion)
+                {
+                    OmniboxSuggestionsListBox.SelectedItem = suggestion;
+                    ExecuteSelectedSuggestion();
+                }
+            }
+        }
+
+        private void ExecuteSelectedSuggestion()
+        {
+            if (OmniboxSuggestionsListBox.SelectedItem is OmniboxSuggestion suggestion)
+            {
+                OmniboxSuggestionsPopup.IsOpen = false;
+                if (!string.IsNullOrWhiteSpace(suggestion.Url))
+                {
+                    NavigateActiveTab(suggestion.Url);
+                }
+                else
+                {
+                    NavigateActiveTab(suggestion.Title);
+                }
+                FocusManager.SetFocusedElement(this, null);
+                Keyboard.ClearFocus();
+            }
+        }
+
+        private void SecurityButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_activeTab == null || string.IsNullOrWhiteSpace(_activeTab.Url))
+            {
+                SecurityPopup.IsOpen = false;
+                return;
+            }
+
+            try
+            {
+                var uri = new Uri(_activeTab.Url);
+                SecurityStatusDomain.Text = uri.Host;
+                bool isHttps = uri.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase);
+                if (isHttps)
+                {
+                    SecurityDialogIcon.Text = "\uE72E";
+                    SecurityDialogIcon.Foreground = new SolidColorBrush(Color.FromRgb(0x10, 0xB9, 0x81));
+                    SecurityStatusTitle.Text = "Connection is secure";
+                    SecurityCertText.Text = "Valid SSL Certificate (HTTPS encryption active)";
+                }
+                else
+                {
+                    SecurityDialogIcon.Text = "\uE7BA";
+                    SecurityDialogIcon.Foreground = new SolidColorBrush(Color.FromRgb(0xEF, 0x44, 0x44));
+                    SecurityStatusTitle.Text = "Connection is not secure";
+                    SecurityCertText.Text = "You should not enter sensitive info on this site (unencrypted HTTP).";
+                }
+            }
+            catch
+            {
+                SecurityStatusDomain.Text = _activeTab.Url;
+                SecurityStatusTitle.Text = "Site Information";
+                SecurityCertText.Text = "Local or special page";
+            }
+
+            SecurityPopup.IsOpen = !SecurityPopup.IsOpen;
+        }
+
+        private async void ClearSiteData_Click(object sender, RoutedEventArgs e)
+        {
+            if (_activeTab?.WebViewInstance?.CoreWebView2?.Profile != null)
+            {
+                try
+                {
+                    await _activeTab.WebViewInstance.CoreWebView2.Profile.ClearBrowsingDataAsync(
+                        CoreWebView2BrowsingDataKinds.Cookies |
+                        CoreWebView2BrowsingDataKinds.CacheStorage |
+                        CoreWebView2BrowsingDataKinds.IndexedDb |
+                        CoreWebView2BrowsingDataKinds.LocalStorage);
+                    SecurityPopup.IsOpen = false;
+                    _activeTab.WebViewInstance.Reload();
+                }
+                catch { }
             }
         }
 
@@ -930,6 +1120,7 @@ namespace Browy
             {
                 double z = Math.Min(3.0, _activeTab.WebViewInstance.ZoomFactor + 0.1);
                 _activeTab.WebViewInstance.ZoomFactor = Math.Round(z, 2);
+                UpdateZoomUI();
             }
         }
 
@@ -939,6 +1130,7 @@ namespace Browy
             {
                 double z = Math.Max(0.25, _activeTab.WebViewInstance.ZoomFactor - 0.1);
                 _activeTab.WebViewInstance.ZoomFactor = Math.Round(z, 2);
+                UpdateZoomUI();
             }
         }
 
@@ -947,7 +1139,47 @@ namespace Browy
             if (_activeTab?.WebViewInstance != null)
             {
                 _activeTab.WebViewInstance.ZoomFactor = 1.0;
+                UpdateZoomUI();
             }
+        }
+
+        private void UpdateZoomUI()
+        {
+            if (_activeTab?.WebViewInstance == null)
+            {
+                ZoomIndicatorButton.Visibility = Visibility.Collapsed;
+                ZoomPopupPercentageText.Text = "100%";
+                return;
+            }
+
+            double factor = _activeTab.WebViewInstance.ZoomFactor;
+            int percent = (int)Math.Round(factor * 100);
+            ZoomIndicatorText.Text = $"{percent}%";
+            ZoomPopupPercentageText.Text = $"{percent}%";
+
+            ZoomIndicatorButton.Visibility = (Math.Abs(factor - 1.0) > 0.01) ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void ZoomIndicatorButton_Click(object sender, RoutedEventArgs e)
+        {
+            UpdateZoomUI();
+            ZoomPopup.IsOpen = !ZoomPopup.IsOpen;
+        }
+
+        private void ZoomInPopup_Click(object sender, RoutedEventArgs e)
+        {
+            ZoomIn();
+        }
+
+        private void ZoomOutPopup_Click(object sender, RoutedEventArgs e)
+        {
+            ZoomOut();
+        }
+
+        private void ResetZoomPopup_Click(object sender, RoutedEventArgs e)
+        {
+            ResetZoom();
+            ZoomPopup.IsOpen = false;
         }
 
         public void OpenDevTools()

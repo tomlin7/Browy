@@ -247,6 +247,8 @@ namespace Browy
                 new("Reset Zoom", "View", "\uE895", "Ctrl+0", "Reset webpage magnification to 100%", w => w.ResetZoom()),
 
                 // Tools & Developer
+                new("Find in Page", "Navigation", "\uE721", "Ctrl+F", "Search for words and phrases on current webpage", w => w.OpenFindInPage()),
+                new("Downloads", "Tools", "\uE896", "Ctrl+Shift+J", "View recent and active file downloads", w => w.ToggleDownloads()),
                 new("Developer Tools", "Tools", "\uEC7A", "F12", "Inspect DOM, network requests, and console logs", w => w.OpenDevTools()),
                 new("View Page Source", "Tools", "\uE943", "Ctrl+U", "View the HTML source code of this page", w => w.ViewPageSource()),
                 new("Print Page", "Tools", "\uE749", "Ctrl+P", "Print or export current page to PDF", w => w.PrintCurrentPage()),

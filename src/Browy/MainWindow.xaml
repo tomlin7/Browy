@@ -553,7 +553,7 @@
                         </Border>
                     </Grid>
 
-                    <!-- Tool Buttons (History, Command Palette) -->
+                    <!-- Tool Buttons (History, Downloads, Command Palette) -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center"
                                 WindowChrome.IsHitTestVisibleInChrome="True">
                         <!-- History Button -->
@@ -564,6 +564,32 @@
                                 Width="28" Height="28"
                                 Margin="0,0,3,0">
                             <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE81C;" FontSize="12" Foreground="#FFFFFF"/>
+                        </Button>
+
+                        <!-- Downloads Button -->
+                        <Button x:Name="DownloadsButton"
+                                Style="{StaticResource IconButton}"
+                                ToolTip="Downloads (Ctrl+Shift+J)"
+                                Click="DownloadsButton_Click"
+                                Width="28" Height="28"
+                                Margin="0,0,3,0">
+                            <Grid>
+                                <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE896;" FontSize="12" Foreground="#FFFFFF"/>
+                                <Border x:Name="DownloadsBadge"
+                                        Background="#3B82F6"
+                                        CornerRadius="5"
+                                        Padding="3,0"
+                                        Margin="10,-6,-6,0"
+                                        HorizontalAlignment="Right"
+                                        VerticalAlignment="Top"
+                                        Visibility="Collapsed">
+                                    <TextBlock x:Name="DownloadsBadgeText"
+                                               Text="1"
+                                               FontSize="8"
+                                               FontWeight="Bold"
+                                               Foreground="#FFFFFF"/>
+                                </Border>
+                            </Grid>
                         </Button>
 
                         <!-- Command Palette & Options (Ellipsis Button) -->
@@ -900,6 +926,342 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </ScrollViewer>
+                    </Grid>
+                </Border>
+            </Popup>
+
+            <!-- Downloads Popup (Floating Win32 topmost window over WebView2 HWND) -->
+            <Popup x:Name="DownloadsPopup"
+                   PlacementTarget="{Binding ElementName=DownloadsButton}"
+                   Placement="Bottom"
+                   HorizontalOffset="-280"
+                   VerticalOffset="8"
+                   AllowsTransparency="True"
+                   StaysOpen="False"
+                   PopupAnimation="Fade">
+                <Border Width="340"
+                        MaxHeight="460"
+                        Background="#F414141A"
+                        BorderBrush="{StaticResource GlassBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="12"
+                        Padding="14,12">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="28" ShadowDepth="4" Direction="270" Color="#000000" Opacity="0.75"/>
+                    </Border.Effect>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <!-- Header -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- Empty message -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- Downloads List -->
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Header -->
+                        <Grid Grid.Row="0" Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE896;" FontSize="13" Foreground="#FFFFFF" Margin="0,0,8,0"/>
+                                <TextBlock Text="Downloads" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            </StackPanel>
+
+                            <!-- Open Downloads Folder -->
+                            <Button Grid.Column="1"
+                                    Style="{StaticResource IconButton}"
+                                    ToolTip="Open Downloads Folder"
+                                    Click="OpenDownloadsFolder_Click"
+                                    Margin="0,0,4,0"
+                                    Width="26" Height="26">
+                                <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE838;" FontSize="11" Foreground="#FFFFFF"/>
+                            </Button>
+
+                            <!-- Clear Completed Downloads -->
+                            <Button Grid.Column="2"
+                                    Style="{StaticResource IconButton}"
+                                    ToolTip="Clear Completed Downloads"
+                                    Click="ClearDownloads_Click"
+                                    Margin="0,0,4,0"
+                                    Width="26" Height="26">
+                                <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE74D;" FontSize="11" Foreground="#FFFFFF"/>
+                            </Button>
+
+                            <!-- Close Panel -->
+                            <Button Grid.Column="3"
+                                    Style="{StaticResource IconButton}"
+                                    ToolTip="Close"
+                                    Click="CloseDownloads_Click"
+                                    Width="26" Height="26">
+                                <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE711;" FontSize="10" Foreground="#FFFFFF"/>
+                            </Button>
+                        </Grid>
+
+                        <!-- Empty State Text -->
+                        <TextBlock x:Name="DownloadsEmptyText"
+                                   Grid.Row="1"
+                                   Text="No downloads yet"
+                                   FontSize="12"
+                                   Foreground="#E2E8F0"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,20,0,0"
+                                   Visibility="Collapsed"/>
+
+                        <!-- Downloads List -->
+                        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <ItemsControl x:Name="DownloadsItemsControl">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#10FFFFFF"
+                                                BorderBrush="#15FFFFFF"
+                                                BorderThickness="1"
+                                                CornerRadius="8"
+                                                Margin="0,0,0,6"
+                                                Padding="10,8">
+                                            <Grid>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+
+                                                <!-- Main Row: Icon + Name + Action Buttons -->
+                                                <Grid Grid.Row="0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="28"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <!-- File Type Icon -->
+                                                    <Border Grid.Column="0"
+                                                            Width="22" Height="22"
+                                                            Background="#18FFFFFF"
+                                                            CornerRadius="5"
+                                                            VerticalAlignment="Center"
+                                                            HorizontalAlignment="Left">
+                                                        <TextBlock Style="{StaticResource FluentIcon}"
+                                                                   Text="{Binding IconGlyph}"
+                                                                   FontSize="11"
+                                                                   Foreground="#FFFFFF"/>
+                                                    </Border>
+
+                                                    <!-- File Name and Status -->
+                                                    <StackPanel Grid.Column="1" Margin="6,0,8,0" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding FileName}"
+                                                                   FontSize="11.5"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="#FFFFFF"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   ToolTip="{Binding ResultFilePath}"/>
+                                                        <TextBlock Text="{Binding StatusText}"
+                                                                   FontSize="9.5"
+                                                                   Foreground="#94A3B8"
+                                                                   Margin="0,2,0,0"/>
+                                                    </StackPanel>
+
+                                                    <!-- Action Buttons -->
+                                                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <!-- Open File (if completed) -->
+                                                        <Button ToolTip="Open File"
+                                                                Click="OpenFileDownload_Click"
+                                                                Tag="{Binding}"
+                                                                Width="24" Height="24"
+                                                                Margin="0,0,2,0">
+                                                            <Button.Style>
+                                                                <Style TargetType="Button" BasedOn="{StaticResource IconButton}">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsCompleted}" Value="True">
+                                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Button.Style>
+                                                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE8E5;" FontSize="10" Foreground="#FFFFFF"/>
+                                                        </Button>
+
+                                                        <!-- Show in Folder (if completed) -->
+                                                        <Button ToolTip="Show in folder"
+                                                                Click="OpenFolderDownload_Click"
+                                                                Tag="{Binding}"
+                                                                Width="24" Height="24"
+                                                                Margin="0,0,2,0">
+                                                            <Button.Style>
+                                                                <Style TargetType="Button" BasedOn="{StaticResource IconButton}">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsCompleted}" Value="True">
+                                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Button.Style>
+                                                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE838;" FontSize="10" Foreground="#FFFFFF"/>
+                                                        </Button>
+
+                                                        <!-- Cancel (if in progress) -->
+                                                        <Button ToolTip="Cancel Download"
+                                                                Click="CancelDownload_Click"
+                                                                Tag="{Binding}"
+                                                                Width="24" Height="24">
+                                                            <Button.Style>
+                                                                <Style TargetType="Button" BasedOn="{StaticResource IconButton}">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsInProgress}" Value="True">
+                                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Button.Style>
+                                                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE711;" FontSize="9" Foreground="#EF4444"/>
+                                                        </Button>
+                                                    </StackPanel>
+                                                </Grid>
+
+                                                <!-- Progress Bar (shown when InProgress) -->
+                                                <ProgressBar Grid.Row="1"
+                                                             Height="3"
+                                                             Margin="0,6,0,0"
+                                                             Value="{Binding PercentComplete}"
+                                                             Maximum="100"
+                                                             Foreground="#3B82F6"
+                                                             Background="#20FFFFFF"
+                                                             BorderThickness="0">
+                                                    <ProgressBar.Style>
+                                                        <Style TargetType="ProgressBar">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsInProgress}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </ProgressBar.Style>
+                                                </ProgressBar>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+            </Popup>
+
+            <!-- Find in Page Floating Bar (Top-Right over WebContentGrid) -->
+            <Popup x:Name="FindPopup"
+                   PlacementTarget="{Binding ElementName=WebContentGrid}"
+                   Placement="Custom"
+                   AllowsTransparency="True"
+                   StaysOpen="True"
+                   PopupAnimation="Fade">
+                <Border Width="330"
+                        Height="38"
+                        Background="#F418181E"
+                        BorderBrush="{StaticResource GlassBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="6,3"
+                        SnapsToDevicePixels="True">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="20" ShadowDepth="3" Direction="270" Color="#000000" Opacity="0.7"/>
+                    </Border.Effect>
+                    <Grid VerticalAlignment="Center">
+                        <Grid.ColumnDefinitions>
+                            <!-- Search Icon -->
+                            <ColumnDefinition Width="20"/>
+                            <!-- Input Box -->
+                            <ColumnDefinition Width="*"/>
+                            <!-- Match Count -->
+                            <ColumnDefinition Width="Auto"/>
+                            <!-- Prev Match -->
+                            <ColumnDefinition Width="24"/>
+                            <!-- Next Match -->
+                            <ColumnDefinition Width="24"/>
+                            <!-- Match Case -->
+                            <ColumnDefinition Width="26"/>
+                            <!-- Close -->
+                            <ColumnDefinition Width="24"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Search Icon -->
+                        <TextBlock Grid.Column="0"
+                                   Style="{StaticResource FluentIcon}"
+                                   Text="&#xE721;"
+                                   FontSize="11"
+                                   Foreground="#90FFFFFF"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+
+                        <!-- Search TextBox -->
+                        <TextBox x:Name="FindTextBox"
+                                 Grid.Column="1"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 Foreground="#FFFFFF"
+                                 CaretBrush="#FFFFFF"
+                                 FontSize="12"
+                                 VerticalAlignment="Center"
+                                 Margin="4,0,4,0"
+                                 TextChanged="FindTextBox_TextChanged"
+                                 KeyDown="FindTextBox_KeyDown"/>
+
+                        <!-- Match Count Display -->
+                        <TextBlock x:Name="FindMatchCountText"
+                                   Grid.Column="2"
+                                   Text=""
+                                   FontSize="10.5"
+                                   Foreground="#94A3B8"
+                                   VerticalAlignment="Center"
+                                   Margin="2,0,6,0"/>
+
+                        <!-- Previous Match Button -->
+                        <Button Grid.Column="3"
+                                Style="{StaticResource IconButton}"
+                                ToolTip="Previous match (Shift+Enter)"
+                                Click="FindPrevious_Click"
+                                Width="22" Height="22">
+                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE70E;" FontSize="9" Foreground="#FFFFFF"/>
+                        </Button>
+
+                        <!-- Next Match Button -->
+                        <Button Grid.Column="4"
+                                Style="{StaticResource IconButton}"
+                                ToolTip="Next match (Enter)"
+                                Click="FindNext_Click"
+                                Width="22" Height="22">
+                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE70D;" FontSize="9" Foreground="#FFFFFF"/>
+                        </Button>
+
+                        <!-- Match Case Toggle -->
+                        <Button x:Name="FindMatchCaseButton"
+                                Grid.Column="5"
+                                Style="{StaticResource IconButton}"
+                                ToolTip="Match Case"
+                                Click="FindMatchCase_Click"
+                                Width="24" Height="22">
+                            <TextBlock x:Name="FindMatchCaseText"
+                                       Text="Aa"
+                                       FontSize="10.5"
+                                       FontWeight="SemiBold"
+                                       Foreground="#80FFFFFF"/>
+                        </Button>
+
+                        <!-- Close Button -->
+                        <Button Grid.Column="6"
+                                Style="{StaticResource IconButton}"
+                                ToolTip="Close (Escape)"
+                                Click="FindClose_Click"
+                                Width="22" Height="22">
+                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE711;" FontSize="9" Foreground="#FFFFFF"/>
+                        </Button>
                     </Grid>
                 </Border>
             </Popup>

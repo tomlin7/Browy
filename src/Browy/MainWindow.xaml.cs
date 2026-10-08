@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -25,10 +26,12 @@ namespace Browy
         public ObservableCollection<HistoryItem> History { get; } = new();
         public ObservableCollection<AgentMessage> AgentMessages { get; } = new();
         public ObservableCollection<AgentSession> AgentSessions { get; } = new();
+        public ObservableCollection<DownloadItem> Downloads { get; } = new();
 
         private BrowserTab? _activeTab;
         private bool _isSidebarCollapsed = false;
         private bool _isAgentsPanelOpen = true;
+        private bool _isFindMatchCase = false;
         private double _sidebarWidth = 240;
         private double _agentsWidth = 320;
         private bool _isDraggingLeftSplitter = false;
@@ -52,12 +55,15 @@ namespace Browy
             HorizontalTabsItemsControl.ItemsSource = Tabs;
             BookmarksItemsControl.ItemsSource = Bookmarks;
             HistoryItemsControl.ItemsSource = History;
+            DownloadsItemsControl.ItemsSource = Downloads;
             AgentPickerItemsControl.ItemsSource = AgentSessions;
             AgentMessagesItemsControl.ItemsSource = AgentMessages;
             LoadInitialAgentSessions();
             LoadInitialAgentWelcome();
             UpdateHistoryEmptyState();
+            UpdateDownloadsEmptyState();
             UpdateNavMargins();
+            FindPopup.CustomPopupPlacementCallback = FindPopupPlacementCallback;
             StateChanged += Window_StateChanged;
         }
 
@@ -390,6 +396,35 @@ namespace Browy
                             tab.FaviconUri = core.FaviconUri;
                         });
                     };
+
+                    // Downloads handling
+                    core.DownloadStarting += CoreWebView2_DownloadStarting;
+
+                    // Find in page events
+                    if (core.Find != null)
+                    {
+                        core.Find.MatchCountChanged += (s, args) =>
+                        {
+                            Dispatcher.Invoke(() =>
+                            {
+                                if (_activeTab?.WebViewInstance?.CoreWebView2 == core && FindPopup.IsOpen)
+                                {
+                                    UpdateFindMatchUI(core.Find.ActiveMatchIndex, core.Find.MatchCount);
+                                }
+                            });
+                        };
+
+                        core.Find.ActiveMatchIndexChanged += (s, args) =>
+                        {
+                            Dispatcher.Invoke(() =>
+                            {
+                                if (_activeTab?.WebViewInstance?.CoreWebView2 == core && FindPopup.IsOpen)
+                                {
+                                    UpdateFindMatchUI(core.Find.ActiveMatchIndex, core.Find.MatchCount);
+                                }
+                            });
+                        };
+                    }
                 }
 
                 // Wire WebView2 events
@@ -416,6 +451,10 @@ namespace Browy
                         if (_activeTab == tab)
                         {
                             UpdateNavigationUI(tab);
+                            if (FindPopup.IsOpen && !string.IsNullOrWhiteSpace(FindTextBox.Text))
+                            {
+                                FindActiveTab(FindTextBox.Text, _isFindMatchCase);
+                            }
                         }
                         ClipWebViewToRoundedCorners(tab.WebViewInstance);
 
@@ -485,6 +524,18 @@ namespace Browy
             _activeTab = tab;
             UpdateNavigationUI(tab);
             StartPageGrid.Visibility = Visibility.Collapsed;
+
+            if (FindPopup.IsOpen)
+            {
+                if (!string.IsNullOrWhiteSpace(FindTextBox.Text))
+                {
+                    FindActiveTab(FindTextBox.Text, _isFindMatchCase);
+                }
+                else
+                {
+                    UpdateFindMatchUI(0, 0);
+                }
+            }
 
             Dispatcher.InvokeAsync(() =>
             {
@@ -947,6 +998,262 @@ namespace Browy
             AgentInputTextBox.Text = prompt;
             SendAgentMessage_Click(this, new RoutedEventArgs());
         }
+
+        #region Downloads Manager
+
+        private void CoreWebView2_DownloadStarting(object? sender, CoreWebView2DownloadStartingEventArgs e)
+        {
+            e.Handled = true;
+
+            Dispatcher.Invoke(() =>
+            {
+                var item = new DownloadItem(e.DownloadOperation);
+                Downloads.Insert(0, item);
+                UpdateDownloadsButtonBadge();
+                UpdateDownloadsEmptyState();
+                DownloadsPopup.IsOpen = true;
+            });
+        }
+
+        private void UpdateDownloadsButtonBadge()
+        {
+            if (DownloadsBadge == null || DownloadsBadgeText == null) return;
+            int inProgressCount = Downloads.Count(d => d.IsInProgress);
+            if (inProgressCount > 0)
+            {
+                DownloadsBadgeText.Text = inProgressCount.ToString();
+                DownloadsBadge.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                DownloadsBadge.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void UpdateDownloadsEmptyState()
+        {
+            if (DownloadsEmptyText != null)
+            {
+                DownloadsEmptyText.Visibility = Downloads.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            }
+        }
+
+        private void DownloadsButton_Click(object sender, RoutedEventArgs e)
+        {
+            ToggleDownloads();
+        }
+
+        public void ToggleDownloads()
+        {
+            DownloadsPopup.IsOpen = !DownloadsPopup.IsOpen;
+            UpdateDownloadsEmptyState();
+            UpdateDownloadsButtonBadge();
+        }
+
+        private void CloseDownloads_Click(object sender, RoutedEventArgs e)
+        {
+            DownloadsPopup.IsOpen = false;
+        }
+
+        private void OpenDownloadsFolder_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+                if (!Directory.Exists(downloadsPath))
+                {
+                    Directory.CreateDirectory(downloadsPath);
+                }
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", $"\"{downloadsPath}\"") { UseShellExecute = true });
+            }
+            catch { }
+        }
+
+        private void ClearDownloads_Click(object sender, RoutedEventArgs e)
+        {
+            var nonActive = Downloads.Where(d => !d.IsInProgress).ToList();
+            foreach (var item in nonActive)
+            {
+                Downloads.Remove(item);
+            }
+            UpdateDownloadsEmptyState();
+            UpdateDownloadsButtonBadge();
+        }
+
+        private void OpenFileDownload_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement elem && elem.Tag is DownloadItem item)
+            {
+                item.OpenFile();
+            }
+        }
+
+        private void OpenFolderDownload_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement elem && elem.Tag is DownloadItem item)
+            {
+                item.OpenFolder();
+            }
+        }
+
+        private void CancelDownload_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement elem && elem.Tag is DownloadItem item)
+            {
+                item.Cancel();
+                UpdateDownloadsButtonBadge();
+            }
+        }
+
+        #endregion
+
+        #region Find In Page
+
+        private CustomPopupPlacement[] FindPopupPlacementCallback(Size popupSize, Size targetSize, Point offset)
+        {
+            double x = Math.Max(0, targetSize.Width - popupSize.Width - 18);
+            double y = 12;
+            return new[] { new CustomPopupPlacement(new Point(x, y), PopupPrimaryAxis.Horizontal) };
+        }
+
+        public void OpenFindInPage()
+        {
+            FindPopup.IsOpen = true;
+            FindTextBox.Focus();
+            FindTextBox.SelectAll();
+            if (!string.IsNullOrWhiteSpace(FindTextBox.Text))
+            {
+                FindActiveTab(FindTextBox.Text, _isFindMatchCase);
+            }
+        }
+
+        public void CloseFindInPage()
+        {
+            FindPopup.IsOpen = false;
+            try
+            {
+                _activeTab?.WebViewInstance?.CoreWebView2?.Find?.Stop();
+            }
+            catch { }
+            _activeTab?.WebViewInstance?.Focus();
+        }
+
+        private async void FindActiveTab(string term, bool matchCase)
+        {
+            if (_activeTab?.WebViewInstance?.CoreWebView2 == null)
+            {
+                UpdateFindMatchUI(0, 0);
+                return;
+            }
+
+            var core = _activeTab.WebViewInstance.CoreWebView2;
+
+            if (string.IsNullOrEmpty(term))
+            {
+                try
+                {
+                    core.Find?.Stop();
+                }
+                catch { }
+                UpdateFindMatchUI(0, 0);
+                return;
+            }
+
+            try
+            {
+                var options = core.Environment.CreateFindOptions();
+                options.FindTerm = term;
+                options.IsCaseSensitive = matchCase;
+                options.ShouldHighlightAllMatches = true;
+                options.SuppressDefaultFindDialog = true;
+
+                await core.Find.StartAsync(options);
+            }
+            catch { }
+        }
+
+        private void UpdateFindMatchUI(int activeIndex, int totalMatches)
+        {
+            if (FindMatchCountText == null) return;
+
+            if (string.IsNullOrEmpty(FindTextBox.Text))
+            {
+                FindMatchCountText.Text = "";
+                return;
+            }
+
+            if (totalMatches == 0)
+            {
+                FindMatchCountText.Text = "0/0";
+                FindMatchCountText.Foreground = new SolidColorBrush(Color.FromRgb(239, 68, 68)); // #EF4444 red
+            }
+            else
+            {
+                int displayIndex = activeIndex > 0 ? activeIndex : 1;
+                FindMatchCountText.Text = $"{displayIndex}/{totalMatches}";
+                FindMatchCountText.Foreground = new SolidColorBrush(Color.FromRgb(148, 163, 184)); // #94A3B8 neutral
+            }
+        }
+
+        private void FindTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            FindActiveTab(FindTextBox.Text, _isFindMatchCase);
+        }
+
+        private void FindTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                e.Handled = true;
+                if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+                {
+                    FindPrevious_Click(this, new RoutedEventArgs());
+                }
+                else
+                {
+                    FindNext_Click(this, new RoutedEventArgs());
+                }
+            }
+            else if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
+                CloseFindInPage();
+            }
+        }
+
+        private void FindNext_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                _activeTab?.WebViewInstance?.CoreWebView2?.Find?.FindNext();
+            }
+            catch { }
+        }
+
+        private void FindPrevious_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                _activeTab?.WebViewInstance?.CoreWebView2?.Find?.FindPrevious();
+            }
+            catch { }
+        }
+
+        private void FindMatchCase_Click(object sender, RoutedEventArgs e)
+        {
+            _isFindMatchCase = !_isFindMatchCase;
+            FindMatchCaseText.Foreground = _isFindMatchCase
+                ? new SolidColorBrush(Color.FromRgb(59, 130, 246))
+                : new SolidColorBrush(Color.FromArgb(128, 255, 255, 255));
+            FindActiveTab(FindTextBox.Text, _isFindMatchCase);
+        }
+
+        private void FindClose_Click(object sender, RoutedEventArgs e)
+        {
+            CloseFindInPage();
+        }
+
+        #endregion
 
         #endregion
 
@@ -1461,6 +1768,11 @@ namespace Browy
                     UrlTextBox.Focus();
                     UrlTextBox.SelectAll();
                 }
+                else if (e.Key == Key.F)
+                {
+                    e.Handled = true;
+                    OpenFindInPage();
+                }
                 else if (e.Key == Key.H)
                 {
                     e.Handled = true;
@@ -1475,7 +1787,14 @@ namespace Browy
                 else if (e.Key == Key.J)
                 {
                     e.Handled = true;
-                    ToggleAgentsPanel_Click(this, new RoutedEventArgs());
+                    if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+                    {
+                        ToggleDownloads();
+                    }
+                    else
+                    {
+                        ToggleAgentsPanel_Click(this, new RoutedEventArgs());
+                    }
                 }
                 else if (e.Key == Key.K || (e.Key == Key.P && Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)))
                 {
@@ -1495,7 +1814,17 @@ namespace Browy
             }
             else if (e.Key == Key.Escape)
             {
-                if (HistoryPopup.IsOpen)
+                if (FindPopup.IsOpen)
+                {
+                    CloseFindInPage();
+                    e.Handled = true;
+                }
+                else if (DownloadsPopup.IsOpen)
+                {
+                    DownloadsPopup.IsOpen = false;
+                    e.Handled = true;
+                }
+                else if (HistoryPopup.IsOpen)
                 {
                     HistoryPopup.IsOpen = false;
                     e.Handled = true;

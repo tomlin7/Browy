@@ -28,12 +28,17 @@ namespace Browy
         public ObservableCollection<AgentSession> AgentSessions { get; } = new();
         public ObservableCollection<DownloadItem> Downloads { get; } = new();
         public ObservableCollection<OmniboxSuggestion> OmniboxSuggestions { get; } = new();
+        public ObservableCollection<ClosedTabItem> RecentlyClosedTabs { get; } = new();
         private CancellationTokenSource? _suggestionCts;
 
         private BrowserTab? _activeTab;
         private bool _isSidebarCollapsed = false;
         private bool _isAgentsPanelOpen = true;
         private bool _isFindMatchCase = false;
+        private bool _isFullscreen = false;
+        private WindowState _savedWindowState = WindowState.Normal;
+        private double _savedSidebarWidth = 240;
+        private bool _savedIsSidebarCollapsed = false;
         private double _sidebarWidth = 240;
         private double _agentsWidth = 320;
         private bool _isDraggingLeftSplitter = false;
@@ -58,6 +63,7 @@ namespace Browy
             BookmarksItemsControl.ItemsSource = Bookmarks;
             HistoryItemsControl.ItemsSource = History;
             DownloadsItemsControl.ItemsSource = Downloads;
+            RecentlyClosedItemsControl.ItemsSource = RecentlyClosedTabs;
             OmniboxSuggestionsListBox.ItemsSource = OmniboxSuggestions;
             AgentPickerItemsControl.ItemsSource = AgentSessions;
             AgentMessagesItemsControl.ItemsSource = AgentMessages;
@@ -428,6 +434,23 @@ namespace Browy
                             });
                         };
                     }
+
+                    // Audio playing and mute state
+                    core.IsDocumentPlayingAudioChanged += (s, args) =>
+                    {
+                        Dispatcher.Invoke(() =>
+                        {
+                            tab.IsPlayingAudio = core.IsDocumentPlayingAudio;
+                        });
+                    };
+
+                    core.IsMutedChanged += (s, args) =>
+                    {
+                        Dispatcher.Invoke(() =>
+                        {
+                            tab.IsMuted = core.IsMuted;
+                        });
+                    };
                 }
 
                 // Wire WebView2 events
@@ -565,6 +588,12 @@ namespace Browy
             if (!string.IsNullOrWhiteSpace(tab.Url) && !tab.Url.StartsWith("about:", StringComparison.OrdinalIgnoreCase))
             {
                 _recentlyClosedUrls.Push(tab.Url);
+                RecentlyClosedTabs.Insert(0, new ClosedTabItem(tab.Title, tab.Url, tab.FaviconImage));
+                if (RecentlyClosedTabs.Count > 20)
+                {
+                    RecentlyClosedTabs.RemoveAt(RecentlyClosedTabs.Count - 1);
+                }
+                UpdateHistoryEmptyState();
             }
 
             // Clean up WebView instance
@@ -654,9 +683,44 @@ namespace Browy
 
         private void UpdateHistoryEmptyState()
         {
+            if (RecentlyClosedSection != null)
+            {
+                RecentlyClosedSection.Visibility = RecentlyClosedTabs.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            }
+
+            if (HistorySectionHeader != null)
+            {
+                HistorySectionHeader.Visibility = (RecentlyClosedTabs.Count > 0 && History.Count > 0) ? Visibility.Visible : Visibility.Collapsed;
+            }
+
             if (HistoryEmptyText != null)
             {
-                HistoryEmptyText.Visibility = History.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+                HistoryEmptyText.Visibility = (History.Count == 0 && RecentlyClosedTabs.Count == 0) ? Visibility.Visible : Visibility.Collapsed;
+            }
+        }
+
+        private void RecentlyClosedItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement elem && elem.Tag is ClosedTabItem item)
+            {
+                RecentlyClosedTabs.Remove(item);
+                HistoryPopup.IsOpen = false;
+                _ = CreateNewTabAsync(item.Url, switchTo: true);
+                UpdateHistoryEmptyState();
+            }
+        }
+
+        private async void RestoreAllClosedTabs_Click(object sender, RoutedEventArgs e)
+        {
+            var items = RecentlyClosedTabs.ToList();
+            RecentlyClosedTabs.Clear();
+            _recentlyClosedUrls.Clear();
+            HistoryPopup.IsOpen = false;
+            UpdateHistoryEmptyState();
+
+            foreach (var item in items)
+            {
+                await CreateNewTabAsync(item.Url, switchTo: false);
             }
         }
 
@@ -1021,7 +1085,15 @@ namespace Browy
 
         public void ReopenClosedTab()
         {
-            if (_recentlyClosedUrls.Count > 0)
+            if (RecentlyClosedTabs.Count > 0)
+            {
+                var item = RecentlyClosedTabs[0];
+                RecentlyClosedTabs.RemoveAt(0);
+                if (_recentlyClosedUrls.Count > 0) _recentlyClosedUrls.Pop();
+                _ = CreateNewTabAsync(item.Url, switchTo: true);
+                UpdateHistoryEmptyState();
+            }
+            else if (_recentlyClosedUrls.Count > 0)
             {
                 string url = _recentlyClosedUrls.Pop();
                 _ = CreateNewTabAsync(url, switchTo: true);
@@ -1513,6 +1585,247 @@ namespace Browy
                 CloseTab(tab);
             }
             e.Handled = true;
+        }
+
+        private void TabMuteButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement elem && elem.Tag is BrowserTab tab)
+            {
+                ToggleMuteTab(tab);
+            }
+            e.Handled = true;
+        }
+
+        private void TabItem_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is FrameworkElement elem && elem.DataContext is BrowserTab tab)
+            {
+                ShowTabContextMenu(elem, tab);
+                e.Handled = true;
+            }
+        }
+
+        private void ShowTabContextMenu(FrameworkElement target, BrowserTab tab)
+        {
+            var cm = new ContextMenu
+            {
+                Background = new SolidColorBrush(Color.FromArgb(0xF4, 0x14, 0x14, 0x1A)),
+                BorderBrush = (Brush)FindResource("GlassBorderBrush"),
+                BorderThickness = new Thickness(1)
+            };
+
+            // Pin / Unpin
+            var pinItem = new MenuItem
+            {
+                Header = tab.IsPinned ? "Unpin Tab" : "Pin Tab",
+                Icon = new TextBlock { Style = (Style)FindResource("FluentIcon"), Text = "\uE718", FontSize = 11, Foreground = Brushes.White }
+            };
+            pinItem.Click += (s, args) => TogglePinTab(tab);
+            cm.Items.Add(pinItem);
+
+            // Mute / Unmute
+            var muteItem = new MenuItem
+            {
+                Header = tab.IsMuted ? "Unmute Tab" : "Mute Tab",
+                Icon = new TextBlock { Style = (Style)FindResource("FluentIcon"), Text = tab.IsMuted ? "\uE767" : "\uE74F", FontSize = 11, Foreground = Brushes.White }
+            };
+            muteItem.Click += (s, args) => ToggleMuteTab(tab);
+            cm.Items.Add(muteItem);
+
+            cm.Items.Add(new Separator { Background = new SolidColorBrush(Color.FromArgb(0x20, 0xFF, 0xFF, 0xFF)) });
+
+            // Duplicate
+            var dupItem = new MenuItem
+            {
+                Header = "Duplicate Tab",
+                Icon = new TextBlock { Style = (Style)FindResource("FluentIcon"), Text = "\uE7C3", FontSize = 11, Foreground = Brushes.White }
+            };
+            dupItem.Click += (s, args) => _ = CreateNewTabAsync(tab.Url, switchTo: true);
+            cm.Items.Add(dupItem);
+
+            // Reload
+            var reloadItem = new MenuItem
+            {
+                Header = "Reload Tab",
+                Icon = new TextBlock { Style = (Style)FindResource("FluentIcon"), Text = "\uE72C", FontSize = 11, Foreground = Brushes.White }
+            };
+            reloadItem.Click += (s, args) => tab.WebViewInstance?.Reload();
+            cm.Items.Add(reloadItem);
+
+            cm.Items.Add(new Separator { Background = new SolidColorBrush(Color.FromArgb(0x20, 0xFF, 0xFF, 0xFF)) });
+
+            // Close Tab
+            var closeItem = new MenuItem
+            {
+                Header = "Close Tab",
+                Icon = new TextBlock { Style = (Style)FindResource("FluentIcon"), Text = "\uE711", FontSize = 10, Foreground = Brushes.White }
+            };
+            closeItem.Click += (s, args) => CloseTab(tab);
+            cm.Items.Add(closeItem);
+
+            // Close Others
+            var closeOthers = new MenuItem { Header = "Close Other Tabs" };
+            closeOthers.Click += (s, args) => CloseOtherTabs(tab);
+            cm.Items.Add(closeOthers);
+
+            // Close to the Right
+            var closeRight = new MenuItem { Header = "Close Tabs to the Right" };
+            closeRight.Click += (s, args) => CloseTabsToRight(tab);
+            cm.Items.Add(closeRight);
+
+            cm.PlacementTarget = target;
+            cm.IsOpen = true;
+        }
+
+        public void TogglePinTab(BrowserTab tab)
+        {
+            tab.IsPinned = !tab.IsPinned;
+            if (tab.IsPinned)
+            {
+                int pinnedCount = Tabs.Count(t => t.IsPinned && t != tab);
+                int oldIndex = Tabs.IndexOf(tab);
+                if (oldIndex != pinnedCount)
+                {
+                    Tabs.Move(oldIndex, pinnedCount);
+                }
+            }
+        }
+
+        public void ToggleMuteTab(BrowserTab tab)
+        {
+            if (tab.WebViewInstance?.CoreWebView2 != null)
+            {
+                tab.WebViewInstance.CoreWebView2.IsMuted = !tab.WebViewInstance.CoreWebView2.IsMuted;
+            }
+        }
+
+        public void TogglePinCurrentTab()
+        {
+            if (_activeTab != null) TogglePinTab(_activeTab);
+        }
+
+        public void ToggleMuteCurrentTab()
+        {
+            if (_activeTab != null) ToggleMuteTab(_activeTab);
+        }
+
+        public void CloseOtherTabs(BrowserTab keepTab)
+        {
+            var toRemove = Tabs.Where(t => t != keepTab && !t.IsPinned).ToList();
+            foreach (var t in toRemove)
+            {
+                CloseTab(t);
+            }
+        }
+
+        public void CloseOtherTabsCurrent()
+        {
+            if (_activeTab != null) CloseOtherTabs(_activeTab);
+        }
+
+        public void CloseTabsToRight(BrowserTab currentTab)
+        {
+            int index = Tabs.IndexOf(currentTab);
+            if (index >= 0 && index < Tabs.Count - 1)
+            {
+                var toRemove = Tabs.Skip(index + 1).Where(t => !t.IsPinned).ToList();
+                foreach (var t in toRemove)
+                {
+                    CloseTab(t);
+                }
+            }
+        }
+
+        public void CloseTabsToRightCurrent()
+        {
+            if (_activeTab != null) CloseTabsToRight(_activeTab);
+        }
+
+        public void ToggleFullscreen()
+        {
+            if (!_isFullscreen)
+            {
+                EnterFullscreen();
+            }
+            else
+            {
+                ExitFullscreen();
+            }
+        }
+
+        private void EnterFullscreen()
+        {
+            _isFullscreen = true;
+            _savedWindowState = WindowState;
+            _savedSidebarWidth = SidebarBorder.Width;
+            _savedIsSidebarCollapsed = _isSidebarCollapsed;
+
+            // Hide chrome and sidebars
+            SidebarBorder.Visibility = Visibility.Collapsed;
+            HorizontalTabsRow.Visibility = Visibility.Collapsed;
+            TopNavRowDef.Height = new GridLength(0);
+            BookmarksRowDef.Height = new GridLength(0);
+            if (AgentsBorder != null) AgentsBorder.Visibility = Visibility.Collapsed;
+
+            // Remove card margin in fullscreen for edge-to-edge viewing
+            WebContentCardBorder.Margin = new Thickness(0);
+            WebContentCardBorder.CornerRadius = new CornerRadius(0);
+            WebContentCardBorder.BorderThickness = new Thickness(0);
+
+            // Fullscreen window bounds
+            WindowState = WindowState.Normal;
+            WindowStyle = WindowStyle.None;
+            ResizeMode = ResizeMode.NoResize;
+            WindowState = WindowState.Maximized;
+
+            // Show floating exit notification pill
+            FullscreenNotificationPill.Visibility = Visibility.Visible;
+            FullscreenNotificationPill.Opacity = 1.0;
+
+            // Auto fade out pill after 2.8s
+            var fadeOut = new DoubleAnimation(1.0, 0.0, TimeSpan.FromSeconds(0.4))
+            {
+                BeginTime = TimeSpan.FromSeconds(2.8)
+            };
+            fadeOut.Completed += (s, e) =>
+            {
+                if (_isFullscreen) FullscreenNotificationPill.Visibility = Visibility.Collapsed;
+            };
+            FullscreenNotificationPill.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+        }
+
+        public void ExitFullscreen()
+        {
+            if (!_isFullscreen) return;
+            _isFullscreen = false;
+
+            FullscreenNotificationPill.Visibility = Visibility.Collapsed;
+            FullscreenNotificationPill.BeginAnimation(UIElement.OpacityProperty, null);
+
+            // Restore window bounds and style
+            WindowStyle = WindowStyle.None;
+            ResizeMode = ResizeMode.CanResize;
+            WindowState = _savedWindowState;
+
+            // Restore card styling
+            WebContentCardBorder.Margin = new Thickness(10, 2, 14, 14);
+            WebContentCardBorder.CornerRadius = new CornerRadius(14);
+            WebContentCardBorder.BorderThickness = new Thickness(1);
+
+            // Restore chrome
+            TopNavRowDef.Height = new GridLength(42);
+            BookmarksRowDef.Height = new GridLength(0, GridUnitType.Auto);
+
+            SetSidebarCollapsed(_savedIsSidebarCollapsed);
+            if (AgentsBorder != null)
+            {
+                AgentsBorder.Visibility = _isAgentsPanelOpen ? Visibility.Visible : Visibility.Collapsed;
+            }
+        }
+
+        private void ExitFullscreen_Click(object sender, RoutedEventArgs e)
+        {
+            ExitFullscreen();
         }
 
         private async void NewTabButton_Click(object sender, RoutedEventArgs e)
@@ -2043,6 +2356,11 @@ namespace Browy
                         SwitchToTab(Tabs[nextIdx]);
                     }
                 }
+                else if (e.Key == Key.M)
+                {
+                    e.Handled = true;
+                    ToggleMuteCurrentTab();
+                }
             }
             else if (e.Key == Key.Escape)
             {
@@ -2061,6 +2379,16 @@ namespace Browy
                     HistoryPopup.IsOpen = false;
                     e.Handled = true;
                 }
+                else if (_isFullscreen)
+                {
+                    ExitFullscreen();
+                    e.Handled = true;
+                }
+            }
+            else if (e.Key == Key.F11)
+            {
+                e.Handled = true;
+                ToggleFullscreen();
             }
             else if (e.Key == Key.F5)
             {

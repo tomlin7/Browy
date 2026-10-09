@@ -17,6 +17,9 @@ namespace Browy.Models
         private string? _faviconUri;
         private ImageSource? _faviconImage;
         private string _fallbackIcon = "\uE774";
+        private bool _isPlayingAudio = false;
+        private bool _isMuted = false;
+        private bool _isPinned = false;
 
         public Guid Id { get; } = Guid.NewGuid();
 
@@ -139,6 +142,55 @@ namespace Browy.Models
                 }
             }
         }
+
+        public bool IsPlayingAudio
+        {
+            get => _isPlayingAudio;
+            set
+            {
+                if (_isPlayingAudio != value)
+                {
+                    _isPlayingAudio = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(ShowsAudioButton));
+                    OnPropertyChanged(nameof(AudioIconGlyph));
+                    OnPropertyChanged(nameof(AudioToolTip));
+                }
+            }
+        }
+
+        public bool IsMuted
+        {
+            get => _isMuted;
+            set
+            {
+                if (_isMuted != value)
+                {
+                    _isMuted = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(ShowsAudioButton));
+                    OnPropertyChanged(nameof(AudioIconGlyph));
+                    OnPropertyChanged(nameof(AudioToolTip));
+                }
+            }
+        }
+
+        public bool IsPinned
+        {
+            get => _isPinned;
+            set
+            {
+                if (_isPinned != value)
+                {
+                    _isPinned = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public bool ShowsAudioButton => _isPlayingAudio || _isMuted;
+        public string AudioIconGlyph => _isMuted ? "\uE74F" : "\uE767";
+        public string AudioToolTip => _isMuted ? "Unmute tab" : "Mute tab";
 
         public WebView2? WebViewInstance { get; set; }
 

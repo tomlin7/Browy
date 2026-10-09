@@ -228,6 +228,10 @@ namespace Browy
                 new("Duplicate Tab", "Tabs", "\uE7C3", "", "Duplicate the current tab in a new tab", w => w.DuplicateCurrentTab()),
                 new("Next Tab", "Tabs", "\uE76C", "Ctrl+Tab", "Switch to the next tab", w => w.SelectNextTab()),
                 new("Previous Tab", "Tabs", "\uE76B", "Ctrl+Shift+Tab", "Switch to the previous tab", w => w.SelectPreviousTab()),
+                new("Pin / Unpin Active Tab", "Tabs", "\uE718", "", "Pin or unpin current browser tab", w => w.TogglePinCurrentTab()),
+                new("Mute / Unmute Active Tab", "Tabs", "\uE74F", "Ctrl+M", "Mute or unmute audio for current tab", w => w.ToggleMuteCurrentTab()),
+                new("Close Other Tabs", "Tabs", "\uE711", "", "Close all tabs except active tab", w => w.CloseOtherTabsCurrent()),
+                new("Close Tabs to the Right", "Tabs", "\uE711", "", "Close all tabs to the right of active tab", w => w.CloseTabsToRightCurrent()),
 
                 // Navigation
                 new("Reload Page", "Navigation", "\uE72C", "Ctrl+R", "Reload the current webpage", w => w.ReloadCurrentPage()),
@@ -239,6 +243,7 @@ namespace Browy
                 new("Copy Page URL", "Navigation", "\uE8C8", "", "Copy current web address to clipboard", w => w.CopyCurrentUrl()),
 
                 // Panels & Views
+                new("Toggle Full Screen", "View", "\uE740", "F11", "Toggle distraction-free full screen mode", w => w.ToggleFullscreen()),
                 new("Toggle Left Sidebar (Tabs)", "View", "\uE8A0", "Ctrl+S", "Collapse or expand vertical tab sidebar", w => w.ToggleSidebar()),
                 new("Toggle Right Sidebar (Agents)", "View", "\uF4A5", "Ctrl+J", "Collapse or expand intelligent AI copilot panel", w => w.ToggleAgentsPanel()),
                 new("Toggle Bookmarks Bar", "View", "\uE734", "Ctrl+B", "Show or hide the horizontal bookmarks strip", w => w.ToggleBookmarksBar()),

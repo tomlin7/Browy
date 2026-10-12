@@ -39,6 +39,7 @@ x86/
 *.log
 *.tmp
 *.bak
+run.cmd
 
 # Windows OS Generated Files
 Thumbs.db

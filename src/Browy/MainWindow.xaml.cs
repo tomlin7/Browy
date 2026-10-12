@@ -48,6 +48,8 @@ namespace Browy
         private readonly string _userDataFolder;
         private readonly Stack<string> _recentlyClosedUrls = new();
         private CommandPaletteWindow? _commandPalette;
+        private static CoreWebView2Environment? _sharedEnvironment;
+        private static readonly SemaphoreSlim _envLock = new(1, 1);
 
         public MainWindow()
         {
@@ -173,7 +175,7 @@ namespace Browy
             LoadInitialBookmarks();
 
             // Open initial tab
-            await CreateNewTabAsync("https://developer.mozilla.org/en-US/blog/mdn-front-end-deep-dive/", switchTo: true);
+            await CreateNewTabAsync(BrowserSettings.Current.StartPageUrl, switchTo: true);
         }
 
         private void ExportVisualSnapshot(string fileName)
@@ -331,14 +333,92 @@ namespace Browy
             return tab;
         }
 
+        private async Task<CoreWebView2Environment> EnsureEnvironmentAsync()
+        {
+            if (_sharedEnvironment != null) return _sharedEnvironment;
+
+            await _envLock.WaitAsync();
+            try
+            {
+                if (_sharedEnvironment != null) return _sharedEnvironment;
+
+                try
+                {
+                    Directory.CreateDirectory(_userDataFolder);
+                    _sharedEnvironment = await CoreWebView2Environment.CreateAsync(null, _userDataFolder);
+                }
+                catch (Exception ex)
+                {
+                    try
+                    {
+                        File.AppendAllText(@"E:\browy\crash.log", $"[{DateTime.Now:O}] Warning: Primary WebView2Data folder busy or locked ({ex.Message}), using session profile\n");
+                    }
+                    catch { }
+
+                    string fallbackFolder = Path.Combine(Path.GetTempPath(), $"Browy_WebView2_{Environment.ProcessId}");
+                    Directory.CreateDirectory(fallbackFolder);
+                    _sharedEnvironment = await CoreWebView2Environment.CreateAsync(null, fallbackFolder);
+                }
+
+                return _sharedEnvironment;
+            }
+            finally
+            {
+                _envLock.Release();
+            }
+        }
+
+        private async void HandleWebMessage(BrowserTab tab, string message)
+        {
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(message);
+                var root = doc.RootElement;
+                if (!root.TryGetProperty("action", out var actionProp)) return;
+                string action = actionProp.GetString() ?? "";
+
+                switch (action)
+                {
+                    case "clear_history":
+                        ClearAllHistory();
+                        break;
+
+                    case "clear_cookies":
+                        if (tab.WebViewInstance?.CoreWebView2 != null)
+                        {
+                            await tab.WebViewInstance.CoreWebView2.Profile.ClearBrowsingDataAsync();
+                        }
+                        break;
+
+                    case "set_search_engine":
+                        if (root.TryGetProperty("name", out var nameProp) && root.TryGetProperty("url", out var urlProp))
+                        {
+                            BrowserSettings.SetSearchEngine(nameProp.GetString() ?? "Google", urlProp.GetString() ?? "https://www.google.com/search?q=");
+                        }
+                        break;
+
+                    case "toggle_sidebar":
+                        ToggleSidebar();
+                        break;
+
+                    case "open_downloads_folder":
+                        OpenDownloadsFolder_Click(this, new RoutedEventArgs());
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                try { File.AppendAllText(@"E:\browy\crash.log", $"[{DateTime.Now:O}] HandleWebMessage error: {ex}\n"); } catch { }
+            }
+        }
+
         private async Task InitializeWebViewAsync(BrowserTab tab, string initialUrl)
         {
             if (tab.WebViewInstance == null) return;
 
             try
             {
-                Directory.CreateDirectory(_userDataFolder);
-                var env = await CoreWebView2Environment.CreateAsync(null, _userDataFolder);
+                var env = await EnsureEnvironmentAsync();
                 await tab.WebViewInstance.EnsureCoreWebView2Async(env);
 
                 var core = tab.WebViewInstance.CoreWebView2;
@@ -362,7 +442,8 @@ namespace Browy
                     {
                         Dispatcher.Invoke(() =>
                         {
-                            if (!string.IsNullOrWhiteSpace(core.DocumentTitle))
+                            if (!string.IsNullOrWhiteSpace(core.DocumentTitle) &&
+                                !tab.Url.StartsWith("browy://settings", StringComparison.OrdinalIgnoreCase))
                             {
                                 tab.Title = core.DocumentTitle;
                             }
@@ -372,6 +453,8 @@ namespace Browy
                     // Favicon Changed - fetch real favicon stream from WebView2 or network
                     core.FaviconChanged += async (s, args) =>
                     {
+                        if (tab.Url.StartsWith("browy://settings", StringComparison.OrdinalIgnoreCase)) return;
+
                         try
                         {
                             using var stream = await core.GetFaviconAsync(CoreWebView2FaviconImageFormat.Png);
@@ -451,11 +534,41 @@ namespace Browy
                             tab.IsMuted = core.IsMuted;
                         });
                     };
+
+                    // Web message dispatch for internal settings and UI integrations
+                    core.WebMessageReceived += (s, args) =>
+                    {
+                        try
+                        {
+                            string msg = args.TryGetWebMessageAsString();
+                            HandleWebMessage(tab, msg);
+                        }
+                        catch { }
+                    };
                 }
 
                 // Wire WebView2 events
                 tab.WebViewInstance.NavigationStarting += (s, args) =>
                 {
+                    if (args.Uri.StartsWith("browy://settings", StringComparison.OrdinalIgnoreCase) ||
+                        args.Uri.StartsWith("about:settings", StringComparison.OrdinalIgnoreCase))
+                    {
+                        args.Cancel = true;
+                        Dispatcher.Invoke(() =>
+                        {
+                            tab.Url = "browy://settings";
+                            tab.Title = "Settings - Browy";
+                            tab.FallbackIcon = "\uE713";
+                            tab.IsLoading = false;
+                            if (_activeTab == tab)
+                            {
+                                UpdateNavigationUI(tab);
+                            }
+                            tab.WebViewInstance.NavigateToString(SettingsPageService.GetSettingsHtml());
+                        });
+                        return;
+                    }
+
                     Dispatcher.Invoke(() =>
                     {
                         tab.IsLoading = true;
@@ -474,6 +587,24 @@ namespace Browy
                         tab.IsLoading = false;
                         tab.CanGoBack = tab.WebViewInstance.CanGoBack;
                         tab.CanGoForward = tab.WebViewInstance.CanGoForward;
+
+                        if (!args.IsSuccess)
+                        {
+                            if (args.WebErrorStatus != CoreWebView2WebErrorStatus.OperationCanceled &&
+                                !tab.Url.StartsWith("browy://", StringComparison.OrdinalIgnoreCase))
+                            {
+                                tab.Title = $"Site unreachable ({args.WebErrorStatus})";
+                                tab.WebViewInstance.NavigateToString(SettingsPageService.GetErrorPageHtml(tab.Url, args.WebErrorStatus.ToString()));
+                            }
+                        }
+                        else
+                        {
+                            if (string.IsNullOrWhiteSpace(tab.Title) || tab.Title == "Loading...")
+                            {
+                                tab.Title = NavigationHelper.ExtractDomain(tab.Url);
+                            }
+                        }
+
                         if (_activeTab == tab)
                         {
                             UpdateNavigationUI(tab);
@@ -484,12 +615,15 @@ namespace Browy
                         }
                         ClipWebViewToRoundedCorners(tab.WebViewInstance);
 
-                        // Record in History with fetched favicon
-                        AddHistoryEntry(tab.Title, tab.Url, tab.FaviconImage);
+                        // Record in History with fetched favicon if successful navigation
+                        if (args.IsSuccess && !tab.Url.StartsWith("browy://", StringComparison.OrdinalIgnoreCase) && !tab.Url.StartsWith("about:", StringComparison.OrdinalIgnoreCase))
+                        {
+                            AddHistoryEntry(tab.Title, tab.Url, tab.FaviconImage);
+                        }
                     });
 
                     // Proactively resolve favicon for domain if not yet loaded
-                    if (tab.FaviconImage == null && !string.IsNullOrWhiteSpace(tab.Url))
+                    if (tab.FaviconImage == null && !string.IsNullOrWhiteSpace(tab.Url) && !tab.Url.StartsWith("browy://", StringComparison.OrdinalIgnoreCase))
                     {
                         _ = Task.Run(async () =>
                         {
@@ -511,7 +645,11 @@ namespace Browy
                 {
                     Dispatcher.Invoke(() =>
                     {
-                        tab.Url = tab.WebViewInstance.Source?.ToString() ?? "";
+                        string currentSrc = tab.WebViewInstance.Source?.ToString() ?? "";
+                        if (!tab.Url.StartsWith("browy://settings", StringComparison.OrdinalIgnoreCase))
+                        {
+                            tab.Url = currentSrc;
+                        }
                         if (_activeTab == tab)
                         {
                             UpdateNavigationUI(tab);
@@ -533,15 +671,36 @@ namespace Browy
                 // Navigate to initial target
                 if (!string.IsNullOrEmpty(initialUrl))
                 {
-                    tab.WebViewInstance.Source = new Uri(initialUrl);
+                    if (initialUrl.StartsWith("browy://settings", StringComparison.OrdinalIgnoreCase) ||
+                        initialUrl.StartsWith("about:settings", StringComparison.OrdinalIgnoreCase))
+                    {
+                        tab.Url = "browy://settings";
+                        tab.Title = "Settings - Browy";
+                        tab.FallbackIcon = "\uE713";
+                        tab.WebViewInstance.NavigateToString(SettingsPageService.GetSettingsHtml());
+                    }
+                    else if (tab.WebViewInstance.CoreWebView2 != null)
+                    {
+                        tab.WebViewInstance.CoreWebView2.Navigate(initialUrl);
+                    }
+                    else
+                    {
+                        tab.WebViewInstance.Source = new Uri(initialUrl);
+                    }
                 }
 
                 ClipWebViewToRoundedCorners(tab.WebViewInstance);
             }
             catch (Exception ex)
             {
+                try
+                {
+                    File.AppendAllText(@"E:\browy\crash.log", $"[{DateTime.Now:O}] InitializeWebViewAsync failed ({initialUrl}): {ex}\n");
+                }
+                catch { }
+
                 tab.Title = "Navigation error";
-                System.Diagnostics.Debug.WriteLine($"WebView2 initialization failed: {ex.Message}");
+                tab.WebViewInstance.NavigateToString(SettingsPageService.GetErrorPageHtml(initialUrl, "InitializationFailed", ex.Message));
             }
         }
 
@@ -766,13 +925,27 @@ namespace Browy
                 return;
             }
 
+            if (targetUrl.StartsWith("browy://settings", StringComparison.OrdinalIgnoreCase) ||
+                targetUrl.StartsWith("about:settings", StringComparison.OrdinalIgnoreCase))
+            {
+                _activeTab.Url = "browy://settings";
+                _activeTab.Title = "Settings - Browy";
+                _activeTab.FallbackIcon = "\uE713";
+                UpdateNavigationUI(_activeTab);
+                _activeTab.WebViewInstance?.NavigateToString(SettingsPageService.GetSettingsHtml());
+                return;
+            }
+
             if (_activeTab.WebViewInstance?.CoreWebView2 != null)
             {
                 _activeTab.WebViewInstance.CoreWebView2.Navigate(targetUrl);
             }
             else if (_activeTab.WebViewInstance != null)
             {
-                _activeTab.WebViewInstance.Source = new Uri(targetUrl);
+                _ = Task.Run(async () =>
+                {
+                    await InitializeWebViewAsync(_activeTab, targetUrl);
+                });
             }
         }
 
@@ -983,13 +1156,26 @@ namespace Browy
         {
             if (_activeTab?.WebViewInstance != null)
             {
-                if (_activeTab.IsLoading)
+                if (_activeTab.Url.StartsWith("browy://settings", StringComparison.OrdinalIgnoreCase))
                 {
-                    _activeTab.WebViewInstance.Stop();
+                    _activeTab.WebViewInstance.NavigateToString(SettingsPageService.GetSettingsHtml());
+                    return;
                 }
-                else
+
+                if (_activeTab.WebViewInstance.CoreWebView2 != null)
                 {
-                    _activeTab.WebViewInstance.Reload();
+                    if (_activeTab.IsLoading)
+                    {
+                        _activeTab.WebViewInstance.Stop();
+                    }
+                    else
+                    {
+                        _activeTab.WebViewInstance.Reload();
+                    }
+                }
+                else if (!string.IsNullOrEmpty(_activeTab.Url))
+                {
+                    NavigateActiveTab(_activeTab.Url);
                 }
             }
         }
@@ -1013,6 +1199,24 @@ namespace Browy
         }
 
         #region Command Palette & Browser Actions
+
+        private void SettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            OpenSettingsPage();
+        }
+
+        public void OpenSettingsPage()
+        {
+            var existingSettingsTab = Tabs.FirstOrDefault(t => t.Url.StartsWith("browy://settings", StringComparison.OrdinalIgnoreCase));
+            if (existingSettingsTab != null)
+            {
+                SwitchToTab(existingSettingsTab);
+            }
+            else
+            {
+                _ = CreateNewTabAsync("browy://settings", switchTo: true);
+            }
+        }
 
         private void CommandPaletteButton_Click(object sender, RoutedEventArgs e)
         {
@@ -1140,14 +1344,24 @@ namespace Browy
 
         public void ReloadCurrentPage()
         {
-            _activeTab?.WebViewInstance?.CoreWebView2?.Reload();
+            ReloadButton_Click(this, new RoutedEventArgs());
         }
 
         public void HardReloadCurrentPage()
         {
+            if (_activeTab?.Url.StartsWith("browy://settings", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                _activeTab.WebViewInstance?.NavigateToString(SettingsPageService.GetSettingsHtml());
+                return;
+            }
+
             if (_activeTab?.WebViewInstance?.CoreWebView2 != null)
             {
                 _activeTab.WebViewInstance.CoreWebView2.ExecuteScriptAsync("location.reload(true);");
+            }
+            else if (_activeTab != null && !string.IsNullOrEmpty(_activeTab.Url))
+            {
+                NavigateActiveTab(_activeTab.Url);
             }
         }
 
@@ -2255,6 +2469,11 @@ namespace Browy
                 if (e.Key == Key.K)
                 {
                     OpenCommandPalette();
+                    e.Handled = true;
+                }
+                else if (e.Key == Key.OemComma)
+                {
+                    OpenSettingsPage();
                     e.Handled = true;
                 }
                 else if (e.Key == Key.D)

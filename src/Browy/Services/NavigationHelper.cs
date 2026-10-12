@@ -13,18 +13,30 @@ namespace Browy.Services
             @"^(localhost|127\.0\.0\.1)(:\d+)?(/.*)?$",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-        public static string ResolveInputToUrl(string input, string searchEngineUrl = "https://www.google.com/search?q=")
+        public static string ResolveInputToUrl(string input, string? searchEngineUrl = null)
         {
+            searchEngineUrl ??= BrowserSettings.Current.SearchEngineUrl;
+
             if (string.IsNullOrWhiteSpace(input))
-                return "https://www.google.com";
+                return BrowserSettings.Current.StartPageUrl;
 
             input = input.Trim();
+
+            // Settings page aliases
+            if (input.Equals("settings", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("browy://settings", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("about:settings", StringComparison.OrdinalIgnoreCase))
+            {
+                return "browy://settings";
+            }
 
             // Direct scheme matches
             if (input.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
                 input.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
                 input.StartsWith("file://", StringComparison.OrdinalIgnoreCase) ||
-                input.StartsWith("about:", StringComparison.OrdinalIgnoreCase))
+                input.StartsWith("about:", StringComparison.OrdinalIgnoreCase) ||
+                input.StartsWith("browy://", StringComparison.OrdinalIgnoreCase) ||
+                input.StartsWith("view-source:", StringComparison.OrdinalIgnoreCase))
             {
                 return input;
             }

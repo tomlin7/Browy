@@ -835,6 +835,16 @@
                             </Grid>
                         </Button>
 
+                        <!-- Settings Button -->
+                        <Button x:Name="SettingsButton"
+                                Style="{StaticResource IconButton}"
+                                ToolTip="Settings (Ctrl+,)"
+                                Click="SettingsButton_Click"
+                                Width="28" Height="28"
+                                Margin="0,0,3,0">
+                            <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE713;" FontSize="12" Foreground="#FFFFFF"/>
+                        </Button>
+
                         <!-- Command Palette & Options (Ellipsis Button) -->
                         <Button x:Name="CommandPaletteButton"
                                 Style="{StaticResource IconButton}"

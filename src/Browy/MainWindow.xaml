@@ -615,7 +615,9 @@
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <!-- Security Lock Icon Button -->
-                                    <ColumnDefinition Width="30"/>
+                                    <ColumnDefinition Width="28"/>
+                                    <!-- Shield Ad-Block Button -->
+                                    <ColumnDefinition Width="Auto"/>
                                     <!-- URL TextBox -->
                                     <ColumnDefinition Width="*"/>
                                     <!-- Page Zoom Level Indicator -->
@@ -623,7 +625,7 @@
                                     <!-- Reader Mode Button -->
                                     <ColumnDefinition Width="Auto"/>
                                     <!-- Bookmark Star -->
-                                    <ColumnDefinition Width="30"/>
+                                    <ColumnDefinition Width="28"/>
                                 </Grid.ColumnDefinitions>
 
                                 <!-- Monochrome SSL Security Indicator Button -->
@@ -642,9 +644,34 @@
                                                VerticalAlignment="Center"/>
                                 </Button>
 
+                                <!-- Browy Shield Ad-Blocker Button -->
+                                <Button x:Name="ShieldButton"
+                                        Grid.Column="1"
+                                        Style="{StaticResource IconButton}"
+                                        ToolTip="Browy Shield: Active (Protected)"
+                                        Click="ShieldButton_Click"
+                                        Height="24"
+                                        Padding="4,0"
+                                        Margin="0,0,2,0">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock x:Name="ShieldIconText"
+                                                   Style="{StaticResource FluentIcon}"
+                                                   Text="&#xEA1F;"
+                                                   FontSize="11"
+                                                   Foreground="#38BDF8"/>
+                                        <TextBlock x:Name="ShieldBadgeText"
+                                                   Text=""
+                                                   FontSize="9"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="#38BDF8"
+                                                   Margin="3,0,1,0"
+                                                   Visibility="Collapsed"/>
+                                    </StackPanel>
+                                </Button>
+
                                 <!-- URL Input TextBox -->
                                 <TextBox x:Name="UrlTextBox"
-                                         Grid.Column="1"
+                                         Grid.Column="2"
                                          Background="Transparent"
                                          BorderThickness="0"
                                          Foreground="{StaticResource TextPrimaryBrush}"
@@ -658,7 +685,7 @@
 
                                 <!-- Placeholder Text -->
                                 <TextBlock x:Name="UrlPlaceholderText"
-                                           Grid.Column="1"
+                                           Grid.Column="2"
                                            Text="Search or type a URL..."
                                            Foreground="#40FFFFFF"
                                            FontSize="12.5"
@@ -668,7 +695,7 @@
 
                                 <!-- Page Zoom Level Indicator Pill -->
                                 <Button x:Name="ZoomIndicatorButton"
-                                        Grid.Column="2"
+                                        Grid.Column="3"
                                         Style="{StaticResource IconButton}"
                                         ToolTip="Page Zoom Level"
                                         Click="ZoomIndicatorButton_Click"
@@ -687,7 +714,7 @@
 
                                 <!-- Reader Mode Button -->
                                 <Button x:Name="ReaderModeButton"
-                                        Grid.Column="3"
+                                        Grid.Column="4"
                                         Style="{StaticResource IconButton}"
                                         ToolTip="Toggle Reader Mode (Ctrl+Shift+R, F9)"
                                         Click="ReaderModeButton_Click"
@@ -701,7 +728,7 @@
                                 </Button>
 
                                 <!-- Monochrome Bookmark Star Button -->
-                                <Button Grid.Column="4"
+                                <Button Grid.Column="5"
                                         Style="{StaticResource IconButton}"
                                         ToolTip="Bookmark this page (Ctrl+D)"
                                         Click="BookmarkCurrentPage_Click"

@@ -401,11 +401,11 @@ namespace Browy.Services
         <div class="settings-row">
           <div class="row-info">
             <div class="row-title">On Startup</div>
-            <div class="row-desc">Open the Browy start page or continue with your favorite site.</div>
+            <div class="row-desc">Open the Browy start page or continue where you left off.</div>
           </div>
-          <select>
-            <option selected>Open the Browy Start Page</option>
-            <option>Restore previous session tabs</option>
+          <select id="startupBehaviorSelect" onchange="onStartupBehaviorChange(this.value)">
+            <option value="RestoreSession" {{(settings.StartupBehavior == "RestoreSession" ? "selected" : "")}}>Restore previous session tabs</option>
+            <option value="NewTab" {{(settings.StartupBehavior == "NewTab" ? "selected" : "")}}>Open the Browy Start Page (New Tab)</option>
           </select>
         </div>
       </div>
@@ -454,6 +454,17 @@ namespace Browy.Services
       <p class="section-subtitle">Manage browsing history, cached assets, and website permissions.</p>
 
       <div class="settings-group">
+        <div class="settings-row">
+          <div class="row-info">
+            <div class="row-title">Browy Shield (Ad & Tracker Blocker)</div>
+            <div class="row-desc">Proactively intercept and block intrusive ads, trackers, and analytical telemetry across all tabs.</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="shieldToggle" {{(settings.IsShieldEnabled ? "checked" : "")}} onchange="onShieldToggleChange(this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
         <div class="settings-row">
           <div class="row-info">
             <div class="row-title">Browsing History</div>
@@ -527,6 +538,8 @@ namespace Browy.Services
             <tr><td>Toggle Left Sidebar</td><td><span class="kbd">Ctrl</span> + <span class="kbd">S</span></td></tr>
             <tr><td>Developer Tools</td><td><span class="kbd">F12</span></td></tr>
             <tr><td>Reload Page</td><td><span class="kbd">Ctrl</span> + <span class="kbd">R</span></td></tr>
+            <tr><td>Hard Reload (Bypass Cache)</td><td><span class="kbd">Ctrl</span> + <span class="kbd">F5</span></td></tr>
+            <tr><td>Distraction-Free Reader Mode</td><td><span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">R</span> / <span class="kbd">F9</span></td></tr>
           </tbody>
         </table>
       </div>
@@ -541,7 +554,7 @@ namespace Browy.Services
         <div class="settings-row">
           <div class="row-info">
             <div class="row-title">Version</div>
-            <div class="row-desc">0.2.0 (Windows 11 Fluent Acrylic Edition)</div>
+            <div class="row-desc">0.3.0 (Windows 11 Fluent Edition with Shield & Reader Mode)</div>
           </div>
         </div>
         <div class="settings-row">
@@ -586,6 +599,16 @@ namespace Browy.Services
     if (action === 'clear_history') showToast('Browsing history cleared.');
     if (action === 'clear_cookies') showToast('Cache and cookies cleared.');
     if (action === 'open_downloads_folder') showToast('Opening Downloads folder...');
+  }
+
+  function onStartupBehaviorChange(val) {
+    postAction('set_startup_behavior', { behavior: val });
+    showToast('Startup behavior updated.');
+  }
+
+  function onShieldToggleChange(enabled) {
+    postAction('set_shield_enabled', { enabled: enabled });
+    showToast('Browy Shield ' + (enabled ? 'enabled.' : 'paused.'));
   }
 
   function onSearchEngineChange(engine) {

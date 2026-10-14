@@ -8,7 +8,9 @@ namespace Browy.Services
     {
         public string SearchEngineName { get; set; } = "Google";
         public string SearchEngineUrl { get; set; } = "https://www.google.com/search?q=";
-        public string StartPageUrl { get; set; } = "https://www.google.com";
+        public string StartPageUrl { get; set; } = "browy://newtab";
+        public string StartupBehavior { get; set; } = "RestoreSession";
+        public bool IsShieldEnabled { get; set; } = true;
         public bool ShowBookmarksBar { get; set; } = true;
         public bool IsAcrylicEnabled { get; set; } = true;
         public bool BlockThirdPartyCookies { get; set; } = true;

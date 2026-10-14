@@ -30,6 +30,18 @@ namespace Browy.Services
                 return "browy://settings";
             }
 
+            // New Tab / Start page aliases
+            if (input.Equals("newtab", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("start", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("home", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("browy://newtab", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("browy://start", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("about:newtab", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("about:blank", StringComparison.OrdinalIgnoreCase))
+            {
+                return "browy://newtab";
+            }
+
             // Direct scheme matches
             if (input.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
                 input.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||

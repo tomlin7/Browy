@@ -227,6 +227,25 @@ namespace Browy.Models
         public string ReaderModeIconGlyph => _isReaderModeActive ? "\uE737" : "\uE736";
         public string ReaderModeToolTip => _isReaderModeActive ? "Exit Reader Mode (Ctrl+Shift+R, F9)" : "Enter Reader Mode (Ctrl+Shift+R, F9)";
 
+        private int _blockedCount = 0;
+        public int BlockedCount
+        {
+            get => _blockedCount;
+            set
+            {
+                if (_blockedCount != value)
+                {
+                    _blockedCount = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(ShieldToolTip));
+                }
+            }
+        }
+
+        public string ShieldToolTip => _blockedCount > 0
+            ? $"Browy Shield: {_blockedCount} ads & trackers blocked"
+            : "Browy Shield: Active (Protected)";
+
         public WebView2? WebViewInstance { get; set; }
 
         public event PropertyChangedEventHandler? PropertyChanged;

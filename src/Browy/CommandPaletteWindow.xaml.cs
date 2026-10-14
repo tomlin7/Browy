@@ -297,6 +297,7 @@ namespace Browy
                 new("Copy Page URL", "Navigation", "\uE8C8", "", "Copy current web address to clipboard", w => w.CopyCurrentUrl()),
 
                 // Panels & Views
+                new("Toggle Browy Shield (Ad-Blocker)", "Privacy", "\uEA1F", "", "Toggle proactive ad and tracker blocking", w => w.ToggleShield()),
                 new("Toggle Reader View", "View", "\uE736", "Ctrl+Shift+R", "Read distraction-free article formatted for focus", w => w.ToggleReaderMode()),
                 new("Open Settings", "Settings", "\uE713", "Ctrl+,", "Open Browy browser preferences and configuration", w => w.OpenSettingsPage()),
                 new("Toggle Full Screen", "View", "\uE740", "F11", "Toggle distraction-free full screen mode", w => w.ToggleFullscreen()),

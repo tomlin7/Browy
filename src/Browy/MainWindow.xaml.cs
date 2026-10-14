@@ -177,8 +177,45 @@ namespace Browy
             // Populate initial bookmarks matching the sleek Arc/Zen style in screenshot 2
             LoadInitialBookmarks();
 
-            // Open initial tab
-            await CreateNewTabAsync(BrowserSettings.Current.StartPageUrl, switchTo: true);
+            // Restore previous session or open start page
+            bool restored = false;
+            if (BrowserSettings.Current.StartupBehavior == "RestoreSession")
+            {
+                var session = SessionService.LoadSession();
+                if (session != null && session.Tabs.Count > 0)
+                {
+                    BrowserTab? activeTab = null;
+                    for (int i = 0; i < session.Tabs.Count; i++)
+                    {
+                        var data = session.Tabs[i];
+                        bool isTarget = (i == session.ActiveTabIndex) || data.IsActive;
+                        var tab = await CreateNewTabAsync(data.Url, switchTo: isTarget);
+                        tab.IsPinned = data.IsPinned;
+                        if (!string.IsNullOrWhiteSpace(data.Title)) tab.Title = data.Title;
+                        if (isTarget) activeTab = tab;
+                    }
+
+                    if (activeTab != null)
+                    {
+                        SwitchToTab(activeTab);
+                    }
+                    restored = true;
+                }
+            }
+
+            if (!restored)
+            {
+                await CreateNewTabAsync(BrowserSettings.Current.StartPageUrl, switchTo: true);
+            }
+        }
+
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            base.OnClosing(e);
+            if (BrowserSettings.Current.StartupBehavior == "RestoreSession")
+            {
+                SessionService.SaveSession(Tabs, _activeTab);
+            }
         }
 
         private void ExportVisualSnapshot(string fileName)
@@ -411,6 +448,34 @@ namespace Browy
                     case "exit_reader":
                         ExitReaderMode(tab);
                         break;
+
+                    case "navigate":
+                        if (root.TryGetProperty("url", out var urlVal))
+                        {
+                            string target = urlVal.GetString() ?? "";
+                            if (!string.IsNullOrWhiteSpace(target))
+                            {
+                                NavigateActiveTab(target);
+                            }
+                        }
+                        break;
+
+                    case "set_startup_behavior":
+                        if (root.TryGetProperty("behavior", out var behProp))
+                        {
+                            BrowserSettings.Current.StartupBehavior = behProp.GetString() ?? "RestoreSession";
+                            BrowserSettings.Save();
+                        }
+                        break;
+
+                    case "set_shield_enabled":
+                        if (root.TryGetProperty("enabled", out var shProp))
+                        {
+                            BrowserSettings.Current.IsShieldEnabled = shProp.GetBoolean();
+                            BrowserSettings.Save();
+                            if (_activeTab != null) UpdateShieldUI(_activeTab);
+                        }
+                        break;
                 }
             }
             catch (Exception ex)
@@ -552,6 +617,29 @@ namespace Browy
                         }
                         catch { }
                     };
+                    // Browy Shield Network Request Interception (Ad & Tracker Blocking)
+                    core.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.All);
+                    core.WebResourceRequested += (sender, args) =>
+                    {
+                        if (BrowserSettings.Current.IsShieldEnabled && ShieldService.IsBlocked(args.Request.Uri, out _))
+                        {
+                            try
+                            {
+                                var response = core.Environment.CreateWebResourceResponse(
+                                    Stream.Null, 204, "No Content", "Content-Type: text/plain");
+                                args.Response = response;
+                                Dispatcher.Invoke(() =>
+                                {
+                                    tab.BlockedCount++;
+                                    if (_activeTab == tab)
+                                    {
+                                        UpdateShieldUI(tab);
+                                    }
+                                });
+                            }
+                            catch { }
+                        }
+                    };
                 }
 
                 // Wire WebView2 events
@@ -567,6 +655,7 @@ namespace Browy
                             tab.Title = "Settings - Browy";
                             tab.FallbackIcon = "\uE713";
                             tab.IsLoading = false;
+                            tab.BlockedCount = 0;
                             if (_activeTab == tab)
                             {
                                 UpdateNavigationUI(tab);
@@ -576,8 +665,31 @@ namespace Browy
                         return;
                     }
 
+                    if (args.Uri.StartsWith("browy://newtab", StringComparison.OrdinalIgnoreCase) ||
+                        args.Uri.StartsWith("browy://start", StringComparison.OrdinalIgnoreCase) ||
+                        args.Uri.StartsWith("about:newtab", StringComparison.OrdinalIgnoreCase) ||
+                        args.Uri.Equals("about:blank", StringComparison.OrdinalIgnoreCase))
+                    {
+                        args.Cancel = true;
+                        Dispatcher.Invoke(() =>
+                        {
+                            tab.Url = "browy://newtab";
+                            tab.Title = "New Tab";
+                            tab.FallbackIcon = "\uE72B";
+                            tab.IsLoading = false;
+                            tab.BlockedCount = 0;
+                            if (_activeTab == tab)
+                            {
+                                UpdateNavigationUI(tab);
+                            }
+                            tab.WebViewInstance.NavigateToString(NewTabPageService.GetNewTabHtml());
+                        });
+                        return;
+                    }
+
                     Dispatcher.Invoke(() =>
                     {
+                        tab.BlockedCount = 0;
                         tab.IsLoading = true;
                         tab.Url = args.Uri;
                         if (_activeTab == tab)
@@ -821,6 +933,51 @@ namespace Browy
             UpdateBookmarkStarUI();
             UpdateZoomUI();
             UpdateReaderModeUI(tab);
+            UpdateShieldUI(tab);
+        }
+
+        private void UpdateShieldUI(BrowserTab tab)
+        {
+            if (ShieldButton == null || ShieldIconText == null || ShieldBadgeText == null) return;
+
+            bool isInternal = tab.Url.StartsWith("browy://", StringComparison.OrdinalIgnoreCase);
+            ShieldButton.Visibility = isInternal ? Visibility.Collapsed : Visibility.Visible;
+
+            if (!BrowserSettings.Current.IsShieldEnabled)
+            {
+                ShieldIconText.Foreground = new SolidColorBrush(Color.FromArgb(0x70, 0xFF, 0xFF, 0xFF));
+                ShieldBadgeText.Visibility = Visibility.Collapsed;
+                ShieldButton.ToolTip = "Browy Shield: Paused (Click to enable)";
+            }
+            else if (tab.BlockedCount > 0)
+            {
+                ShieldIconText.Foreground = new SolidColorBrush(Color.FromRgb(0x38, 0xBD, 0xF8));
+                ShieldBadgeText.Text = tab.BlockedCount > 99 ? "99+" : tab.BlockedCount.ToString();
+                ShieldBadgeText.Visibility = Visibility.Visible;
+                ShieldButton.ToolTip = $"Browy Shield: {tab.BlockedCount} ads & trackers blocked (Click to toggle)";
+            }
+            else
+            {
+                ShieldIconText.Foreground = new SolidColorBrush(Color.FromRgb(0x38, 0xBD, 0xF8));
+                ShieldBadgeText.Visibility = Visibility.Collapsed;
+                ShieldButton.ToolTip = "Browy Shield: Active (Protected)";
+            }
+        }
+
+        public void ToggleShield()
+        {
+            BrowserSettings.Current.IsShieldEnabled = !BrowserSettings.Current.IsShieldEnabled;
+            BrowserSettings.Save();
+            if (_activeTab != null)
+            {
+                UpdateShieldUI(_activeTab);
+                ReloadCurrentPage();
+            }
+        }
+
+        private void ShieldButton_Click(object sender, RoutedEventArgs e)
+        {
+            ToggleShield();
         }
 
         private void ReaderModeButton_Click(object sender, RoutedEventArgs e)
@@ -1398,7 +1555,7 @@ namespace Browy
 
         public void AddNewTab(string? url = null)
         {
-            _ = CreateNewTabAsync(string.IsNullOrEmpty(url) ? "https://www.google.com" : url, switchTo: true);
+            _ = CreateNewTabAsync(string.IsNullOrEmpty(url) ? BrowserSettings.Current.StartPageUrl : url, switchTo: true);
         }
 
         public void CloseCurrentTab()
@@ -1489,8 +1646,7 @@ namespace Browy
 
         public void OpenStartPage()
         {
-            StartPageGrid.Visibility = Visibility.Visible;
-            UrlTextBox.Text = string.Empty;
+            NavigateActiveTab("browy://newtab");
         }
 
         public void FocusAddressBar()
@@ -2273,7 +2429,7 @@ namespace Browy
 
         private async void NewTabButton_Click(object sender, RoutedEventArgs e)
         {
-            await CreateNewTabAsync("https://www.google.com", switchTo: true);
+            await CreateNewTabAsync(BrowserSettings.Current.StartPageUrl, switchTo: true);
             UrlTextBox.Focus();
             UrlTextBox.SelectAll();
         }
@@ -2738,7 +2894,7 @@ namespace Browy
                 else if (e.Key == Key.T)
                 {
                     e.Handled = true;
-                    await CreateNewTabAsync("https://www.google.com", switchTo: true);
+                    await CreateNewTabAsync(BrowserSettings.Current.StartPageUrl, switchTo: true);
                     UrlTextBox.Focus();
                     UrlTextBox.SelectAll();
                 }

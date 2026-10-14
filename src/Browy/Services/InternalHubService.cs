@@ -306,5 +306,123 @@ namespace Browy.Services
 </body>
 </html>";
         }
+
+        public static string GetExtensionsHtml(IEnumerable<ExtensionItem> extensions)
+        {
+            var items = extensions.ToList();
+            var itemsHtml = string.Empty;
+
+            if (items.Count == 0)
+            {
+                itemsHtml = @"<div class='empty-state'>
+                    <div class='empty-icon'>&#xE74C;</div>
+                    <div class='empty-title'>No extensions installed</div>
+                    <div class='empty-sub'>Load an unpacked Chrome or Edge extension to expand Browy's capabilities.</div>
+                </div>";
+            }
+            else
+            {
+                var sb = new System.Text.StringBuilder();
+                foreach (var ext in items)
+                {
+                    string name = WebUtility.HtmlEncode(ext.Name);
+                    string version = WebUtility.HtmlEncode(ext.Version);
+                    string desc = WebUtility.HtmlEncode(ext.Description);
+                    string id = WebUtility.HtmlEncode(ext.Id);
+                    string path = WebUtility.HtmlEncode(ext.FolderPath);
+                    string checkedAttr = ext.IsEnabled ? "checked" : "";
+
+                    sb.Append($@"
+                    <div class='ext-card' data-id='{id}'>
+                        <div class='ext-icon'>&#xE74C;</div>
+                        <div class='ext-info'>
+                            <div class='ext-header'>
+                                <span class='ext-name'>{name}</span>
+                                <span class='ext-version'>v{version}</span>
+                            </div>
+                            <div class='ext-desc'>{(!string.IsNullOrEmpty(desc) ? desc : "No description provided.")}</div>
+                            <div class='ext-path' title='{path}'>{path}</div>
+                        </div>
+                        <div class='ext-actions'>
+                            <label class='switch'>
+                                <input type='checkbox' {checkedAttr} onchange=""toggleExtension('{id}', this.checked)"">
+                                <span class='slider'></span>
+                            </label>
+                            <button class='btn-remove' onclick=""removeExtension('{id}')"" title='Remove Extension'>&#xE74D;</button>
+                        </div>
+                    </div>");
+                }
+                itemsHtml = sb.ToString();
+            }
+
+            return $@"<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='UTF-8'>
+<title>Extensions - Browy</title>
+<style>
+  * {{ box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif; }}
+  body {{ background: #0D0D12; color: #F1F5F9; min-height: 100vh; padding: 48px 24px; display: flex; justify-content: center; }}
+  .container {{ width: 100%; max-width: 840px; }}
+  .header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }}
+  .title-area {{ display: flex; align-items: center; gap: 14px; }}
+  .header-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 28px; color: #8B5CF6; }}
+  h1 {{ font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }}
+  .btn-primary {{ background: #8B5CF6; color: #FFFFFF; border: none; padding: 9px 18px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: background 0.15s ease; }}
+  .btn-primary:hover {{ background: #7C3AED; }}
+  .ext-list {{ display: flex; flex-direction: column; gap: 12px; }}
+  .ext-card {{ display: flex; align-items: flex-start; background: #14141E; border: 1px solid #202030; border-radius: 12px; padding: 18px 20px; gap: 16px; transition: all 0.12s ease; }}
+  .ext-card:hover {{ background: #1A1A28; border-color: #303048; }}
+  .ext-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 24px; color: #A78BFA; padding-top: 2px; }}
+  .ext-info {{ flex: 1; min-width: 0; }}
+  .ext-header {{ display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }}
+  .ext-name {{ font-size: 15px; font-weight: 600; color: #F8FAFC; }}
+  .ext-version {{ font-size: 11px; background: #28283C; color: #94A3B8; padding: 2px 6px; border-radius: 4px; }}
+  .ext-desc {{ font-size: 12.5px; color: #94A3B8; line-height: 1.4; margin-bottom: 8px; }}
+  .ext-path {{ font-size: 11px; color: #64748B; font-family: Consolas, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
+  .ext-actions {{ display: flex; align-items: center; gap: 14px; margin-left: 8px; }}
+  .btn-remove {{ background: transparent; border: none; font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 14px; color: #64748B; width: 32px; height: 32px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.12s ease; }}
+  .btn-remove:hover {{ background: #EF444420; color: #F87171; }}
+  .switch {{ position: relative; display: inline-block; width: 40px; height: 22px; }}
+  .switch input {{ opacity: 0; width: 0; height: 0; }}
+  .slider {{ position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #2D3748; transition: .2s; border-radius: 22px; }}
+  .slider:before {{ position: absolute; content: ''; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .2s; border-radius: 50%; }}
+  input:checked + .slider {{ background-color: #8B5CF6; }}
+  input:checked + .slider:before {{ transform: translateX(18px); }}
+  .empty-state {{ text-align: center; padding: 64px 0; color: #64748B; }}
+  .empty-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 48px; margin-bottom: 12px; opacity: 0.5; }}
+  .empty-title {{ font-size: 18px; font-weight: 600; color: #CBD5E1; margin-bottom: 4px; }}
+  .empty-sub {{ font-size: 13px; }}
+</style>
+</head>
+<body>
+<div class='container'>
+  <div class='header'>
+    <div class='title-area'>
+      <div class='header-icon'>&#xE74C;</div>
+      <h1>Extensions</h1>
+    </div>
+    <button class='btn-primary' onclick=""loadUnpackedExtension()""><span style=""font-family: 'Segoe Fluent Icons';"">&#xE710;</span> Load Unpacked Extension</button>
+  </div>
+  <div class='ext-list' id='extList'>
+    {itemsHtml}
+  </div>
+</div>
+<script>
+  function loadUnpackedExtension() {{
+    window.chrome.webview.postMessage(JSON.stringify({{ action: 'load_unpacked_extension' }}));
+  }}
+  function toggleExtension(id, enabled) {{
+    window.chrome.webview.postMessage(JSON.stringify({{ action: 'toggle_extension', id: id, enabled: enabled }}));
+  }}
+  function removeExtension(id) {{
+    window.chrome.webview.postMessage(JSON.stringify({{ action: 'remove_extension', id: id }}));
+    var card = document.querySelector(`.ext-card[data-id='${{id}}']`);
+    if (card) card.remove();
+  }}
+</script>
+</body>
+</html>";
+        }
     }
 }

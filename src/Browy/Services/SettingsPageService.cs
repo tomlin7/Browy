@@ -368,6 +368,9 @@ namespace Browy.Services
     <div class="nav-item" onclick="switchSection('downloads', this)">
       <span class="nav-icon">&#x2B07;</span> Downloads
     </div>
+    <div class="nav-item" onclick="switchSection('copilot', this)">
+      <span class="nav-icon">&#x1F916;</span> AI Copilot
+    </div>
     <div class="nav-item" onclick="switchSection('shortcuts', this)">
       <span class="nav-icon">&#x2328;</span> Keyboard Shortcuts
     </div>
@@ -510,6 +513,59 @@ namespace Browy.Services
       </div>
     </div>
 
+    <!-- AI COPILOT SECTION -->
+    <div id="copilot" class="content-section">
+      <h1 class="section-title">AI Copilot (BYOK)</h1>
+      <p class="section-subtitle">Configure your own API keys for OpenAI, Anthropic Claude, or local Ollama LLMs.</p>
+
+      <div class="settings-group">
+        <div class="settings-row">
+          <div class="row-info">
+            <div class="row-title">Active AI Provider</div>
+            <div class="row-desc">Choose between built-in heuristics or your own AI model provider.</div>
+          </div>
+          <select id="aiProviderSelect" onchange="onAiProviderChange(this.value)">
+            <option value="BrowyDefault" {{(settings.AiProvider == "BrowyDefault" ? "selected" : "")}}>Browy Built-in (Local Heuristics)</option>
+            <option value="OpenAI" {{(settings.AiProvider == "OpenAI" ? "selected" : "")}}>OpenAI (GPT-4o, GPT-4o-mini)</option>
+            <option value="Anthropic" {{(settings.AiProvider == "Anthropic" ? "selected" : "")}}>Anthropic (Claude 3.5 Sonnet)</option>
+            <option value="Ollama" {{(settings.AiProvider == "Ollama" ? "selected" : "")}}>Local Ollama</option>
+          </select>
+        </div>
+
+        <div class="settings-row" id="openAiKeyRow">
+          <div class="row-info">
+            <div class="row-title">OpenAI API Key</div>
+            <div class="row-desc">Bearer token for OpenAI API requests (stored locally).</div>
+          </div>
+          <input type="password" id="openAiKeyInput" placeholder="sk-..." value="{{settings.OpenAiApiKey}}" style="background: rgba(255, 255, 255, 0.07); border: 1px solid var(--border-color); color: white; padding: 8px 12px; border-radius: 6px; width: 220px;" onchange="saveAiConfig()">
+        </div>
+
+        <div class="settings-row" id="anthropicKeyRow">
+          <div class="row-info">
+            <div class="row-title">Anthropic API Key</div>
+            <div class="row-desc">API key for Claude models (stored locally).</div>
+          </div>
+          <input type="password" id="anthropicKeyInput" placeholder="sk-ant-..." value="{{settings.AnthropicApiKey}}" style="background: rgba(255, 255, 255, 0.07); border: 1px solid var(--border-color); color: white; padding: 8px 12px; border-radius: 6px; width: 220px;" onchange="saveAiConfig()">
+        </div>
+
+        <div class="settings-row" id="ollamaEndpointRow">
+          <div class="row-info">
+            <div class="row-title">Ollama Endpoint</div>
+            <div class="row-desc">Local Ollama instance URL (default: http://localhost:11434).</div>
+          </div>
+          <input type="text" id="ollamaEndpointInput" placeholder="http://localhost:11434" value="{{settings.OllamaEndpoint}}" style="background: rgba(255, 255, 255, 0.07); border: 1px solid var(--border-color); color: white; padding: 8px 12px; border-radius: 6px; width: 220px;" onchange="saveAiConfig()">
+        </div>
+
+        <div class="settings-row">
+          <div class="row-info">
+            <div class="row-title">Selected Model Name</div>
+            <div class="row-desc">e.g. gpt-4o-mini, gpt-4o, claude-3-5-sonnet-20241022, llama3, etc.</div>
+          </div>
+          <input type="text" id="aiModelInput" placeholder="gpt-4o-mini" value="{{settings.SelectedAiModel}}" style="background: rgba(255, 255, 255, 0.07); border: 1px solid var(--border-color); color: white; padding: 8px 12px; border-radius: 6px; width: 220px;" onchange="saveAiConfig()">
+        </div>
+      </div>
+    </div>
+
     <!-- SHORTCUTS CHEATSHEET -->
     <div id="shortcuts" class="content-section">
       <h1 class="section-title">Keyboard Shortcuts</h1>
@@ -619,6 +675,27 @@ namespace Browy.Services
     
     postAction('set_search_engine', { name: engine, url: url });
     showToast('Default search engine updated to ' + engine + '.');
+  }
+
+  function saveAiConfig() {
+    const provider = document.getElementById('aiProviderSelect').value;
+    const openAiKey = document.getElementById('openAiKeyInput').value;
+    const anthropicKey = document.getElementById('anthropicKeyInput').value;
+    const ollamaEndpoint = document.getElementById('ollamaEndpointInput').value;
+    const selectedModel = document.getElementById('aiModelInput').value;
+
+    postAction('set_ai_config', {
+      provider: provider,
+      openAiKey: openAiKey,
+      anthropicKey: anthropicKey,
+      ollamaEndpoint: ollamaEndpoint,
+      selectedModel: selectedModel
+    });
+    showToast('AI Copilot BYOK settings saved.');
+  }
+
+  function onAiProviderChange(val) {
+    saveAiConfig();
   }
 </script>
 </body>

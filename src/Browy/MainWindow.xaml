@@ -1058,6 +1058,13 @@
                     Grid.Row="2"
                     Margin="10,2,12,6"
                     WindowChrome.IsHitTestVisibleInChrome="True">
+                <Border.ContextMenu>
+                    <ContextMenu Background="#202024" BorderBrush="#25FFFFFF" BorderThickness="1">
+                        <MenuItem Header="Add Folder" Click="AddBookmarkBarFolder_Click" Foreground="#FFFFFF"/>
+                        <Separator Background="#25FFFFFF"/>
+                        <MenuItem Header="Open All in New Tabs" Click="OpenAllBookmarks_Click" Foreground="#FFFFFF"/>
+                    </ContextMenu>
+                </Border.ContextMenu>
                 <ScrollViewer x:Name="BookmarksScrollViewer"
                               HorizontalScrollBarVisibility="Auto"
                               VerticalScrollBarVisibility="Disabled"
@@ -1072,7 +1079,7 @@
                             <DataTemplate>
                                 <Button Style="{StaticResource IconButton}"
                                         Click="BookmarkItem_Click"
-                                        Tag="{Binding Url}"
+                                        Tag="{Binding}"
                                         Margin="0,0,5,0"
                                         Padding="0"
                                         ToolTip="{Binding Url}">
@@ -1092,6 +1099,23 @@
                                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                             <!-- Real Fetched Favicon (16x16) or Monochrome Fallback -->
                                             <Grid Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center">
+                                                <!-- Folder Icon -->
+                                                <TextBlock Text="&#xE8B7;"
+                                                           FontSize="11"
+                                                           VerticalAlignment="Center"
+                                                           HorizontalAlignment="Center"
+                                                           Foreground="#F59E0B">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock" BasedOn="{StaticResource FluentIcon}">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsFolder}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
                                                 <TextBlock Text="&#xE774;"
                                                            FontSize="11"
                                                            VerticalAlignment="Center"
@@ -1101,9 +1125,13 @@
                                                         <Style TargetType="TextBlock" BasedOn="{StaticResource FluentIcon}">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
                                                             <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding Favicon}" Value="{x:Null}">
+                                                                <MultiDataTrigger>
+                                                                    <MultiDataTrigger.Conditions>
+                                                                        <Condition Binding="{Binding Favicon}" Value="{x:Null}"/>
+                                                                        <Condition Binding="{Binding IsFolder}" Value="False"/>
+                                                                    </MultiDataTrigger.Conditions>
                                                                     <Setter Property="Visibility" Value="Visible"/>
-                                                                </DataTrigger>
+                                                                </MultiDataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
                                                     </TextBlock.Style>

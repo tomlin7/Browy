@@ -12,6 +12,8 @@ namespace Browy.Services
     {
         public string Title { get; set; } = string.Empty;
         public string Url { get; set; } = string.Empty;
+        public bool IsFolder { get; set; } = false;
+        public List<BookmarkDto>? Children { get; set; }
     }
 
     public static class BookmarkService
@@ -32,7 +34,7 @@ namespace Browy.Services
                     var dtos = JsonSerializer.Deserialize<List<BookmarkDto>>(json);
                     if (dtos != null && dtos.Count > 0)
                     {
-                        return dtos.Select(d => new BookmarkItem(d.Title, d.Url)).ToList();
+                        return dtos.Select(DtoToModel).ToList();
                     }
                 }
             }
@@ -58,11 +60,7 @@ namespace Browy.Services
             try
             {
                 Directory.CreateDirectory(StorageDirectory);
-                var dtos = bookmarks.Select(b => new BookmarkDto
-                {
-                    Title = b.Title,
-                    Url = b.Url
-                }).ToList();
+                var dtos = bookmarks.Select(ModelToDto).ToList();
 
                 string json = JsonSerializer.Serialize(dtos, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(FilePath, json);
@@ -73,13 +71,67 @@ namespace Browy.Services
             }
         }
 
+        public static BookmarkItem DtoToModel(BookmarkDto dto)
+        {
+            var item = new BookmarkItem
+            {
+                Title = dto.Title,
+                Url = dto.Url,
+                IsFolder = dto.IsFolder
+            };
+
+            if (dto.Children != null && dto.Children.Count > 0)
+            {
+                foreach (var childDto in dto.Children)
+                {
+                    item.Children.Add(DtoToModel(childDto));
+                }
+            }
+            else if (!item.IsFolder && !string.IsNullOrWhiteSpace(item.Url))
+            {
+                _ = item.LoadFaviconAsync();
+            }
+
+            return item;
+        }
+
+        public static BookmarkDto ModelToDto(BookmarkItem item)
+        {
+            var dto = new BookmarkDto
+            {
+                Title = item.Title,
+                Url = item.Url,
+                IsFolder = item.IsFolder
+            };
+
+            if (item.Children.Count > 0)
+            {
+                dto.Children = item.Children.Select(ModelToDto).ToList();
+            }
+
+            return dto;
+        }
+
         public static bool IsUrlBookmarked(IEnumerable<BookmarkItem> bookmarks, string? url)
         {
             if (string.IsNullOrWhiteSpace(url))
                 return false;
 
             string normalizedUrl = NormalizeUrl(url);
-            return bookmarks.Any(b => NormalizeUrl(b.Url) == normalizedUrl);
+
+            bool CheckRecursive(IEnumerable<BookmarkItem> items)
+            {
+                foreach (var b in items)
+                {
+                    if (!b.IsFolder && NormalizeUrl(b.Url) == normalizedUrl)
+                        return true;
+                    if (b.Children.Count > 0 && CheckRecursive(b.Children))
+                        return true;
+                }
+                return false;
+            }
+
+            return CheckRecursive(bookmarks);
         }
 
         private static string NormalizeUrl(string url)
@@ -102,12 +154,29 @@ namespace Browy.Services
             sb.AppendLine("<TITLE>Bookmarks</TITLE>");
             sb.AppendLine("<H1>Bookmarks</H1>");
             sb.AppendLine("<DL><p>");
-            foreach (var b in bookmarks)
+
+            void AppendItems(IEnumerable<BookmarkItem> items, int indent)
             {
-                string title = System.Net.WebUtility.HtmlEncode(b.Title);
-                string url = System.Net.WebUtility.HtmlEncode(b.Url);
-                sb.AppendLine($"    <DT><A HREF=\"{url}\">{title}</A>");
+                string pad = new string(' ', indent * 4);
+                foreach (var b in items)
+                {
+                    string title = System.Net.WebUtility.HtmlEncode(b.Title);
+                    if (b.IsFolder)
+                    {
+                        sb.AppendLine($"{pad}<DT><H3>{title}</H3>");
+                        sb.AppendLine($"{pad}<DL><p>");
+                        AppendItems(b.Children, indent + 1);
+                        sb.AppendLine($"{pad}</DL><p>");
+                    }
+                    else
+                    {
+                        string url = System.Net.WebUtility.HtmlEncode(b.Url);
+                        sb.AppendLine($"{pad}<DT><A HREF=\"{url}\">{title}</A>");
+                    }
+                }
             }
+
+            AppendItems(bookmarks, 1);
             sb.AppendLine("</DL><p>");
             return sb.ToString();
         }
@@ -117,19 +186,31 @@ namespace Browy.Services
             var list = new List<BookmarkItem>();
             if (string.IsNullOrWhiteSpace(html)) return list;
 
+            // Matches <DT><H3>Title</H3> or <DT><A HREF="...">Title</A>
             var matches = System.Text.RegularExpressions.Regex.Matches(
                 html,
-                @"<A\s+(?:[^>]*?\s+)?HREF=""([^""]*)""[^>]*>(.*?)</A>",
+                @"<DT>(?:<H3[^>]*>(?<folder>.*?)</H3>|<A\s+(?:[^>]*?\s+)?HREF=""(?<url>[^""]*)""[^>]*>(?<title>.*?)</A>)",
                 System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
             foreach (System.Text.RegularExpressions.Match match in matches)
             {
-                string url = System.Net.WebUtility.HtmlDecode(match.Groups[1].Value.Trim());
-                string title = System.Net.WebUtility.HtmlDecode(match.Groups[2].Value.Trim());
-                if (!string.IsNullOrEmpty(url))
+                if (match.Groups["folder"].Success)
                 {
-                    if (string.IsNullOrWhiteSpace(title)) title = url;
-                    list.Add(new BookmarkItem(title, url));
+                    string folderName = System.Net.WebUtility.HtmlDecode(match.Groups["folder"].Value.Trim());
+                    if (!string.IsNullOrEmpty(folderName))
+                    {
+                        list.Add(new BookmarkItem(folderName, isFolder: true));
+                    }
+                }
+                else if (match.Groups["url"].Success)
+                {
+                    string url = System.Net.WebUtility.HtmlDecode(match.Groups["url"].Value.Trim());
+                    string title = System.Net.WebUtility.HtmlDecode(match.Groups["title"].Value.Trim());
+                    if (!string.IsNullOrEmpty(url))
+                    {
+                        if (string.IsNullOrWhiteSpace(title)) title = url;
+                        list.Add(new BookmarkItem(title, url));
+                    }
                 }
             }
             return list;

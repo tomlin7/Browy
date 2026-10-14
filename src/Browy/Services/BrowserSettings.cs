@@ -16,6 +16,14 @@ namespace Browy.Services
         public bool BlockThirdPartyCookies { get; set; } = true;
         public bool DoNotTrack { get; set; } = true;
         public System.Collections.Generic.Dictionary<string, double> SiteZoomLevels { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+        // AI Copilot BYOK Configuration
+        public string AiProvider { get; set; } = "BrowyDefault";
+        public string OpenAiApiKey { get; set; } = string.Empty;
+        public string AnthropicApiKey { get; set; } = string.Empty;
+        public string OllamaEndpoint { get; set; } = "http://localhost:11434";
+        public string SelectedAiModel { get; set; } = "gpt-4o-mini";
+        public System.Collections.Generic.List<string> InstalledExtensionPaths { get; set; } = new();
     }
 
     public static class BrowserSettings

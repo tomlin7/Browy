@@ -183,6 +183,7 @@ namespace Browy
 
             // Populate initial bookmarks matching the sleek Arc/Zen style in screenshot 2
             LoadInitialBookmarks();
+            BookmarksBar.Visibility = BrowserSettings.Current.ShowBookmarksBar ? Visibility.Visible : Visibility.Collapsed;
 
             if (IsInPrivate)
             {
@@ -319,9 +320,75 @@ namespace Browy
 
         private void BookmarkItem_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is FrameworkElement elem && elem.Tag is string url && !string.IsNullOrEmpty(url))
+            if (sender is FrameworkElement elem)
             {
-                NavigateActiveTab(url);
+                if (elem.Tag is BookmarkItem item)
+                {
+                    if (item.IsFolder)
+                    {
+                        var cm = new ContextMenu { Background = new SolidColorBrush(Color.FromRgb(0x20, 0x20, 0x24)), BorderBrush = new SolidColorBrush(Color.FromArgb(0x25, 0xFF, 0xFF, 0xFF)) };
+                        if (item.Children.Count == 0)
+                        {
+                            var emptyMi = new MenuItem { Header = "(Empty Folder)", IsEnabled = false, Foreground = Brushes.Gray };
+                            cm.Items.Add(emptyMi);
+                        }
+                        else
+                        {
+                            foreach (var child in item.Children)
+                            {
+                                var mi = new MenuItem { Header = child.Title, Foreground = Brushes.White };
+                                mi.Click += (s, ev) =>
+                                {
+                                    if (!string.IsNullOrEmpty(child.Url))
+                                    {
+                                        NavigateActiveTab(child.Url);
+                                    }
+                                };
+                                cm.Items.Add(mi);
+                            }
+                        }
+                        cm.PlacementTarget = elem;
+                        cm.IsOpen = true;
+                        return;
+                    }
+
+                    if (!string.IsNullOrEmpty(item.Url))
+                    {
+                        NavigateActiveTab(item.Url);
+                    }
+                }
+                else if (elem.Tag is string url && !string.IsNullOrEmpty(url))
+                {
+                    NavigateActiveTab(url);
+                }
+            }
+        }
+
+        private void AddBookmarkBarFolder_Click(object sender, RoutedEventArgs e)
+        {
+            var folder = new BookmarkItem("New Folder", isFolder: true);
+            Bookmarks.Add(folder);
+            BookmarkService.SaveBookmarks(Bookmarks);
+        }
+
+        private void OpenAllBookmarks_Click(object sender, RoutedEventArgs e)
+        {
+            foreach (var b in Bookmarks)
+            {
+                if (!b.IsFolder && !string.IsNullOrEmpty(b.Url))
+                {
+                    _ = CreateNewTabAsync(b.Url, switchTo: false);
+                }
+                else if (b.IsFolder)
+                {
+                    foreach (var child in b.Children)
+                    {
+                        if (!string.IsNullOrEmpty(child.Url))
+                        {
+                            _ = CreateNewTabAsync(child.Url, switchTo: false);
+                        }
+                    }
+                }
             }
         }
 
@@ -598,6 +665,33 @@ namespace Browy
                             if (_activeTab != null) UpdateShieldUI(_activeTab);
                         }
                         break;
+
+                    case "load_unpacked_extension":
+                        await LoadUnpackedExtensionAsync();
+                        break;
+
+                    case "toggle_extension":
+                        if (root.TryGetProperty("id", out var extIdProp) && root.TryGetProperty("enabled", out var extEnProp))
+                        {
+                            await ExtensionService.ToggleExtensionAsync(tab.WebViewInstance?.CoreWebView2?.Profile, extIdProp.GetString() ?? "", extEnProp.GetBoolean());
+                        }
+                        break;
+
+                    case "remove_extension":
+                        if (root.TryGetProperty("id", out var remIdProp))
+                        {
+                            await ExtensionService.RemoveExtensionAsync(tab.WebViewInstance?.CoreWebView2?.Profile, remIdProp.GetString() ?? "");
+                        }
+                        break;
+
+                    case "set_ai_config":
+                        if (root.TryGetProperty("provider", out var pProp)) BrowserSettings.Current.AiProvider = pProp.GetString() ?? "BrowyDefault";
+                        if (root.TryGetProperty("openAiKey", out var oaKey)) BrowserSettings.Current.OpenAiApiKey = oaKey.GetString() ?? "";
+                        if (root.TryGetProperty("anthropicKey", out var clKey)) BrowserSettings.Current.AnthropicApiKey = clKey.GetString() ?? "";
+                        if (root.TryGetProperty("ollamaEndpoint", out var olEnd)) BrowserSettings.Current.OllamaEndpoint = olEnd.GetString() ?? "http://localhost:11434";
+                        if (root.TryGetProperty("selectedModel", out var sModel)) BrowserSettings.Current.SelectedAiModel = sModel.GetString() ?? "gpt-4o-mini";
+                        BrowserSettings.Save();
+                        break;
                 }
             }
             catch (Exception ex)
@@ -840,6 +934,23 @@ namespace Browy
                         return;
                     }
 
+                    if (args.Uri.StartsWith("browy://extensions", StringComparison.OrdinalIgnoreCase) ||
+                        args.Uri.StartsWith("about:extensions", StringComparison.OrdinalIgnoreCase))
+                    {
+                        args.Cancel = true;
+                        Dispatcher.Invoke(() =>
+                        {
+                            tab.Url = "browy://extensions";
+                            tab.Title = "Extensions - Browy";
+                            tab.FallbackIcon = "\uE74C";
+                            tab.IsLoading = false;
+                            tab.BlockedCount = 0;
+                            if (_activeTab == tab) UpdateNavigationUI(tab);
+                            tab.WebViewInstance.NavigateToString(InternalHubService.GetExtensionsHtml(ExtensionService.Extensions));
+                        });
+                        return;
+                    }
+
                     if (args.Uri.StartsWith("browy://newtab", StringComparison.OrdinalIgnoreCase) ||
                         args.Uri.StartsWith("browy://start", StringComparison.OrdinalIgnoreCase) ||
                         args.Uri.StartsWith("about:newtab", StringComparison.OrdinalIgnoreCase) ||
@@ -1011,6 +1122,14 @@ namespace Browy
                         tab.Title = "Downloads - Browy";
                         tab.FallbackIcon = "\uE896";
                         tab.WebViewInstance.NavigateToString(InternalHubService.GetDownloadsHtml(Downloads));
+                    }
+                    else if (initialUrl.StartsWith("browy://extensions", StringComparison.OrdinalIgnoreCase) ||
+                             initialUrl.StartsWith("about:extensions", StringComparison.OrdinalIgnoreCase))
+                    {
+                        tab.Url = "browy://extensions";
+                        tab.Title = "Extensions - Browy";
+                        tab.FallbackIcon = "\uE74C";
+                        tab.WebViewInstance.NavigateToString(InternalHubService.GetExtensionsHtml(ExtensionService.Extensions));
                     }
                     else if (initialUrl.StartsWith("browy://newtab", StringComparison.OrdinalIgnoreCase) ||
                              initialUrl.StartsWith("browy://start", StringComparison.OrdinalIgnoreCase) ||
@@ -1492,6 +1611,17 @@ namespace Browy
                 _activeTab.FallbackIcon = "\uE896";
                 UpdateNavigationUI(_activeTab);
                 _activeTab.WebViewInstance?.NavigateToString(InternalHubService.GetDownloadsHtml(Downloads));
+                return;
+            }
+
+            if (targetUrl.StartsWith("browy://extensions", StringComparison.OrdinalIgnoreCase) ||
+                targetUrl.StartsWith("about:extensions", StringComparison.OrdinalIgnoreCase))
+            {
+                _activeTab.Url = "browy://extensions";
+                _activeTab.Title = "Extensions - Browy";
+                _activeTab.FallbackIcon = "\uE74C";
+                UpdateNavigationUI(_activeTab);
+                _activeTab.WebViewInstance?.NavigateToString(InternalHubService.GetExtensionsHtml(ExtensionService.Extensions));
                 return;
             }
 
@@ -1978,6 +2108,13 @@ namespace Browy
                 return;
             }
 
+            if (_activeTab?.Url.StartsWith("browy://extensions", StringComparison.OrdinalIgnoreCase) == true ||
+                _activeTab?.Url.StartsWith("about:extensions", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                _activeTab.WebViewInstance?.NavigateToString(InternalHubService.GetExtensionsHtml(ExtensionService.Extensions));
+                return;
+            }
+
             if (_activeTab?.Url.StartsWith("browy://newtab", StringComparison.OrdinalIgnoreCase) == true ||
                 _activeTab?.Url.StartsWith("browy://start", StringComparison.OrdinalIgnoreCase) == true ||
                 _activeTab?.Url.StartsWith("about:newtab", StringComparison.OrdinalIgnoreCase) == true ||
@@ -2028,7 +2165,10 @@ namespace Browy
 
         public void ToggleBookmarksBar()
         {
-            BookmarksBar.Visibility = (BookmarksBar.Visibility == Visibility.Visible) ? Visibility.Collapsed : Visibility.Visible;
+            bool isVisible = (BookmarksBar.Visibility != Visibility.Visible);
+            BookmarksBar.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+            BrowserSettings.Current.ShowBookmarksBar = isVisible;
+            BrowserSettings.Save();
         }
 
         public void ZoomIn()
@@ -3454,7 +3594,7 @@ namespace Browy
             {
                 if (e.Key == Key.B)
                 {
-                    BookmarksBar.Visibility = (BookmarksBar.Visibility == Visibility.Visible) ? Visibility.Collapsed : Visibility.Visible;
+                    ToggleBookmarksBar();
                     e.Handled = true;
                 }
                 else if (e.Key == Key.P)
@@ -3819,70 +3959,7 @@ namespace Browy
                 catch { }
             }
 
-            string response;
-            if (prompt.IndexOf("summarize", StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                var summaryBullet1 = !string.IsNullOrWhiteSpace(headings)
-                    ? $"Core Topics: {headings}"
-                    : $"Topic: Overview of {currentTitle}";
-                var snippet = !string.IsNullOrWhiteSpace(pageText)
-                    ? (pageText.Length > 280 ? pageText.Substring(0, 280) + "..." : pageText)
-                    : "No text extractable from this page.";
-
-                response = $"### Summary of {currentTitle}\n\n" +
-                           $"• **Source**: `{NavigationHelper.ExtractDomain(currentUrl)}`\n" +
-                           $"• **Structure**: {summaryBullet1}\n" +
-                           $"• **Executive Overview**: {snippet}\n\n" +
-                           $"*Synthesized live from the active DOM content.*";
-            }
-            else if (prompt.IndexOf("explain", StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                response = $"### Concept Explanation: {currentTitle}\n\n" +
-                           $"Based on the active page ({currentUrl}):\n\n" +
-                           (!string.IsNullOrWhiteSpace(pageText)
-                               ? $"The page centers on: {pageText.Substring(0, Math.Min(350, pageText.Length))}...\n\n" +
-                                 "**Key Takeaways**:\n" +
-                                 "1. Main purpose: Delivers structured documentation and interfaces for modern web workflows.\n" +
-                                 "2. Technical approach: Emphasizes standard client-server patterns, reactive components, and fast rendering."
-                               : "This internal/blank page does not contain standard body text to analyze.");
-            }
-            else if (prompt.IndexOf("extract", StringComparison.OrdinalIgnoreCase) >= 0 || prompt.IndexOf("table", StringComparison.OrdinalIgnoreCase) >= 0 || prompt.IndexOf("data", StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                response = $"### Extracted Page Intelligence: {currentTitle}\n\n" +
-                           "| Attribute | Value |\n" +
-                           "| :--- | :--- |\n" +
-                           $"| **Title** | {currentTitle} |\n" +
-                           $"| **Domain** | `{NavigationHelper.ExtractDomain(currentUrl)}` |\n" +
-                           $"| **Security** | {(currentUrl.StartsWith("https") ? "Secure SSL (TLS 1.3)" : "Non-secure / Internal")} |\n" +
-                           $"| **Headings Detected** | {(!string.IsNullOrWhiteSpace(headings) ? headings : "None detected")} |\n" +
-                           $"| **Content Length** | {pageText.Length} characters parsed |\n\n" +
-                           "*(Data parsed from active DOM snapshot)*";
-            }
-            else
-            {
-                string snippet = "";
-                if (!string.IsNullOrWhiteSpace(pageText))
-                {
-                    var sentences = pageText.Split(new[] { '.', '!', '?' }, StringSplitOptions.RemoveEmptyEntries);
-                    var matched = sentences.FirstOrDefault(s => s.IndexOf(prompt, StringComparison.OrdinalIgnoreCase) >= 0);
-                    if (!string.IsNullOrWhiteSpace(matched))
-                    {
-                        snippet = matched.Trim() + ".";
-                    }
-                }
-
-                if (!string.IsNullOrWhiteSpace(snippet))
-                {
-                    response = $"Based on {currentTitle}:\n\n> {snippet}\n\nLet me know if you would like me to dive deeper into this topic.";
-                }
-                else
-                {
-                    response = $"Analyzing \"{prompt}\" in the context of **{currentTitle}** ({currentUrl}).\n\n" +
-                               (!string.IsNullOrWhiteSpace(headings) ? $"Related sections found on page: *{headings}*.\n\n" : "") +
-                               "You can ask me to summarize the page, explain technical terms, or extract data tables.";
-                }
-            }
-
+            string response = await AiCopilotService.QueryCopilotAsync(prompt, pageText, headings, currentTitle, currentUrl);
             AgentMessages.Add(new AgentMessage("Agent", response));
             AgentMessagesScrollViewer?.ScrollToEnd();
         }
@@ -4158,6 +4235,42 @@ namespace Browy
         public void OpenDownloadsPage()
         {
             NavigateActiveTab("browy://downloads");
+        }
+
+        public void OpenExtensionsPage()
+        {
+            NavigateActiveTab("browy://extensions");
+        }
+
+        public async Task LoadUnpackedExtensionAsync()
+        {
+            var dialog = new Microsoft.Win32.OpenFolderDialog
+            {
+                Title = "Select Unpacked Extension Folder (containing manifest.json)"
+            };
+
+            if (dialog.ShowDialog(this) == true)
+            {
+                try
+                {
+                    if (_activeTab?.WebViewInstance?.CoreWebView2?.Profile != null)
+                    {
+                        var ext = await ExtensionService.LoadExtensionFromFolderAsync(_activeTab.WebViewInstance.CoreWebView2.Profile, dialog.FolderName);
+                        if (_activeTab.Url.StartsWith("browy://extensions", StringComparison.OrdinalIgnoreCase))
+                        {
+                            _activeTab.WebViewInstance.NavigateToString(InternalHubService.GetExtensionsHtml(ExtensionService.Extensions));
+                        }
+                        else
+                        {
+                            OpenExtensionsPage();
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Windows.MessageBox.Show($"Failed to load extension: {ex.Message}", "Extension Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
         }
 
         #endregion

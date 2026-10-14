@@ -14,6 +14,34 @@ namespace Browy.Models
         private ImageSource? _favicon;
         private string _backgroundColor = "#10FFFFFF";
         private string _foregroundColor = "#E5E7EB";
+        private bool _isFolder;
+        private System.Collections.ObjectModel.ObservableCollection<BookmarkItem> _children = new();
+
+        public bool IsFolder
+        {
+            get => _isFolder;
+            set
+            {
+                if (_isFolder != value)
+                {
+                    _isFolder = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public System.Collections.ObjectModel.ObservableCollection<BookmarkItem> Children
+        {
+            get => _children;
+            set
+            {
+                if (_children != value)
+                {
+                    _children = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
 
         public string Title
         {
@@ -81,6 +109,12 @@ namespace Browy.Models
         }
 
         public BookmarkItem() { }
+
+        public BookmarkItem(string title, bool isFolder)
+        {
+            Title = title;
+            IsFolder = isFolder;
+        }
 
         public BookmarkItem(string title, string url, ImageSource? favicon = null, string bgColor = "#10FFFFFF", string fgColor = "#E5E7EB")
         {

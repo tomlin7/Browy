@@ -38,6 +38,7 @@ namespace Browy
         private CancellationTokenSource? _suggestionCts;
 
         private BrowserTab? _activeTab;
+        public BrowserTab? ActiveTab => _activeTab;
         private bool _isSidebarCollapsed = false;
         private bool _isAgentsPanelOpen = true;
         private bool _isFindMatchCase = false;
@@ -900,6 +901,12 @@ namespace Browy
                             {
                                 tab.Title = NavigationHelper.ExtractDomain(tab.Url);
                             }
+
+                            double savedZoom = BrowserSettings.GetSiteZoomLevel(tab.Url);
+                            if (Math.Abs(tab.WebViewInstance.ZoomFactor - savedZoom) > 0.01)
+                            {
+                                tab.WebViewInstance.ZoomFactor = savedZoom;
+                            }
                         }
 
                         if (_activeTab == tab)
@@ -1070,6 +1077,18 @@ namespace Browy
             }
 
             _activeTab = tab;
+            if (tab.IsSleeping)
+            {
+                WakeTab(tab);
+            }
+            if (tab.WebViewInstance != null)
+            {
+                double savedZoom = BrowserSettings.GetSiteZoomLevel(tab.Url);
+                if (Math.Abs(tab.WebViewInstance.ZoomFactor - savedZoom) > 0.01)
+                {
+                    tab.WebViewInstance.ZoomFactor = savedZoom;
+                }
+            }
             UpdateNavigationUI(tab);
             StartPageGrid.Visibility = Visibility.Collapsed;
 
@@ -2018,6 +2037,7 @@ namespace Browy
             {
                 double z = Math.Min(3.0, _activeTab.WebViewInstance.ZoomFactor + 0.1);
                 _activeTab.WebViewInstance.ZoomFactor = Math.Round(z, 2);
+                BrowserSettings.SetSiteZoomLevel(_activeTab.Url, _activeTab.WebViewInstance.ZoomFactor);
                 UpdateZoomUI();
             }
         }
@@ -2028,6 +2048,7 @@ namespace Browy
             {
                 double z = Math.Max(0.25, _activeTab.WebViewInstance.ZoomFactor - 0.1);
                 _activeTab.WebViewInstance.ZoomFactor = Math.Round(z, 2);
+                BrowserSettings.SetSiteZoomLevel(_activeTab.Url, _activeTab.WebViewInstance.ZoomFactor);
                 UpdateZoomUI();
             }
         }
@@ -2037,6 +2058,7 @@ namespace Browy
             if (_activeTab?.WebViewInstance != null)
             {
                 _activeTab.WebViewInstance.ZoomFactor = 1.0;
+                BrowserSettings.SetSiteZoomLevel(_activeTab.Url, 1.0);
                 UpdateZoomUI();
             }
         }
@@ -2565,6 +2587,31 @@ namespace Browy
             muteItem.Click += (s, args) => ToggleMuteTab(tab);
             cm.Items.Add(muteItem);
 
+            // Mute Other Tabs
+            var muteOthers = new MenuItem
+            {
+                Header = "Mute Other Tabs",
+                Icon = new TextBlock { Style = (Style)FindResource("FluentIcon"), Text = "\uE74F", FontSize = 11, Foreground = Brushes.White }
+            };
+            muteOthers.Click += (s, args) => MuteOtherTabs(tab);
+            cm.Items.Add(muteOthers);
+
+            // Snooze / Sleep Tab
+            if (tab != _activeTab && !tab.IsPinned && !tab.IsPlayingAudio)
+            {
+                var snoozeItem = new MenuItem
+                {
+                    Header = tab.IsSleeping ? "Wake Tab" : "Snooze Tab (Save Memory)",
+                    Icon = new TextBlock { Style = (Style)FindResource("FluentIcon"), Text = "\uE708", FontSize = 11, Foreground = Brushes.White }
+                };
+                snoozeItem.Click += (s, args) =>
+                {
+                    if (tab.IsSleeping) WakeTab(tab);
+                    else SnoozeTab(tab);
+                };
+                cm.Items.Add(snoozeItem);
+            }
+
             cm.Items.Add(new Separator { Background = new SolidColorBrush(Color.FromArgb(0x20, 0xFF, 0xFF, 0xFF)) });
 
             // Duplicate
@@ -2584,6 +2631,15 @@ namespace Browy
             };
             reloadItem.Click += (s, args) => tab.WebViewInstance?.Reload();
             cm.Items.Add(reloadItem);
+
+            // Inspect Element / DevTools
+            var inspectItem = new MenuItem
+            {
+                Header = "Inspect Element (F12)",
+                Icon = new TextBlock { Style = (Style)FindResource("FluentIcon"), Text = "\uEBE8", FontSize = 11, Foreground = Brushes.White }
+            };
+            inspectItem.Click += (s, args) => tab.WebViewInstance?.CoreWebView2?.OpenDevToolsWindow();
+            cm.Items.Add(inspectItem);
 
             cm.Items.Add(new Separator { Background = new SolidColorBrush(Color.FromArgb(0x20, 0xFF, 0xFF, 0xFF)) });
 
@@ -2640,6 +2696,89 @@ namespace Browy
         public void ToggleMuteCurrentTab()
         {
             if (_activeTab != null) ToggleMuteTab(_activeTab);
+        }
+
+        public void MuteOtherTabsCurrent()
+        {
+            if (_activeTab != null) MuteOtherTabs(_activeTab);
+        }
+
+        public void SnoozeCurrentTab()
+        {
+            if (_activeTab != null) SnoozeTab(_activeTab);
+        }
+
+        public void MuteOtherTabs(BrowserTab keepTab)
+        {
+            foreach (var t in Tabs.Where(t => t != keepTab))
+            {
+                if (t.WebViewInstance?.CoreWebView2 != null)
+                {
+                    t.WebViewInstance.CoreWebView2.IsMuted = true;
+                    t.IsMuted = true;
+                }
+            }
+        }
+
+        public async void SnoozeTab(BrowserTab tab)
+        {
+            if (tab == null || tab == _activeTab || tab.IsPinned || tab.IsPlayingAudio) return;
+            try
+            {
+                if (tab.WebViewInstance?.CoreWebView2 != null)
+                {
+                    await tab.WebViewInstance.CoreWebView2.TrySuspendAsync();
+                    tab.IsSleeping = true;
+                }
+            }
+            catch { }
+        }
+
+        public void WakeTab(BrowserTab tab)
+        {
+            if (tab == null) return;
+            try
+            {
+                if (tab.IsSleeping && tab.WebViewInstance?.CoreWebView2 != null)
+                {
+                    tab.WebViewInstance.CoreWebView2.Resume();
+                }
+            }
+            catch { }
+            finally
+            {
+                tab.IsSleeping = false;
+            }
+        }
+
+        public void PrintActiveTab()
+        {
+            if (_activeTab?.WebViewInstance?.CoreWebView2 != null)
+            {
+                try
+                {
+                    _activeTab.WebViewInstance.CoreWebView2.ShowPrintUI(CoreWebView2PrintDialogKind.Browser);
+                }
+                catch { }
+            }
+        }
+
+        public async Task SaveActiveTabAsPdfAsync()
+        {
+            if (_activeTab?.WebViewInstance?.CoreWebView2 == null) return;
+            try
+            {
+                var sfd = new Microsoft.Win32.SaveFileDialog
+                {
+                    Filter = "PDF Document (*.pdf)|*.pdf",
+                    FileName = $"{string.Join("_", _activeTab.Title.Split(Path.GetInvalidFileNameChars()))}.pdf"
+                };
+                if (sfd.ShowDialog() == true)
+                {
+                    await _activeTab.WebViewInstance.CoreWebView2.PrintToPdfAsync(sfd.FileName);
+                }
+            }
+            catch { }
         }
 
         public void CloseOtherTabs(BrowserTab keepTab)
@@ -3316,10 +3455,27 @@ namespace Browy
                         ToggleAgentsPanel_Click(this, new RoutedEventArgs());
                     }
                 }
-                else if (e.Key == Key.K || (e.Key == Key.P && Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)))
+                else if (e.Key == Key.K)
                 {
                     e.Handled = true;
                     OpenCommandPalette();
+                }
+                else if (e.Key == Key.P)
+                {
+                    e.Handled = true;
+                    if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+                    {
+                        OpenCommandPalette();
+                    }
+                    else
+                    {
+                        PrintActiveTab();
+                    }
+                }
+                else if (e.Key == Key.I && Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+                {
+                    e.Handled = true;
+                    OpenDevTools();
                 }
                 else if (e.Key == Key.Tab)
                 {

@@ -15,6 +15,7 @@ namespace Browy.Services
         public bool IsAcrylicEnabled { get; set; } = true;
         public bool BlockThirdPartyCookies { get; set; } = true;
         public bool DoNotTrack { get; set; } = true;
+        public System.Collections.Generic.Dictionary<string, double> SiteZoomLevels { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     }
 
     public static class BrowserSettings
@@ -87,6 +88,39 @@ namespace Browy.Services
             {
                 _current.SearchEngineName = name;
                 _current.SearchEngineUrl = url;
+            }
+            Save();
+        }
+
+        public static double GetSiteZoomLevel(string url)
+        {
+            string domain = NavigationHelper.ExtractDomain(url);
+            if (string.IsNullOrWhiteSpace(domain)) return 1.0;
+            lock (_lock)
+            {
+                if (_current.SiteZoomLevels != null && _current.SiteZoomLevels.TryGetValue(domain, out double zoom))
+                {
+                    return zoom;
+                }
+            }
+            return 1.0;
+        }
+
+        public static void SetSiteZoomLevel(string url, double zoomFactor)
+        {
+            string domain = NavigationHelper.ExtractDomain(url);
+            if (string.IsNullOrWhiteSpace(domain)) return;
+            lock (_lock)
+            {
+                _current.SiteZoomLevels ??= new(StringComparer.OrdinalIgnoreCase);
+                if (Math.Abs(zoomFactor - 1.0) < 0.01)
+                {
+                    _current.SiteZoomLevels.Remove(domain);
+                }
+                else
+                {
+                    _current.SiteZoomLevels[domain] = Math.Round(zoomFactor, 2);
+                }
             }
             Save();
         }

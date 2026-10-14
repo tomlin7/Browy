@@ -297,6 +297,8 @@ namespace Browy
                 new("Previous Tab", "Tabs", "\uE76B", "Ctrl+Shift+Tab", "Switch to the previous tab", w => w.SelectPreviousTab()),
                 new("Pin / Unpin Active Tab", "Tabs", "\uE718", "", "Pin or unpin current browser tab", w => w.TogglePinCurrentTab()),
                 new("Mute / Unmute Active Tab", "Tabs", "\uE74F", "Ctrl+M", "Mute or unmute audio for current tab", w => w.ToggleMuteCurrentTab()),
+                new("Mute Other Tabs", "Tabs", "\uE74F", "", "Mute audio on all tabs except active", w => w.MuteOtherTabsCurrent()),
+                new("Snooze Current Tab (Save Memory)", "Tabs", "\uE708", "", "Suspend background resources for active tab", w => w.SnoozeCurrentTab()),
                 new("Close Other Tabs", "Tabs", "\uE711", "", "Close all tabs except active tab", w => w.CloseOtherTabsCurrent()),
                 new("Close Tabs to the Right", "Tabs", "\uE711", "", "Close all tabs to the right of active tab", w => w.CloseTabsToRightCurrent()),
 
@@ -332,6 +334,7 @@ namespace Browy
                 new("Developer Tools", "Tools", "\uEC7A", "F12", "Inspect DOM, network requests, and console logs", w => w.OpenDevTools()),
                 new("View Page Source", "Tools", "\uE943", "Ctrl+U", "View the HTML source code of this page", w => w.ViewPageSource()),
                 new("Print Page", "Tools", "\uE749", "Ctrl+P", "Print or export current page to PDF", w => w.PrintCurrentPage()),
+                new("Save Page as PDF", "Tools", "\uE749", "", "Export the current webpage as a PDF file", w => _ = w.SaveActiveTabAsPdfAsync()),
                 new("Bookmark This Page", "Tools", "\uE734", "Ctrl+D", "Save active page to your bookmarks", w => w.BookmarkCurrentPage()),
                 new("Browsing History", "Tools", "\uE81C", "Ctrl+H", "Open browsing history drawer", w => w.ToggleHistory()),
                 new("Clear Browsing History", "Tools", "\uE74D", "", "Erase all saved history entries", w => w.ClearAllHistory()),

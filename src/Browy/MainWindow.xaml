@@ -133,7 +133,7 @@
                                                 BorderThickness="1"
                                                 Opacity="0"/>
 
-                                        <Grid Margin="10,7">
+                                        <Grid Margin="10,7" Opacity="{Binding TabOpacity}">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="20"/>
                                                 <ColumnDefinition Width="*"/>
@@ -201,6 +201,26 @@
                                                         <Setter Property="Visibility" Value="Collapsed"/>
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding IsPinned}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+
+                                            <!-- Sleeping Indicator Icon -->
+                                            <TextBlock Grid.Column="2"
+                                                       Text="&#xE708;"
+                                                       FontSize="9"
+                                                       Foreground="#A5B4FC"
+                                                       VerticalAlignment="Center"
+                                                       Margin="0,0,4,0"
+                                                       ToolTip="{Binding SleepStatusToolTip}">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock" BasedOn="{StaticResource FluentIcon}">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding ShowsSleepIcon}" Value="True">
                                                                 <Setter Property="Visibility" Value="Visible"/>
                                                             </DataTrigger>
                                                         </Style.Triggers>

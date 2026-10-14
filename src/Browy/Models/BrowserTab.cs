@@ -246,6 +246,27 @@ namespace Browy.Models
             ? $"Browy Shield: {_blockedCount} ads & trackers blocked"
             : "Browy Shield: Active (Protected)";
 
+        private bool _isSleeping = false;
+        public bool IsSleeping
+        {
+            get => _isSleeping;
+            set
+            {
+                if (_isSleeping != value)
+                {
+                    _isSleeping = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(TabOpacity));
+                    OnPropertyChanged(nameof(SleepStatusToolTip));
+                    OnPropertyChanged(nameof(ShowsSleepIcon));
+                }
+            }
+        }
+
+        public double TabOpacity => _isSleeping ? 0.6 : 1.0;
+        public bool ShowsSleepIcon => _isSleeping;
+        public string SleepStatusToolTip => _isSleeping ? "Sleeping tab (saving memory) - click to wake" : "";
+
         public WebView2? WebViewInstance { get; set; }
 
         public event PropertyChangedEventHandler? PropertyChanged;

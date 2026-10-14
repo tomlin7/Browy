@@ -319,6 +319,9 @@ namespace Browy
 
                 // Panels & Views
                 new("Toggle Split View (Dual-Pane)", "View", "\uE7FB", "Ctrl+\\", "Open two tabs side-by-side in dual pane", w => w.ToggleSplitView()),
+                new("Split View: Toggle Orientation", "View", "\uE7FB", "", "Switch between vertical and horizontal split view", w => w.ToggleSplitOrientation()),
+                new("Split View: Quad Layout (2x2)", "View", "\uE7FB", "", "Arrange 4 tabs in a 2x2 split grid", w => _ = w.SetupQuadTabsAsync()),
+                new("Split View: Close Split View", "View", "\uE711", "", "Exit split view and return to single active tab", w => w.SetSplitMode(SplitViewMode.Single)),
                 new("Toggle Picture-in-Picture (PiP)", "View", "\uE714", "Alt+P", "Pop out video to a floating picture-in-picture window", w => w.TogglePictureInPicture()),
                 new("Toggle Browy Shield (Ad-Blocker)", "Privacy", "\uEA1F", "", "Toggle proactive ad and tracker blocking", w => w.ToggleShield()),
                 new("New InPrivate Window", "Privacy", "\uE727", "Ctrl+Shift+N", "Open a stealth browsing window with zero footprint", w => w.OpenInPrivateWindow()),

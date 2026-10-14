@@ -11,6 +11,8 @@ namespace Browy.Models
     {
         public CoreWebView2DownloadOperation? Operation { get; }
 
+        public string Id { get; set; } = Guid.NewGuid().ToString("N");
+
         private string _fileName = string.Empty;
         public string FileName
         {
@@ -58,6 +60,20 @@ namespace Browy.Models
             set => SetProperty(ref _percentComplete, value);
         }
 
+        private string _speedText = string.Empty;
+        public string SpeedText
+        {
+            get => _speedText;
+            set => SetProperty(ref _speedText, value);
+        }
+
+        private string _etaText = string.Empty;
+        public string EtaText
+        {
+            get => _etaText;
+            set => SetProperty(ref _etaText, value);
+        }
+
         private string _statusText = "Starting...";
         public string StatusText
         {
@@ -76,13 +92,17 @@ namespace Browy.Models
                     OnPropertyChanged(nameof(IsInProgress));
                     OnPropertyChanged(nameof(IsCompleted));
                     OnPropertyChanged(nameof(IsFailedOrCancelled));
+                    OnPropertyChanged(nameof(CanPause));
+                    OnPropertyChanged(nameof(IsPaused));
                 }
             }
         }
 
         public bool IsInProgress => State == CoreWebView2DownloadState.InProgress;
         public bool IsCompleted => State == CoreWebView2DownloadState.Completed;
-        public bool IsFailedOrCancelled => State == CoreWebView2DownloadState.Interrupted;
+        public bool IsFailedOrCancelled => State == CoreWebView2DownloadState.Interrupted && !IsPaused;
+        public bool CanPause => Operation?.CanResume == true || IsInProgress;
+        public bool IsPaused => State == CoreWebView2DownloadState.Interrupted && Operation?.CanResume == true;
 
         public string IconGlyph
         {
@@ -102,6 +122,9 @@ namespace Browy.Models
             }
         }
 
+        private long _lastBytes;
+        private DateTime _lastTime = DateTime.UtcNow;
+
         public DownloadItem()
         {
         }
@@ -118,13 +141,42 @@ namespace Browy.Models
             TotalBytes = (long?)operation.TotalBytesToReceive;
             BytesReceived = operation.BytesReceived;
             State = operation.State;
+            _lastBytes = BytesReceived;
+            _lastTime = DateTime.UtcNow;
+
             UpdateProgress();
 
             operation.BytesReceivedChanged += (s, e) =>
             {
                 System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
                 {
-                    BytesReceived = operation.BytesReceived;
+                    long currentBytes = operation.BytesReceived;
+                    DateTime now = DateTime.UtcNow;
+                    double elapsed = (now - _lastTime).TotalSeconds;
+
+                    if (elapsed >= 0.5)
+                    {
+                        long bytesDiff = currentBytes - _lastBytes;
+                        double speedBps = bytesDiff / elapsed;
+                        if (speedBps > 0)
+                        {
+                            SpeedText = $"{FormatBytes((long)speedBps)}/s";
+
+                            if (TotalBytes.HasValue && TotalBytes.Value > currentBytes)
+                            {
+                                long remainingBytes = TotalBytes.Value - currentBytes;
+                                double secondsLeft = remainingBytes / speedBps;
+                                EtaText = secondsLeft < 60
+                                    ? $"{Math.Ceiling(secondsLeft)}s remaining"
+                                    : $"{TimeSpan.FromSeconds(secondsLeft):m\\:ss} remaining";
+                            }
+                        }
+
+                        _lastBytes = currentBytes;
+                        _lastTime = now;
+                    }
+
+                    BytesReceived = currentBytes;
                     TotalBytes = (long?)operation.TotalBytesToReceive;
                     UpdateProgress();
                 });
@@ -140,38 +192,79 @@ namespace Browy.Models
             };
         }
 
-        private void UpdateProgress()
+        public void UpdateProgress()
         {
             if (State == CoreWebView2DownloadState.Completed)
             {
                 PercentComplete = 100;
+                SpeedText = string.Empty;
+                EtaText = string.Empty;
                 StatusText = $"{FormatBytes(BytesReceived)} · Completed";
+                return;
+            }
+
+            if (IsPaused)
+            {
+                StatusText = $"Paused · {FormatBytes(BytesReceived)}";
+                SpeedText = string.Empty;
+                EtaText = string.Empty;
                 return;
             }
 
             if (State == CoreWebView2DownloadState.Interrupted)
             {
                 StatusText = $"Cancelled / Interrupted";
+                SpeedText = string.Empty;
+                EtaText = string.Empty;
                 return;
             }
 
             if (TotalBytes.HasValue && TotalBytes.Value > 0)
             {
                 PercentComplete = Math.Clamp((double)BytesReceived / TotalBytes.Value * 100.0, 0, 100);
-                StatusText = $"{FormatBytes(BytesReceived)} of {FormatBytes(TotalBytes.Value)} ({PercentComplete:0}%)";
+                string speedPart = !string.IsNullOrEmpty(SpeedText) ? $" • {SpeedText}" : "";
+                string etaPart = !string.IsNullOrEmpty(EtaText) ? $" • {EtaText}" : "";
+                StatusText = $"{FormatBytes(BytesReceived)} of {FormatBytes(TotalBytes.Value)} ({PercentComplete:0}%){speedPart}{etaPart}";
             }
             else
             {
                 PercentComplete = 0;
-                StatusText = $"{FormatBytes(BytesReceived)} downloaded";
+                string speedPart = !string.IsNullOrEmpty(SpeedText) ? $" • {SpeedText}" : "";
+                StatusText = $"{FormatBytes(BytesReceived)} downloaded{speedPart}";
             }
+        }
+
+        public void Pause()
+        {
+            try
+            {
+                if (CanPause && IsInProgress)
+                {
+                    Operation?.Pause();
+                    UpdateProgress();
+                }
+            }
+            catch { }
+        }
+
+        public void Resume()
+        {
+            try
+            {
+                if (CanPause)
+                {
+                    Operation?.Resume();
+                    UpdateProgress();
+                }
+            }
+            catch { }
         }
 
         public void Cancel()
         {
             try
             {
-                if (IsInProgress)
+                if (IsInProgress || IsPaused)
                 {
                     Operation?.Cancel();
                 }
@@ -211,7 +304,7 @@ namespace Browy.Models
             catch { }
         }
 
-        private static string FormatBytes(long bytes)
+        public static string FormatBytes(long bytes)
         {
             if (bytes < 1024) return $"{bytes} B";
             if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";

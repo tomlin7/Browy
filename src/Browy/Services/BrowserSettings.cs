@@ -24,6 +24,8 @@ namespace Browy.Services
         public string OllamaEndpoint { get; set; } = "http://localhost:11434";
         public string SelectedAiModel { get; set; } = "gpt-4o-mini";
         public System.Collections.Generic.List<string> InstalledExtensionPaths { get; set; } = new();
+        public System.Collections.Generic.List<string> AllowedNotificationOrigins { get; set; } = new();
+        public System.Collections.Generic.List<string> BlockedNotificationOrigins { get; set; } = new();
     }
 
     public static class BrowserSettings

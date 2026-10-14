@@ -1031,13 +1031,22 @@
                             <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE713;" FontSize="12" Foreground="#FFFFFF"/>
                         </Button>
 
-                        <!-- Split View Dual-Pane Toggle Button -->
+                        <!-- Split View Dual-Pane & Quad Toggle Button -->
                         <Button x:Name="SplitViewButton"
                                 Style="{StaticResource IconButton}"
                                 ToolTip="Toggle Split View (Ctrl+\)"
                                 Click="SplitViewButton_Click"
                                 Width="28" Height="28"
                                 Margin="0,0,3,0">
+                            <Button.ContextMenu>
+                                <ContextMenu Background="#202024" BorderBrush="#25FFFFFF" BorderThickness="1">
+                                    <MenuItem Header="Side-by-Side (Vertical Split)" Click="SplitViewVertical_Click" Foreground="#FFFFFF"/>
+                                    <MenuItem Header="Top &amp; Bottom (Horizontal Split)" Click="SplitViewHorizontal_Click" Foreground="#FFFFFF"/>
+                                    <MenuItem Header="Quad Grid (2x2 - 4 Panes)" Click="SplitViewQuad_Click" Foreground="#FFFFFF"/>
+                                    <Separator Background="#25FFFFFF"/>
+                                    <MenuItem Header="Close Split View" Click="SplitViewClose_Click" Foreground="#EF4444"/>
+                                </ContextMenu>
+                            </Button.ContextMenu>
                             <TextBlock x:Name="SplitViewIcon" Style="{StaticResource FluentIcon}" Text="&#xE7FB;" FontSize="12" Foreground="#FFFFFF"/>
                         </Button>
 
@@ -1226,22 +1235,41 @@
                                  Visibility="Collapsed"
                                  Panel.ZIndex="10"/>
 
-                    <!-- Web Content Host Container (Supports Single & Split View) -->
+                    <!-- Web Content Host Container (Supports Single, Dual & Quad Split View) -->
                     <Grid x:Name="WebContentGrid" SizeChanged="WebContentGrid_SizeChanged">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition x:Name="PrimarySplitColumn" Width="*"/>
                             <ColumnDefinition x:Name="SplitViewSplitterColumn" Width="Auto"/>
                             <ColumnDefinition x:Name="SecondarySplitColumn" Width="0"/>
                         </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition x:Name="PrimarySplitRow" Height="*"/>
+                            <RowDefinition x:Name="SplitViewSplitterRow" Height="Auto"/>
+                            <RowDefinition x:Name="SecondarySplitRow" Height="0"/>
+                        </Grid.RowDefinitions>
 
-                        <!-- Center Draggable Splitter for Dual-Pane Browsing -->
+                        <!-- Center Vertical Splitter for Dual-Pane / Quad Browsing -->
                         <GridSplitter x:Name="CenterWebSplitter"
                                       Grid.Column="1"
+                                      Grid.Row="0"
+                                      Grid.RowSpan="3"
                                       Width="6"
                                       HorizontalAlignment="Center"
                                       VerticalAlignment="Stretch"
                                       Background="#18FFFFFF"
                                       Cursor="SizeWE"
+                                      Visibility="Collapsed"/>
+
+                        <!-- Center Horizontal Splitter for Dual-Pane / Quad Browsing -->
+                        <GridSplitter x:Name="HorizontalWebSplitter"
+                                      Grid.Row="1"
+                                      Grid.Column="0"
+                                      Grid.ColumnSpan="3"
+                                      Height="6"
+                                      HorizontalAlignment="Stretch"
+                                      VerticalAlignment="Center"
+                                      Background="#18FFFFFF"
+                                      Cursor="SizeNS"
                                       Visibility="Collapsed"/>
                     </Grid>
 

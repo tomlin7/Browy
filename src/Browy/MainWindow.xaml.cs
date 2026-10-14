@@ -19,6 +19,14 @@ using Microsoft.Web.WebView2.Wpf;
 
 namespace Browy
 {
+    public enum SplitViewMode
+    {
+        Single,
+        DualVertical,
+        DualHorizontal,
+        Quad
+    }
+
     public partial class MainWindow : Window
     {
         public ObservableCollection<BrowserTab> Tabs { get; } = new();
@@ -34,7 +42,10 @@ namespace Browy
         public bool IsInPrivate { get; set; } = false;
         private CoreWebView2Environment? _inPrivateEnvironment;
         private bool _isSplitViewActive = false;
+        public SplitViewMode SplitMode { get; private set; } = SplitViewMode.Single;
         private BrowserTab? _splitSecondaryTab = null;
+        private BrowserTab? _splitTab3 = null;
+        private BrowserTab? _splitTab4 = null;
         private CancellationTokenSource? _suggestionCts;
 
         private BrowserTab? _activeTab;
@@ -590,6 +601,102 @@ namespace Browy
                         }
                         break;
 
+                    case "delete_history_batch":
+                        if (root.TryGetProperty("urls", out var urlsArray) && urlsArray.ValueKind == System.Text.Json.JsonValueKind.Array)
+                        {
+                            var toRemove = new HashSet<string>(urlsArray.EnumerateArray().Select(u => u.GetString() ?? "").Where(s => !string.IsNullOrEmpty(s)));
+                            var items = History.Where(h => toRemove.Contains(h.Url)).ToList();
+                            foreach (var item in items) History.Remove(item);
+                            UpdateHistoryEmptyState();
+                            if (_activeTab?.Url.StartsWith("browy://history", StringComparison.OrdinalIgnoreCase) == true)
+                            {
+                                _activeTab.WebViewInstance?.NavigateToString(InternalHubService.GetHistoryHtml(History));
+                            }
+                        }
+                        break;
+
+                    case "delete_domain_history":
+                        if (root.TryGetProperty("domain", out var domProp))
+                        {
+                            string dom = domProp.GetString() ?? "";
+                            if (!string.IsNullOrEmpty(dom))
+                            {
+                                var items = History.Where(h =>
+                                {
+                                    try { return new Uri(h.Url).Host.Equals(dom, StringComparison.OrdinalIgnoreCase); }
+                                    catch { return false; }
+                                }).ToList();
+                                foreach (var item in items) History.Remove(item);
+                                UpdateHistoryEmptyState();
+                                if (_activeTab?.Url.StartsWith("browy://history", StringComparison.OrdinalIgnoreCase) == true)
+                                {
+                                    _activeTab.WebViewInstance?.NavigateToString(InternalHubService.GetHistoryHtml(History));
+                                }
+                            }
+                        }
+                        break;
+
+                    case "clear_history_timeframe":
+                        if (root.TryGetProperty("timeframe", out var tfProp))
+                        {
+                            string tf = tfProp.GetString() ?? "all";
+                            DateTime cutoff = tf switch
+                            {
+                                "hour" => DateTime.Now.AddHours(-1),
+                                "day" => DateTime.Today,
+                                "week" => DateTime.Now.AddDays(-7),
+                                _ => DateTime.MinValue
+                            };
+                            var toDel = History.Where(h => h.VisitedAt >= cutoff).ToList();
+                            foreach (var itm in toDel) History.Remove(itm);
+                            UpdateHistoryEmptyState();
+                            if (_activeTab?.Url.StartsWith("browy://history", StringComparison.OrdinalIgnoreCase) == true)
+                            {
+                                _activeTab.WebViewInstance?.NavigateToString(InternalHubService.GetHistoryHtml(History));
+                            }
+                        }
+                        break;
+
+                    case "pause_download":
+                        if (root.TryGetProperty("id", out var pIdProp))
+                        {
+                            string id = pIdProp.GetString() ?? "";
+                            var d = Downloads.FirstOrDefault(x => x.Id == id);
+                            d?.Pause();
+                            if (_activeTab?.Url.StartsWith("browy://downloads", StringComparison.OrdinalIgnoreCase) == true)
+                                _activeTab.WebViewInstance?.NavigateToString(InternalHubService.GetDownloadsHtml(Downloads));
+                        }
+                        break;
+
+                    case "resume_download":
+                        if (root.TryGetProperty("id", out var rIdProp))
+                        {
+                            string id = rIdProp.GetString() ?? "";
+                            var d = Downloads.FirstOrDefault(x => x.Id == id);
+                            d?.Resume();
+                            if (_activeTab?.Url.StartsWith("browy://downloads", StringComparison.OrdinalIgnoreCase) == true)
+                                _activeTab.WebViewInstance?.NavigateToString(InternalHubService.GetDownloadsHtml(Downloads));
+                        }
+                        break;
+
+                    case "cancel_download":
+                        if (root.TryGetProperty("id", out var cIdProp))
+                        {
+                            string id = cIdProp.GetString() ?? "";
+                            var d = Downloads.FirstOrDefault(x => x.Id == id);
+                            d?.Cancel();
+                            UpdateDownloadsButtonBadge();
+                            if (_activeTab?.Url.StartsWith("browy://downloads", StringComparison.OrdinalIgnoreCase) == true)
+                                _activeTab.WebViewInstance?.NavigateToString(InternalHubService.GetDownloadsHtml(Downloads));
+                        }
+                        break;
+
+                    case "clear_completed_downloads":
+                        ClearDownloads_Click(this, new RoutedEventArgs());
+                        if (_activeTab?.Url.StartsWith("browy://downloads", StringComparison.OrdinalIgnoreCase) == true)
+                            _activeTab.WebViewInstance?.NavigateToString(InternalHubService.GetDownloadsHtml(Downloads));
+                        break;
+
                     case "open_download_file":
                         if (root.TryGetProperty("path", out var pVal))
                         {
@@ -832,6 +939,45 @@ namespace Browy
                             HandleWebMessage(tab, msg);
                         }
                         catch { }
+                    };
+
+                    // Web Notifications & Permissions
+                    core.PermissionRequested += (s, args) =>
+                    {
+                        if (args.PermissionKind == CoreWebView2PermissionKind.Notifications)
+                        {
+                            try
+                            {
+                                var uri = new Uri(args.Uri);
+                                string origin = $"{uri.Scheme}://{uri.Host}";
+                                if (BrowserSettings.Current.BlockedNotificationOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase))
+                                {
+                                    args.State = CoreWebView2PermissionState.Deny;
+                                }
+                                else
+                                {
+                                    args.State = CoreWebView2PermissionState.Allow;
+                                    if (!BrowserSettings.Current.AllowedNotificationOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase))
+                                    {
+                                        BrowserSettings.Current.AllowedNotificationOrigins.Add(origin);
+                                        BrowserSettings.Save();
+                                    }
+                                }
+                            }
+                            catch
+                            {
+                                args.State = CoreWebView2PermissionState.Allow;
+                            }
+                        }
+                    };
+
+                    core.NotificationReceived += (s, args) =>
+                    {
+                        args.Handled = true;
+                        string title = args.Notification.Title;
+                        string body = args.Notification.Body;
+                        string origin = args.SenderOrigin;
+                        NotificationService.ShowToast(title, body, origin);
                     };
                     // Browy Shield Network Request Interception (Ad & Tracker Blocking)
                     core.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.All);
@@ -1180,22 +1326,10 @@ namespace Browy
             foreach (var t in Tabs)
             {
                 t.IsActive = (t == tab);
-                if (t.WebViewInstance != null)
-                {
-                    if (_isSplitViewActive && t == _splitSecondaryTab)
-                    {
-                        Grid.SetColumn(t.WebViewInstance, 2);
-                        t.WebViewInstance.Visibility = Visibility.Visible;
-                    }
-                    else
-                    {
-                        Grid.SetColumn(t.WebViewInstance, 0);
-                        t.WebViewInstance.Visibility = (t == tab) ? Visibility.Visible : Visibility.Collapsed;
-                    }
-                }
             }
 
             _activeTab = tab;
+            ApplySplitLayout();
             if (tab.IsSleeping)
             {
                 WakeTab(tab);
@@ -2409,6 +2543,13 @@ namespace Browy
             Dispatcher.Invoke(() =>
             {
                 var item = new DownloadItem(e.DownloadOperation);
+                item.PropertyChanged += (s, ev) =>
+                {
+                    if (ev.PropertyName == nameof(DownloadItem.IsCompleted) && item.IsCompleted)
+                    {
+                        NotificationService.ShowToast("Download Complete", $"{item.FileName} has finished downloading.");
+                    }
+                };
                 Downloads.Insert(0, item);
                 UpdateDownloadsButtonBadge();
                 UpdateDownloadsEmptyState();
@@ -4136,27 +4277,13 @@ namespace Browy
 
         #endregion
 
-        #region Split View Dual-Pane (Milestone 2)
+        #region Split View Dual-Pane & Quad (Milestone 2 & Issue #11)
 
         public void ToggleSplitView()
         {
             if (!_isSplitViewActive)
             {
-                var secondary = Tabs.FirstOrDefault(t => t != _activeTab);
-                if (secondary == null)
-                {
-                    _ = CreateNewTabAsync(BrowserSettings.Current.StartPageUrl, switchTo: false).ContinueWith(task =>
-                    {
-                        Dispatcher.Invoke(() =>
-                        {
-                            EnableSplitView(task.Result);
-                        });
-                    });
-                }
-                else
-                {
-                    EnableSplitView(secondary);
-                }
+                SetSplitMode(SplitViewMode.DualVertical);
             }
             else
             {
@@ -4164,48 +4291,263 @@ namespace Browy
             }
         }
 
-        private void EnableSplitView(BrowserTab secondaryTab)
+        public void SetSplitMode(SplitViewMode mode)
         {
-            _isSplitViewActive = true;
-            _splitSecondaryTab = secondaryTab;
-
-            SecondarySplitColumn.Width = new GridLength(1, GridUnitType.Star);
-            CenterWebSplitter.Visibility = Visibility.Visible;
-
-            if (_activeTab?.WebViewInstance != null)
+            if (mode == SplitViewMode.Single)
             {
-                Grid.SetColumn(_activeTab.WebViewInstance, 0);
-                _activeTab.WebViewInstance.Visibility = Visibility.Visible;
+                DisableSplitView();
+                return;
             }
 
-            if (_splitSecondaryTab.WebViewInstance != null)
+            _isSplitViewActive = true;
+            SplitMode = mode;
+
+            if (_splitSecondaryTab == null || _splitSecondaryTab == _activeTab)
             {
-                Grid.SetColumn(_splitSecondaryTab.WebViewInstance, 2);
-                _splitSecondaryTab.WebViewInstance.Visibility = Visibility.Visible;
+                _splitSecondaryTab = Tabs.FirstOrDefault(t => t != _activeTab);
+                if (_splitSecondaryTab == null)
+                {
+                    _ = CreateNewTabAsync(BrowserSettings.Current.StartPageUrl, switchTo: false).ContinueWith(task =>
+                    {
+                        Dispatcher.Invoke(() =>
+                        {
+                            _splitSecondaryTab = task.Result;
+                            ApplySplitLayout();
+                        });
+                    });
+                    return;
+                }
+            }
+
+            if (mode == SplitViewMode.Quad)
+            {
+                _ = SetupQuadTabsAsync();
+                return;
             }
 
             SplitViewButton.Background = new SolidColorBrush(Color.FromArgb(0x35, 0x63, 0x66, 0xF1));
+            ApplySplitLayout();
+        }
+
+        public async Task SetupQuadTabsAsync()
+        {
+            while (Tabs.Count < 4)
+            {
+                await CreateNewTabAsync(BrowserSettings.Current.StartPageUrl, switchTo: false);
+            }
+
+            var otherTabs = Tabs.Where(t => t != _activeTab).Take(3).ToList();
+            _splitSecondaryTab = otherTabs.Count > 0 ? otherTabs[0] : null;
+            _splitTab3 = otherTabs.Count > 1 ? otherTabs[1] : null;
+            _splitTab4 = otherTabs.Count > 2 ? otherTabs[2] : null;
+
+            _isSplitViewActive = true;
+            SplitMode = SplitViewMode.Quad;
+            SplitViewButton.Background = new SolidColorBrush(Color.FromArgb(0x35, 0x63, 0x66, 0xF1));
+            ApplySplitLayout();
+        }
+
+        public void ToggleSplitOrientation()
+        {
+            if (!_isSplitViewActive)
+            {
+                SetSplitMode(SplitViewMode.DualVertical);
+                return;
+            }
+
+            if (SplitMode == SplitViewMode.DualVertical)
+            {
+                SetSplitMode(SplitViewMode.DualHorizontal);
+            }
+            else if (SplitMode == SplitViewMode.DualHorizontal)
+            {
+                SetSplitMode(SplitViewMode.DualVertical);
+            }
+        }
+
+        public void ApplySplitLayout()
+        {
+            if (!_isSplitViewActive || SplitMode == SplitViewMode.Single)
+            {
+                SecondarySplitColumn.Width = new GridLength(0);
+                SecondarySplitRow.Height = new GridLength(0);
+                CenterWebSplitter.Visibility = Visibility.Collapsed;
+                HorizontalWebSplitter.Visibility = Visibility.Collapsed;
+
+                foreach (var t in Tabs)
+                {
+                    if (t.WebViewInstance != null)
+                    {
+                        Grid.SetColumn(t.WebViewInstance, 0);
+                        Grid.SetRow(t.WebViewInstance, 0);
+                        Grid.SetColumnSpan(t.WebViewInstance, 3);
+                        Grid.SetRowSpan(t.WebViewInstance, 3);
+                        t.WebViewInstance.Visibility = (t == _activeTab) ? Visibility.Visible : Visibility.Collapsed;
+                    }
+                }
+                return;
+            }
+
+            if (SplitMode == SplitViewMode.DualVertical)
+            {
+                SecondarySplitColumn.Width = new GridLength(1, GridUnitType.Star);
+                SecondarySplitRow.Height = new GridLength(0);
+                CenterWebSplitter.Visibility = Visibility.Visible;
+                HorizontalWebSplitter.Visibility = Visibility.Collapsed;
+
+                foreach (var t in Tabs)
+                {
+                    if (t.WebViewInstance != null)
+                    {
+                        if (t == _activeTab)
+                        {
+                            Grid.SetColumn(t.WebViewInstance, 0);
+                            Grid.SetRow(t.WebViewInstance, 0);
+                            Grid.SetColumnSpan(t.WebViewInstance, 1);
+                            Grid.SetRowSpan(t.WebViewInstance, 3);
+                            t.WebViewInstance.Visibility = Visibility.Visible;
+                        }
+                        else if (t == _splitSecondaryTab)
+                        {
+                            Grid.SetColumn(t.WebViewInstance, 2);
+                            Grid.SetRow(t.WebViewInstance, 0);
+                            Grid.SetColumnSpan(t.WebViewInstance, 1);
+                            Grid.SetRowSpan(t.WebViewInstance, 3);
+                            t.WebViewInstance.Visibility = Visibility.Visible;
+                        }
+                        else
+                        {
+                            t.WebViewInstance.Visibility = Visibility.Collapsed;
+                        }
+                    }
+                }
+            }
+            else if (SplitMode == SplitViewMode.DualHorizontal)
+            {
+                SecondarySplitColumn.Width = new GridLength(0);
+                SecondarySplitRow.Height = new GridLength(1, GridUnitType.Star);
+                CenterWebSplitter.Visibility = Visibility.Collapsed;
+                HorizontalWebSplitter.Visibility = Visibility.Visible;
+
+                foreach (var t in Tabs)
+                {
+                    if (t.WebViewInstance != null)
+                    {
+                        if (t == _activeTab)
+                        {
+                            Grid.SetColumn(t.WebViewInstance, 0);
+                            Grid.SetRow(t.WebViewInstance, 0);
+                            Grid.SetColumnSpan(t.WebViewInstance, 3);
+                            Grid.SetRowSpan(t.WebViewInstance, 1);
+                            t.WebViewInstance.Visibility = Visibility.Visible;
+                        }
+                        else if (t == _splitSecondaryTab)
+                        {
+                            Grid.SetColumn(t.WebViewInstance, 0);
+                            Grid.SetRow(t.WebViewInstance, 2);
+                            Grid.SetColumnSpan(t.WebViewInstance, 3);
+                            Grid.SetRowSpan(t.WebViewInstance, 1);
+                            t.WebViewInstance.Visibility = Visibility.Visible;
+                        }
+                        else
+                        {
+                            t.WebViewInstance.Visibility = Visibility.Collapsed;
+                        }
+                    }
+                }
+            }
+            else if (SplitMode == SplitViewMode.Quad)
+            {
+                SecondarySplitColumn.Width = new GridLength(1, GridUnitType.Star);
+                SecondarySplitRow.Height = new GridLength(1, GridUnitType.Star);
+                CenterWebSplitter.Visibility = Visibility.Visible;
+                HorizontalWebSplitter.Visibility = Visibility.Visible;
+
+                foreach (var t in Tabs)
+                {
+                    if (t.WebViewInstance != null)
+                    {
+                        if (t == _activeTab)
+                        {
+                            Grid.SetColumn(t.WebViewInstance, 0);
+                            Grid.SetRow(t.WebViewInstance, 0);
+                            Grid.SetColumnSpan(t.WebViewInstance, 1);
+                            Grid.SetRowSpan(t.WebViewInstance, 1);
+                            t.WebViewInstance.Visibility = Visibility.Visible;
+                        }
+                        else if (t == _splitSecondaryTab)
+                        {
+                            Grid.SetColumn(t.WebViewInstance, 2);
+                            Grid.SetRow(t.WebViewInstance, 0);
+                            Grid.SetColumnSpan(t.WebViewInstance, 1);
+                            Grid.SetRowSpan(t.WebViewInstance, 1);
+                            t.WebViewInstance.Visibility = Visibility.Visible;
+                        }
+                        else if (t == _splitTab3)
+                        {
+                            Grid.SetColumn(t.WebViewInstance, 0);
+                            Grid.SetRow(t.WebViewInstance, 2);
+                            Grid.SetColumnSpan(t.WebViewInstance, 1);
+                            Grid.SetRowSpan(t.WebViewInstance, 1);
+                            t.WebViewInstance.Visibility = Visibility.Visible;
+                        }
+                        else if (t == _splitTab4)
+                        {
+                            Grid.SetColumn(t.WebViewInstance, 2);
+                            Grid.SetRow(t.WebViewInstance, 2);
+                            Grid.SetColumnSpan(t.WebViewInstance, 1);
+                            Grid.SetRowSpan(t.WebViewInstance, 1);
+                            t.WebViewInstance.Visibility = Visibility.Visible;
+                        }
+                        else
+                        {
+                            t.WebViewInstance.Visibility = Visibility.Collapsed;
+                        }
+                    }
+                }
+            }
         }
 
         private void DisableSplitView()
         {
             _isSplitViewActive = false;
+            SplitMode = SplitViewMode.Single;
             SecondarySplitColumn.Width = new GridLength(0);
+            SecondarySplitRow.Height = new GridLength(0);
             CenterWebSplitter.Visibility = Visibility.Collapsed;
-
-            if (_splitSecondaryTab?.WebViewInstance != null)
-            {
-                Grid.SetColumn(_splitSecondaryTab.WebViewInstance, 0);
-                _splitSecondaryTab.WebViewInstance.Visibility = Visibility.Collapsed;
-            }
+            HorizontalWebSplitter.Visibility = Visibility.Collapsed;
 
             _splitSecondaryTab = null;
+            _splitTab3 = null;
+            _splitTab4 = null;
+
             SplitViewButton.Background = Brushes.Transparent;
+            ApplySplitLayout();
         }
 
         private void SplitViewButton_Click(object sender, RoutedEventArgs e)
         {
             ToggleSplitView();
+        }
+
+        private void SplitViewVertical_Click(object sender, RoutedEventArgs e)
+        {
+            SetSplitMode(SplitViewMode.DualVertical);
+        }
+
+        private void SplitViewHorizontal_Click(object sender, RoutedEventArgs e)
+        {
+            SetSplitMode(SplitViewMode.DualHorizontal);
+        }
+
+        private void SplitViewQuad_Click(object sender, RoutedEventArgs e)
+        {
+            _ = SetupQuadTabsAsync();
+        }
+
+        private void SplitViewClose_Click(object sender, RoutedEventArgs e)
+        {
+            DisableSplitView();
         }
 
         #endregion

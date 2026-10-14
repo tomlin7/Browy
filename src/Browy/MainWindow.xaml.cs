@@ -515,7 +515,7 @@ namespace Browy
                         Dispatcher.Invoke(() =>
                         {
                             if (!string.IsNullOrWhiteSpace(core.DocumentTitle) &&
-                                !tab.Url.StartsWith("browy://settings", StringComparison.OrdinalIgnoreCase))
+                                !tab.Url.StartsWith("browy://", StringComparison.OrdinalIgnoreCase))
                             {
                                 tab.Title = core.DocumentTitle;
                             }
@@ -525,7 +525,7 @@ namespace Browy
                     // Favicon Changed - fetch real favicon stream from WebView2 or network
                     core.FaviconChanged += async (s, args) =>
                     {
-                        if (tab.Url.StartsWith("browy://settings", StringComparison.OrdinalIgnoreCase)) return;
+                        if (tab.Url.StartsWith("browy://", StringComparison.OrdinalIgnoreCase)) return;
 
                         try
                         {
@@ -621,21 +621,23 @@ namespace Browy
                     core.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.All);
                     core.WebResourceRequested += (sender, args) =>
                     {
-                        if (BrowserSettings.Current.IsShieldEnabled && ShieldService.IsBlocked(args.Request.Uri, out _))
+                        if (args.ResourceContext != CoreWebView2WebResourceContext.Document &&
+                            BrowserSettings.Current.IsShieldEnabled &&
+                            ShieldService.IsBlocked(args.Request.Uri, out _))
                         {
                             try
                             {
                                 var response = core.Environment.CreateWebResourceResponse(
-                                    Stream.Null, 204, "No Content", "Content-Type: text/plain");
+                                    new MemoryStream(), 204, "No Content", "Content-Type: text/plain");
                                 args.Response = response;
-                                Dispatcher.Invoke(() =>
+                                Dispatcher.BeginInvoke(new Action(() =>
                                 {
                                     tab.BlockedCount++;
                                     if (_activeTab == tab)
                                     {
                                         UpdateShieldUI(tab);
                                     }
-                                });
+                                }));
                             }
                             catch { }
                         }
@@ -713,7 +715,11 @@ namespace Browy
                                 !tab.Url.StartsWith("browy://", StringComparison.OrdinalIgnoreCase))
                             {
                                 tab.Title = $"Site unreachable ({args.WebErrorStatus})";
-                                tab.WebViewInstance.NavigateToString(SettingsPageService.GetErrorPageHtml(tab.Url, args.WebErrorStatus.ToString()));
+                                try
+                                {
+                                    tab.WebViewInstance.NavigateToString(SettingsPageService.GetErrorPageHtml(tab.Url, args.WebErrorStatus.ToString()));
+                                }
+                                catch { }
                             }
                         }
                         else
@@ -770,7 +776,7 @@ namespace Browy
                     Dispatcher.Invoke(() =>
                     {
                         string currentSrc = tab.WebViewInstance.Source?.ToString() ?? "";
-                        if (!tab.Url.StartsWith("browy://settings", StringComparison.OrdinalIgnoreCase))
+                        if (!tab.Url.StartsWith("browy://", StringComparison.OrdinalIgnoreCase))
                         {
                             tab.Url = currentSrc;
                         }
@@ -803,6 +809,16 @@ namespace Browy
                         tab.FallbackIcon = "\uE713";
                         tab.WebViewInstance.NavigateToString(SettingsPageService.GetSettingsHtml());
                     }
+                    else if (initialUrl.StartsWith("browy://newtab", StringComparison.OrdinalIgnoreCase) ||
+                             initialUrl.StartsWith("browy://start", StringComparison.OrdinalIgnoreCase) ||
+                             initialUrl.StartsWith("about:newtab", StringComparison.OrdinalIgnoreCase) ||
+                             initialUrl.Equals("about:blank", StringComparison.OrdinalIgnoreCase))
+                    {
+                        tab.Url = "browy://newtab";
+                        tab.Title = "New Tab";
+                        tab.FallbackIcon = "\uE72B";
+                        tab.WebViewInstance.NavigateToString(NewTabPageService.GetNewTabHtml());
+                    }
                     else if (tab.WebViewInstance.CoreWebView2 != null)
                     {
                         tab.WebViewInstance.CoreWebView2.Navigate(initialUrl);
@@ -824,7 +840,14 @@ namespace Browy
                 catch { }
 
                 tab.Title = "Navigation error";
-                tab.WebViewInstance.NavigateToString(SettingsPageService.GetErrorPageHtml(initialUrl, "InitializationFailed", ex.Message));
+                if (tab.WebViewInstance?.CoreWebView2 != null)
+                {
+                    try
+                    {
+                        tab.WebViewInstance.NavigateToString(SettingsPageService.GetErrorPageHtml(initialUrl, "InitializationFailed", ex.Message));
+                    }
+                    catch { }
+                }
             }
         }
 
@@ -1215,6 +1238,19 @@ namespace Browy
                 return;
             }
 
+            if (targetUrl.StartsWith("browy://newtab", StringComparison.OrdinalIgnoreCase) ||
+                targetUrl.StartsWith("browy://start", StringComparison.OrdinalIgnoreCase) ||
+                targetUrl.StartsWith("about:newtab", StringComparison.OrdinalIgnoreCase) ||
+                targetUrl.Equals("about:blank", StringComparison.OrdinalIgnoreCase))
+            {
+                _activeTab.Url = "browy://newtab";
+                _activeTab.Title = "New Tab";
+                _activeTab.FallbackIcon = "\uE72B";
+                UpdateNavigationUI(_activeTab);
+                _activeTab.WebViewInstance?.NavigateToString(NewTabPageService.GetNewTabHtml());
+                return;
+            }
+
             if (_activeTab.WebViewInstance?.CoreWebView2 != null)
             {
                 _activeTab.WebViewInstance.CoreWebView2.Navigate(targetUrl);
@@ -1441,6 +1477,15 @@ namespace Browy
                     return;
                 }
 
+                if (_activeTab.Url.StartsWith("browy://newtab", StringComparison.OrdinalIgnoreCase) ||
+                    _activeTab.Url.StartsWith("browy://start", StringComparison.OrdinalIgnoreCase) ||
+                    _activeTab.Url.StartsWith("about:newtab", StringComparison.OrdinalIgnoreCase) ||
+                    _activeTab.Url.Equals("about:blank", StringComparison.OrdinalIgnoreCase))
+                {
+                    _activeTab.WebViewInstance.NavigateToString(NewTabPageService.GetNewTabHtml());
+                    return;
+                }
+
                 if (_activeTab.WebViewInstance.CoreWebView2 != null)
                 {
                     if (_activeTab.IsLoading)
@@ -1631,6 +1676,15 @@ namespace Browy
             if (_activeTab?.Url.StartsWith("browy://settings", StringComparison.OrdinalIgnoreCase) == true)
             {
                 _activeTab.WebViewInstance?.NavigateToString(SettingsPageService.GetSettingsHtml());
+                return;
+            }
+
+            if (_activeTab?.Url.StartsWith("browy://newtab", StringComparison.OrdinalIgnoreCase) == true ||
+                _activeTab?.Url.StartsWith("browy://start", StringComparison.OrdinalIgnoreCase) == true ||
+                _activeTab?.Url.StartsWith("about:newtab", StringComparison.OrdinalIgnoreCase) == true ||
+                _activeTab?.Url.Equals("about:blank", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                _activeTab.WebViewInstance?.NavigateToString(NewTabPageService.GetNewTabHtml());
                 return;
             }
 

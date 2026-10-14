@@ -12,7 +12,7 @@ namespace Browy
             {
                 try
                 {
-                    File.WriteAllText(@"E:\browy\crash.log", $"[{DateTime.Now:O}] AppDomain: {e.ExceptionObject}\n");
+                    File.AppendAllText(@"E:\browy\crash.log", $"[{DateTime.Now:O}] AppDomain: {e.ExceptionObject}\n");
                 }
                 catch { }
             };
@@ -20,7 +20,7 @@ namespace Browy
             {
                 try
                 {
-                    File.WriteAllText(@"E:\browy\crash.log", $"[{DateTime.Now:O}] Dispatcher: {e.Exception}\n");
+                    File.AppendAllText(@"E:\browy\crash.log", $"[{DateTime.Now:O}] Dispatcher: {e.Exception}\n");
                 }
                 catch { }
             };

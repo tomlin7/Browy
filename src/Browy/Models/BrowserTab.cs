@@ -267,6 +267,13 @@ namespace Browy.Models
         public bool ShowsSleepIcon => _isSleeping;
         public string SleepStatusToolTip => _isSleeping ? "Sleeping tab (saving memory) - click to wake" : "";
 
+        public DateTime LastActiveTime { get; set; } = DateTime.Now;
+        public bool IsSnoozed
+        {
+            get => IsSleeping;
+            set => IsSleeping = value;
+        }
+
         public WebView2? WebViewInstance { get; set; }
 
         public event PropertyChangedEventHandler? PropertyChanged;

@@ -29,11 +29,34 @@
             <Setter Property="HorizontalAlignment" Value="Center"/>
         </Style>
 
+        <!-- Accessibility High-Contrast Focus Visual Style (WCAG 2.1 AA) -->
+        <Style x:Key="FluentFocusVisualStyle">
+            <Setter Property="Control.Template">
+                <Setter.Value>
+                    <ControlTemplate>
+                        <Rectangle Margin="-2"
+                                   Stroke="#818CF8"
+                                   StrokeThickness="2"
+                                   StrokeDashArray="1 1"
+                                   RadiusX="4"
+                                   RadiusY="4"
+                                   SnapsToDevicePixels="True"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Global TextBox Focus Ring -->
+        <Style TargetType="TextBox">
+            <Setter Property="FocusVisualStyle" Value="{StaticResource FluentFocusVisualStyle}"/>
+        </Style>
+
         <!-- Flat Sleek Button Style -->
         <Style x:Key="IconButton" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="FocusVisualStyle" Value="{StaticResource FluentFocusVisualStyle}"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Padding" Value="6"/>
             <Setter Property="Template">
@@ -66,6 +89,7 @@
             <Setter Property="BorderBrush" Value="#25FFFFFF"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="FocusVisualStyle" Value="{StaticResource FluentFocusVisualStyle}"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Padding" Value="8,4"/>
             <Setter Property="Template">

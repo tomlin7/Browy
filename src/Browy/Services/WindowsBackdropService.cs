@@ -43,6 +43,30 @@ namespace Browy.Services
         [DllImport("dwmapi.dll")]
         private static extern int DwmExtendFrameIntoClientArea(IntPtr hWnd, ref MARGINS pMarInset);
 
+        public static bool IsWindows11OrGreater =>
+            Environment.OSVersion.Version.Major > 10 ||
+            (Environment.OSVersion.Version.Major == 10 && Environment.OSVersion.Version.Build >= 22000);
+
+        public static bool ApplyConfiguredBackdrop(Window window, string material)
+        {
+            if (!IsWindows11OrGreater || string.Equals(material, "SolidDark", StringComparison.OrdinalIgnoreCase))
+            {
+                window.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x0F, 0x0F, 0x14));
+                return false;
+            }
+
+            window.Background = System.Windows.Media.Brushes.Transparent;
+            var type = material?.ToLowerInvariant() switch
+            {
+                "mica" => BackdropType.Mica,
+                "micaalt" or "mica_alt" or "mica alt" => BackdropType.MicaAlt,
+                "none" => BackdropType.None,
+                _ => BackdropType.Acrylic
+            };
+
+            return ApplyBackdrop(window, type, isDarkMode: true);
+        }
+
         public static bool ApplyBackdrop(Window window, BackdropType backdropType, bool isDarkMode = true, WindowCornerPreference cornerPreference = WindowCornerPreference.Round)
         {
             try

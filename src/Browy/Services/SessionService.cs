@@ -22,6 +22,7 @@ namespace Browy.Services
         public string IconGlyph { get; set; } = "\uE80F";
         public string AccentColorHex { get; set; } = "#6366F1";
         public bool IsActive { get; set; } = false;
+        public bool IsIsolated { get; set; } = false;
         public int ActiveTabIndex { get; set; } = 0;
         public List<SessionTabData> Tabs { get; set; } = new();
     }
@@ -75,6 +76,7 @@ namespace Browy.Services
                             IconGlyph = space.IconGlyph,
                             AccentColorHex = space.AccentColorHex,
                             IsActive = isSpaceActive,
+                            IsIsolated = space.IsIsolated,
                             ActiveTabIndex = space.ActiveTabIndex
                         };
 

@@ -329,6 +329,33 @@ namespace Browy.Services
     color: #e2e8f0;
   }
 
+  .key-pill {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 4px 10px;
+    color: #38bdf8;
+    font-family: monospace;
+    font-size: 11.5px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    user-select: none;
+  }
+
+  .key-pill:hover {
+    background: rgba(56, 189, 248, 0.15);
+    border-color: #38bdf8;
+  }
+
+  .key-pill.recording {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: #ef4444;
+    color: #fca5a5;
+  }
+
   /* Toast Notification */
   .toast {
     position: fixed;
@@ -370,6 +397,9 @@ namespace Browy.Services
     </div>
     <div class="nav-item" onclick="switchSection('copilot', this)">
       <span class="nav-icon">&#x1F916;</span> AI Copilot
+    </div>
+    <div class="nav-item" onclick="switchSection('performance', this)">
+      <span class="nav-icon">&#x26A1;</span> Performance &amp; Gestures
     </div>
     <div class="nav-item" onclick="switchSection('shortcuts', this)">
       <span class="nav-icon">&#x2328;</span> Keyboard Shortcuts
@@ -422,13 +452,15 @@ namespace Browy.Services
       <div class="settings-group">
         <div class="settings-row">
           <div class="row-info">
-            <div class="row-title">Windows 11 Acrylic Backdrop</div>
-            <div class="row-desc">Render native DWM desktop acrylic blur behind the browser window.</div>
+            <div class="row-title">Windows 11 DWM Backdrop Material</div>
+            <div class="row-desc">Select native Windows 11 desktop blur material or high-performance solid theme.</div>
           </div>
-          <label class="toggle-switch">
-            <input type="checkbox" checked disabled>
-            <span class="toggle-slider"></span>
-          </label>
+          <select id="backdropSelect" onchange="onBackdropChange(this.value)">
+            <option value="Acrylic" {{(settings.BackdropMaterial == "Acrylic" ? "selected" : "")}}>Desktop Acrylic (Frosted Glass)</option>
+            <option value="Mica" {{(settings.BackdropMaterial == "Mica" ? "selected" : "")}}>Mica (Desktop Wallpaper Tint)</option>
+            <option value="MicaAlt" {{(settings.BackdropMaterial == "MicaAlt" ? "selected" : "")}}>Mica Alt (Tabbed Surface)</option>
+            <option value="SolidDark" {{(settings.BackdropMaterial == "SolidDark" ? "selected" : "")}}>Solid Dark Theme (Windows 10 / High Performance)</option>
+          </select>
         </div>
 
         <div class="settings-row">
@@ -566,36 +598,181 @@ namespace Browy.Services
       </div>
     </div>
 
-    <!-- SHORTCUTS CHEATSHEET -->
-    <div id="shortcuts" class="content-section">
-      <h1 class="section-title">Keyboard Shortcuts</h1>
-      <p class="section-subtitle">Full quick-reference guide for navigating Browy efficiently.</p>
+    <!-- PERFORMANCE & GESTURES SECTION -->
+    <div id="performance" class="content-section">
+      <h1 class="section-title">Performance &amp; Gestures</h1>
+      <p class="section-subtitle">Fine-tune memory saving tab suspension, idle throttling, and navigation gestures.</p>
 
       <div class="settings-group">
-        <table class="shortcuts-table">
+        <div class="settings-row">
+          <div class="row-info">
+            <div class="row-title">Sleeping Tabs (Memory Saver)</div>
+            <div class="row-desc">Automatically suspend background tab renderers when idle to reclaim memory and CPU.</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="tabSuspensionToggle" {{(settings.EnableIdleTabSuspension ? "checked" : "")}} onchange="onPerformanceChange()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="settings-row">
+          <div class="row-info">
+            <div class="row-title">Put Inactive Tabs to Sleep After</div>
+            <div class="row-desc">Tabs playing audio or actively pinned in split view are never suspended.</div>
+          </div>
+          <select id="idleTimeoutSelect" onchange="onPerformanceChange()">
+            <option value="5" {{(settings.IdleTabSuspensionMinutes == 5 ? "selected" : "")}}>5 minutes</option>
+            <option value="15" {{(settings.IdleTabSuspensionMinutes == 15 ? "selected" : "")}}>15 minutes</option>
+            <option value="30" {{(settings.IdleTabSuspensionMinutes == 30 ? "selected" : "")}}>30 minutes</option>
+            <option value="60" {{(settings.IdleTabSuspensionMinutes == 60 ? "selected" : "")}}>1 hour</option>
+          </select>
+        </div>
+
+        <div class="settings-row">
+          <div class="row-info">
+            <div class="row-title">Right-Click Mouse Gestures</div>
+            <div class="row-desc">Hold right mouse button and drag left to go Back, right for Forward, down for New Tab.</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="mouseGesturesToggle" {{(settings.EnableMouseGestures ? "checked" : "")}} onchange="onPerformanceChange()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="settings-row">
+          <div class="row-info">
+            <div class="row-title">Two-Finger Trackpad Horizontal Swipe</div>
+            <div class="row-desc">Fluid page history navigation with two-finger horizontal trackpad gestures.</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="trackpadSwipeToggle" {{(settings.EnableTrackpadSwipe ? "checked" : "")}} onchange="onPerformanceChange()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- SHORTCUTS MANAGER -->
+    <div id="shortcuts" class="content-section">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <h1 class="section-title" style="margin: 0;">Keyboard Shortcuts</h1>
+        <button class="btn btn-secondary" onclick="resetAllShortcuts()">Reset to Defaults</button>
+      </div>
+      <p class="section-subtitle">Full searchable keyboard shortcuts manager. Click any pill to record a custom shortcut.</p>
+
+      <div style="margin-bottom: 16px;">
+        <input type="text" id="shortcutSearch" placeholder="Search shortcuts (e.g. Tab, Palette, DevTools, Back)..."
+               style="width: 100%; background: #171720; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 10px 14px; color: white; font-size: 13px;"
+               oninput="filterShortcuts(this.value)">
+      </div>
+
+      <div id="shortcutConflict" style="display:none; background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; border-radius: 8px; padding: 10px 14px; color: #fca5a5; font-size: 13px; margin-bottom: 16px;"></div>
+
+      <div class="settings-group">
+        <table class="shortcuts-table" id="shortcutsTable">
           <thead>
             <tr>
               <th>Action</th>
-              <th>Shortcut</th>
+              <th>Category</th>
+              <th>Shortcut Keybinding</th>
             </tr>
           </thead>
-          <tbody>
-            <tr><td>Open Command Palette</td><td><span class="kbd">Ctrl</span> + <span class="kbd">K</span></td></tr>
-            <tr><td>Open Settings</td><td><span class="kbd">Ctrl</span> + <span class="kbd">,</span></td></tr>
-            <tr><td>New Tab</td><td><span class="kbd">Ctrl</span> + <span class="kbd">T</span></td></tr>
-            <tr><td>Close Active Tab</td><td><span class="kbd">Ctrl</span> + <span class="kbd">W</span></td></tr>
-            <tr><td>Reopen Closed Tab</td><td><span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">T</span></td></tr>
-            <tr><td>Focus Address Bar (Omnibox)</td><td><span class="kbd">Ctrl</span> + <span class="kbd">L</span></td></tr>
-            <tr><td>Find in Page</td><td><span class="kbd">Ctrl</span> + <span class="kbd">F</span></td></tr>
-            <tr><td>Downloads Manager Drawer</td><td><span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">J</span></td></tr>
-            <tr><td>Browsing History Drawer</td><td><span class="kbd">Ctrl</span> + <span class="kbd">H</span></td></tr>
-            <tr><td>Mute / Unmute Audio</td><td><span class="kbd">Ctrl</span> + <span class="kbd">M</span></td></tr>
-            <tr><td>Toggle Full Screen Mode</td><td><span class="kbd">F11</span></td></tr>
-            <tr><td>Toggle Left Sidebar</td><td><span class="kbd">Ctrl</span> + <span class="kbd">S</span></td></tr>
-            <tr><td>Developer Tools</td><td><span class="kbd">F12</span></td></tr>
-            <tr><td>Reload Page</td><td><span class="kbd">Ctrl</span> + <span class="kbd">R</span></td></tr>
-            <tr><td>Hard Reload (Bypass Cache)</td><td><span class="kbd">Ctrl</span> + <span class="kbd">F5</span></td></tr>
-            <tr><td>Distraction-Free Reader Mode</td><td><span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">R</span> / <span class="kbd">F9</span></td></tr>
+          <tbody id="shortcutsListBody">
+            <tr data-action="palette" data-name="Open Command Palette" data-cat="Navigation">
+              <td>Open Command Palette</td>
+              <td><span class="kbd">Navigation</span></td>
+              <td><button class="key-pill" onclick="recordShortcut('palette', this)">{{(settings.CustomKeyBindings.TryGetValue("palette", out var pVal) ? pVal : "Ctrl+K")}}</button></td>
+            </tr>
+            <tr data-action="settings" data-name="Open Settings" data-cat="General">
+              <td>Open Settings</td>
+              <td><span class="kbd">General</span></td>
+              <td><button class="key-pill" onclick="recordShortcut('settings', this)">{{(settings.CustomKeyBindings.TryGetValue("settings", out var sVal) ? sVal : "Ctrl+,")}}</button></td>
+            </tr>
+            <tr data-action="new_tab" data-name="New Tab" data-cat="Tabs">
+              <td>New Tab</td>
+              <td><span class="kbd">Tabs</span></td>
+              <td><button class="key-pill" onclick="recordShortcut('new_tab', this)">{{(settings.CustomKeyBindings.TryGetValue("new_tab", out var ntVal) ? ntVal : "Ctrl+T")}}</button></td>
+            </tr>
+            <tr data-action="close_tab" data-name="Close Active Tab" data-cat="Tabs">
+              <td>Close Active Tab</td>
+              <td><span class="kbd">Tabs</span></td>
+              <td><button class="key-pill" onclick="recordShortcut('close_tab', this)">{{(settings.CustomKeyBindings.TryGetValue("close_tab", out var ctVal) ? ctVal : "Ctrl+W")}}</button></td>
+            </tr>
+            <tr data-action="reopen_tab" data-name="Reopen Closed Tab" data-cat="Tabs">
+              <td>Reopen Closed Tab</td>
+              <td><span class="kbd">Tabs</span></td>
+              <td><button class="key-pill" onclick="recordShortcut('reopen_tab', this)">{{(settings.CustomKeyBindings.TryGetValue("reopen_tab", out var rtVal) ? rtVal : "Ctrl+Shift+T")}}</button></td>
+            </tr>
+            <tr data-action="omnibox" data-name="Focus Address Bar (Omnibox)" data-cat="Navigation">
+              <td>Focus Address Bar (Omnibox)</td>
+              <td><span class="kbd">Navigation</span></td>
+              <td><button class="key-pill" onclick="recordShortcut('omnibox', this)">{{(settings.CustomKeyBindings.TryGetValue("omnibox", out var oVal) ? oVal : "Ctrl+L")}}</button></td>
+            </tr>
+            <tr data-action="find" data-name="Find in Page" data-cat="Navigation">
+              <td>Find in Page</td>
+              <td><span class="kbd">Navigation</span></td>
+              <td><button class="key-pill" onclick="recordShortcut('find', this)">{{(settings.CustomKeyBindings.TryGetValue("find", out var fVal) ? fVal : "Ctrl+F")}}</button></td>
+            </tr>
+            <tr data-action="downloads" data-name="Downloads Drawer" data-cat="Tools">
+              <td>Downloads Drawer</td>
+              <td><span class="kbd">Tools</span></td>
+              <td><button class="key-pill" onclick="recordShortcut('downloads', this)">{{(settings.CustomKeyBindings.TryGetValue("downloads", out var dVal) ? dVal : "Ctrl+Shift+J")}}</button></td>
+            </tr>
+            <tr data-action="history" data-name="Browsing History Hub" data-cat="Tools">
+              <td>Browsing History Hub</td>
+              <td><span class="kbd">Tools</span></td>
+              <td><button class="key-pill" onclick="recordShortcut('history', this)">{{(settings.CustomKeyBindings.TryGetValue("history", out var hVal) ? hVal : "Ctrl+H")}}</button></td>
+            </tr>
+            <tr data-action="split_view" data-name="Toggle Split View" data-cat="View">
+              <td>Toggle Split View</td>
+              <td><span class="kbd">View</span></td>
+              <td><button class="key-pill" onclick="recordShortcut('split_view', this)">{{(settings.CustomKeyBindings.TryGetValue("split_view", out var spVal) ? spVal : "Ctrl+\\")}}</button></td>
+            </tr>
+            <tr data-action="mute" data-name="Mute / Unmute Audio" data-cat="Tabs">
+              <td>Mute / Unmute Audio</td>
+              <td><span class="kbd">Tabs</span></td>
+              <td><button class="key-pill" onclick="recordShortcut('mute', this)">{{(settings.CustomKeyBindings.TryGetValue("mute", out var mVal) ? mVal : "Ctrl+M")}}</button></td>
+            </tr>
+            <tr data-action="fullscreen" data-name="Toggle Full Screen" data-cat="View">
+              <td>Toggle Full Screen</td>
+              <td><span class="kbd">View</span></td>
+              <td><button class="key-pill" onclick="recordShortcut('fullscreen', this)">{{(settings.CustomKeyBindings.TryGetValue("fullscreen", out var fsVal) ? fsVal : "F11")}}</button></td>
+            </tr>
+            <tr data-action="sidebar" data-name="Toggle Left Sidebar" data-cat="View">
+              <td>Toggle Left Sidebar</td>
+              <td><span class="kbd">View</span></td>
+              <td><button class="key-pill" onclick="recordShortcut('sidebar', this)">{{(settings.CustomKeyBindings.TryGetValue("sidebar", out var sbVal) ? sbVal : "Ctrl+S")}}</button></td>
+            </tr>
+            <tr data-action="devtools" data-name="Developer Tools" data-cat="Tools">
+              <td>Developer Tools</td>
+              <td><span class="kbd">Tools</span></td>
+              <td><button class="key-pill" onclick="recordShortcut('devtools', this)">{{(settings.CustomKeyBindings.TryGetValue("devtools", out var dtVal) ? dtVal : "F12")}}</button></td>
+            </tr>
+            <tr data-action="reader_mode" data-name="Reader Mode" data-cat="View">
+              <td>Reader Mode</td>
+              <td><span class="kbd">View</span></td>
+              <td><button class="key-pill" onclick="recordShortcut('reader_mode', this)">{{(settings.CustomKeyBindings.TryGetValue("reader_mode", out var rmVal) ? rmVal : "F9")}}</button></td>
+            </tr>
+            <tr data-action="bookmarks_bar" data-name="Bookmarks Bar" data-cat="View">
+              <td>Bookmarks Bar</td>
+              <td><span class="kbd">View</span></td>
+              <td><button class="key-pill" onclick="recordShortcut('bookmarks_bar', this)">{{(settings.CustomKeyBindings.TryGetValue("bookmarks_bar", out var bmVal) ? bmVal : "Ctrl+Shift+B")}}</button></td>
+            </tr>
+            <tr data-action="reload" data-name="Reload Page" data-cat="Navigation">
+              <td>Reload Page</td>
+              <td><span class="kbd">Navigation</span></td>
+              <td><button class="key-pill" onclick="recordShortcut('reload', this)">{{(settings.CustomKeyBindings.TryGetValue("reload", out var rVal) ? rVal : "Ctrl+R")}}</button></td>
+            </tr>
+            <tr data-action="print" data-name="Print / Save PDF" data-cat="Tools">
+              <td>Print / Save PDF</td>
+              <td><span class="kbd">Tools</span></td>
+              <td><button class="key-pill" onclick="recordShortcut('print', this)">{{(settings.CustomKeyBindings.TryGetValue("print", out var prVal) ? prVal : "Ctrl+P")}}</button></td>
+            </tr>
+            <tr data-action="pip" data-name="Picture-in-Picture" data-cat="Tools">
+              <td>Picture-in-Picture</td>
+              <td><span class="kbd">Tools</span></td>
+              <td><button class="key-pill" onclick="recordShortcut('pip', this)">{{(settings.CustomKeyBindings.TryGetValue("pip", out var pipVal) ? pipVal : "Alt+P")}}</button></td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -696,6 +873,102 @@ namespace Browy.Services
 
   function onAiProviderChange(val) {
     saveAiConfig();
+  }
+
+  function onBackdropChange(val) {
+    postAction('set_backdrop_material', { material: val });
+    showToast('Backdrop material updated to ' + val);
+  }
+
+  function onPerformanceChange() {
+    const tabSuspension = document.getElementById('tabSuspensionToggle').checked;
+    const idleMinutes = parseInt(document.getElementById('idleTimeoutSelect').value, 10);
+    const mouseGestures = document.getElementById('mouseGesturesToggle').checked;
+    const trackpadSwipe = document.getElementById('trackpadSwipeToggle').checked;
+
+    postAction('set_tab_suspension', { enabled: tabSuspension, minutes: idleMinutes });
+    postAction('set_gestures', { mouse: mouseGestures, trackpad: trackpadSwipe });
+    showToast('Performance & Gesture preferences saved.');
+  }
+
+  function filterShortcuts(query) {
+    const q = query.toLowerCase();
+    const rows = document.querySelectorAll('#shortcutsListBody tr');
+    rows.forEach(r => {
+      const text = r.innerText.toLowerCase();
+      r.style.display = text.includes(q) ? '' : 'none';
+    });
+  }
+
+  let activeRecordingPill = null;
+  function recordShortcut(actionId, elem) {
+    if (activeRecordingPill) {
+      activeRecordingPill.classList.remove('recording');
+      activeRecordingPill.innerText = activeRecordingPill.dataset.currentKey || activeRecordingPill.innerText;
+    }
+
+    activeRecordingPill = elem;
+    elem.dataset.currentKey = elem.innerText;
+    elem.innerText = 'Press keys...';
+    elem.classList.add('recording');
+    document.getElementById('shortcutConflict').style.display = 'none';
+
+    function handleKey(e) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return;
+
+      const parts = [];
+      if (e.ctrlKey) parts.push('Ctrl');
+      if (e.shiftKey) parts.push('Shift');
+      if (e.altKey) parts.push('Alt');
+
+      let k = e.key.toUpperCase();
+      if (k === ' ') k = 'Space';
+      parts.push(k);
+
+      const combo = parts.join('+');
+
+      // Collision detection
+      let conflictAction = null;
+      document.querySelectorAll('#shortcutsListBody tr').forEach(r => {
+        if (r.dataset.action !== actionId) {
+          const pill = r.querySelector('.key-pill');
+          if (pill && pill.innerText.toLowerCase() === combo.toLowerCase()) {
+            conflictAction = r.dataset.name;
+          }
+        }
+      });
+
+      if (conflictAction) {
+        const conflictBox = document.getElementById('shortcutConflict');
+        conflictBox.innerText = `Shortcut conflict: ${combo} is already assigned to "${conflictAction}".`;
+        conflictBox.style.display = 'block';
+        elem.classList.remove('recording');
+        elem.innerText = elem.dataset.currentKey;
+        window.removeEventListener('keydown', handleKey, true);
+        activeRecordingPill = null;
+        return;
+      }
+
+      elem.innerText = combo;
+      elem.dataset.currentKey = combo;
+      elem.classList.remove('recording');
+      window.removeEventListener('keydown', handleKey, true);
+      activeRecordingPill = null;
+
+      postAction('set_custom_shortcut', { actionId: actionId, shortcut: combo });
+      showToast(`Rebound ${actionId} to ${combo}`);
+    }
+
+    window.addEventListener('keydown', handleKey, { capture: true, once: true });
+  }
+
+  function resetAllShortcuts() {
+    postAction('reset_custom_shortcuts');
+    showToast('Reset all shortcuts to defaults.');
+    setTimeout(() => location.reload(), 400);
   }
 </script>
 </body>

@@ -26,6 +26,20 @@ namespace Browy.Services
         public System.Collections.Generic.List<string> InstalledExtensionPaths { get; set; } = new();
         public System.Collections.Generic.List<string> AllowedNotificationOrigins { get; set; } = new();
         public System.Collections.Generic.List<string> BlockedNotificationOrigins { get; set; } = new();
+
+        // Appearance & Backdrop (#4)
+        public string BackdropMaterial { get; set; } = "Acrylic"; // "Acrylic", "Mica", "MicaAlt", "SolidDark"
+
+        // Performance & Tab Suspension (#18)
+        public bool EnableIdleTabSuspension { get; set; } = true;
+        public int IdleTabSuspensionMinutes { get; set; } = 15;
+
+        // Gestures & Navigation (#14)
+        public bool EnableMouseGestures { get; set; } = true;
+        public bool EnableTrackpadSwipe { get; set; } = true;
+
+        // Interactive Keyboard Shortcuts (#9)
+        public System.Collections.Generic.Dictionary<string, string> CustomKeyBindings { get; set; } = new();
     }
 
     public static class BrowserSettings

@@ -13,6 +13,7 @@ namespace Browy.Models
         private string _iconGlyph = "\uE80F"; // Default Home/Personal
         private string _accentColorHex = "#6366F1"; // Modern Indigo
         private bool _isActive = false;
+        private bool _isIsolated = false;
 
         public string Id
         {
@@ -31,6 +32,24 @@ namespace Browy.Models
             get => _iconGlyph;
             set { _iconGlyph = value; OnPropertyChanged(); }
         }
+
+        public bool IsIsolated
+        {
+            get => _isIsolated;
+            set
+            {
+                if (_isIsolated != value)
+                {
+                    _isIsolated = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(ShowsIsolationBadge));
+                    OnPropertyChanged(nameof(IsolationToolTip));
+                }
+            }
+        }
+
+        public bool ShowsIsolationBadge => _isIsolated;
+        public string IsolationToolTip => _isIsolated ? "Isolated Container Profile (Separate logins & cookies)" : "Standard Profile";
 
         public string AccentColorHex
         {

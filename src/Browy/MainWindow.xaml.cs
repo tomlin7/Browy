@@ -97,6 +97,9 @@ namespace Browy
             UpdateNavMargins();
             FindPopup.CustomPopupPlacementCallback = FindPopupPlacementCallback;
             StateChanged += Window_StateChanged;
+
+            InitializeGestureHandling();
+            InitializeIdleTabTimer();
         }
 
         protected override void OnSourceInitialized(EventArgs e)
@@ -107,7 +110,9 @@ namespace Browy
         }
 
         private const int WM_MOUSEACTIVATE = 0x0021;
+        private const int WM_MOUSEHWHEEL = 0x020E;
         private const int MA_ACTIVATE = 1;
+        private DateTime _lastSwipeTime = DateTime.MinValue;
 
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
@@ -118,6 +123,27 @@ namespace Browy
                 handled = true;
                 return (IntPtr)MA_ACTIVATE;
             }
+
+            if (msg == WM_MOUSEHWHEEL && BrowserSettings.Current.EnableTrackpadSwipe)
+            {
+                short tilt = unchecked((short)((long)wParam >> 16));
+                if ((DateTime.Now - _lastSwipeTime).TotalMilliseconds > 400)
+                {
+                    if (tilt > 120)
+                    {
+                        _lastSwipeTime = DateTime.Now;
+                        ForwardButton_Click(this, new RoutedEventArgs());
+                        handled = true;
+                    }
+                    else if (tilt < -120)
+                    {
+                        _lastSwipeTime = DateTime.Now;
+                        BackButton_Click(this, new RoutedEventArgs());
+                        handled = true;
+                    }
+                }
+            }
+
             return IntPtr.Zero;
         }
 
@@ -132,10 +158,157 @@ namespace Browy
                 MaximizePath.Data = Geometry.Parse("M 0.5,0.5 L 9.5,0.5 L 9.5,9.5 L 0.5,9.5 Z");
             }
 
+            if (WindowState == WindowState.Minimized)
+            {
+                if (BrowserSettings.Current.EnableIdleTabSuspension)
+                {
+                    foreach (var tab in Tabs)
+                    {
+                        if (!tab.IsPlayingAudio && !tab.IsSleeping && tab.WebViewInstance?.CoreWebView2 != null)
+                        {
+                            try
+                            {
+                                _ = tab.WebViewInstance.CoreWebView2.TrySuspendAsync();
+                                tab.IsSleeping = true;
+                            }
+                            catch { }
+                        }
+                    }
+                }
+            }
+            else if (_activeTab?.IsSleeping == true && _activeTab.WebViewInstance?.CoreWebView2 != null)
+            {
+                WakeTab(_activeTab);
+            }
+
             if (_activeTab?.WebViewInstance != null)
             {
                 ClipWebViewToRoundedCorners(_activeTab.WebViewInstance);
             }
+        }
+
+        private System.Windows.Threading.DispatcherTimer? _idleTabTimer;
+
+        private void InitializeIdleTabTimer()
+        {
+            _idleTabTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromMinutes(1)
+            };
+            _idleTabTimer.Tick += async (s, e) =>
+            {
+                if (!BrowserSettings.Current.EnableIdleTabSuspension) return;
+                int thresholdMins = Math.Max(1, BrowserSettings.Current.IdleTabSuspensionMinutes);
+                DateTime cutoff = DateTime.Now.AddMinutes(-thresholdMins);
+
+                foreach (var tab in Tabs)
+                {
+                    if (tab == _activeTab || tab == _splitSecondaryTab || tab == _splitTab3 || tab == _splitTab4) continue;
+                    if (tab.IsPlayingAudio || tab.IsSleeping) continue;
+
+                    if (tab.LastActiveTime <= cutoff && tab.WebViewInstance?.CoreWebView2 != null)
+                    {
+                        try
+                        {
+                            await tab.WebViewInstance.CoreWebView2.TrySuspendAsync();
+                            tab.IsSleeping = true;
+                        }
+                        catch { }
+                    }
+                }
+            };
+            _idleTabTimer.Start();
+        }
+
+        private Point _gestureStartPoint;
+        private bool _isMouseGestureTracking;
+        private string? _currentGestureAction;
+
+        private void InitializeGestureHandling()
+        {
+            this.PreviewMouseRightButtonDown += (s, e) =>
+            {
+                if (!BrowserSettings.Current.EnableMouseGestures) return;
+                _gestureStartPoint = e.GetPosition(this);
+                _isMouseGestureTracking = true;
+                _currentGestureAction = null;
+            };
+
+            this.PreviewMouseMove += (s, e) =>
+            {
+                if (!_isMouseGestureTracking || !BrowserSettings.Current.EnableMouseGestures) return;
+                var currentPt = e.GetPosition(this);
+                double dx = currentPt.X - _gestureStartPoint.X;
+                double dy = currentPt.Y - _gestureStartPoint.Y;
+
+                if (Math.Abs(dx) > 40 || Math.Abs(dy) > 40)
+                {
+                    if (Math.Abs(dx) > Math.Abs(dy))
+                    {
+                        if (dx < -40)
+                        {
+                            _currentGestureAction = "Back";
+                            GestureIconText.Text = "\uE76B";
+                            GestureActionText.Text = "Back";
+                            GestureOverlay.Visibility = Visibility.Visible;
+                        }
+                        else if (dx > 40)
+                        {
+                            _currentGestureAction = "Forward";
+                            GestureIconText.Text = "\uE76C";
+                            GestureActionText.Text = "Forward";
+                            GestureOverlay.Visibility = Visibility.Visible;
+                        }
+                    }
+                    else
+                    {
+                        if (dy > 40)
+                        {
+                            _currentGestureAction = "NewTab";
+                            GestureIconText.Text = "\uE710";
+                            GestureActionText.Text = "New Tab";
+                            GestureOverlay.Visibility = Visibility.Visible;
+                        }
+                        else if (dy < -40)
+                        {
+                            _currentGestureAction = "Reload";
+                            GestureIconText.Text = "\uE72C";
+                            GestureActionText.Text = "Reload";
+                            GestureOverlay.Visibility = Visibility.Visible;
+                        }
+                    }
+                }
+            };
+
+            this.PreviewMouseRightButtonUp += (s, e) =>
+            {
+                if (_isMouseGestureTracking)
+                {
+                    _isMouseGestureTracking = false;
+                    GestureOverlay.Visibility = Visibility.Collapsed;
+
+                    if (!string.IsNullOrEmpty(_currentGestureAction) && BrowserSettings.Current.EnableMouseGestures)
+                    {
+                        e.Handled = true;
+                        switch (_currentGestureAction)
+                        {
+                            case "Back":
+                                BackButton_Click(this, new RoutedEventArgs());
+                                break;
+                            case "Forward":
+                                ForwardButton_Click(this, new RoutedEventArgs());
+                                break;
+                            case "NewTab":
+                                _ = CreateNewTabAsync("browy://newtab", true);
+                                break;
+                            case "Reload":
+                                ReloadButton_Click(this, new RoutedEventArgs());
+                                break;
+                        }
+                        _currentGestureAction = null;
+                    }
+                }
+            };
         }
 
         #region Win32 Rounded Clipping for WebView2 (Airspace Fix)
@@ -189,8 +362,8 @@ namespace Browy
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            // Apply native Windows 11 Desktop Acrylic backdrop exclusively
-            WindowsBackdropService.ApplyBackdrop(this, BackdropType.Acrylic, isDarkMode: true);
+            // Apply native Windows 11 Desktop Acrylic / Mica backdrop
+            WindowsBackdropService.ApplyConfiguredBackdrop(this, BrowserSettings.Current.BackdropMaterial);
 
             // Populate initial bookmarks matching the sleek Arc/Zen style in screenshot 2
             LoadInitialBookmarks();
@@ -231,6 +404,7 @@ namespace Browy
                             IconGlyph = sData.IconGlyph,
                             AccentColorHex = sData.AccentColorHex,
                             IsActive = (s == activeSpaceIdx),
+                            IsIsolated = sData.IsIsolated,
                             ActiveTabIndex = sData.ActiveTabIndex
                         };
 
@@ -521,15 +695,36 @@ namespace Browy
             return tab;
         }
 
-        private async Task<CoreWebView2Environment> EnsureEnvironmentAsync()
+        private readonly Dictionary<string, CoreWebView2Environment> _spaceEnvironments = new();
+
+        private async Task<CoreWebView2Environment> EnsureEnvironmentAsync(BrowserSpace? space = null)
         {
             if (IsInPrivate)
             {
                 if (_inPrivateEnvironment != null) return _inPrivateEnvironment;
                 string tempFolder = Path.Combine(Path.GetTempPath(), $"Browy_InPrivate_{Environment.ProcessId}_{Guid.NewGuid():N}");
                 Directory.CreateDirectory(tempFolder);
-                _inPrivateEnvironment = await CoreWebView2Environment.CreateAsync(null, tempFolder);
+                var privOptions = new CoreWebView2EnvironmentOptions(
+                    additionalBrowserArguments: "--disable-features=CalculateNativeWinOcclusion,SpareRendererForSitePerProcess --renderer-process-limit=6"
+                );
+                _inPrivateEnvironment = await CoreWebView2Environment.CreateAsync(null, tempFolder, privOptions);
                 return _inPrivateEnvironment;
+            }
+
+            if (space != null && space.IsIsolated)
+            {
+                if (_spaceEnvironments.TryGetValue(space.Id, out var existingEnv))
+                {
+                    return existingEnv;
+                }
+                string spaceFolder = Path.Combine(_userDataFolder, $"Space_{space.Id}");
+                Directory.CreateDirectory(spaceFolder);
+                var spaceOptions = new CoreWebView2EnvironmentOptions(
+                    additionalBrowserArguments: "--disable-features=CalculateNativeWinOcclusion,SpareRendererForSitePerProcess --renderer-process-limit=6 --enable-features=msResourceUsageReport"
+                );
+                var isolatedEnv = await CoreWebView2Environment.CreateAsync(null, spaceFolder, spaceOptions);
+                _spaceEnvironments[space.Id] = isolatedEnv;
+                return isolatedEnv;
             }
 
             if (_sharedEnvironment != null) return _sharedEnvironment;
@@ -539,10 +734,14 @@ namespace Browy
             {
                 if (_sharedEnvironment != null) return _sharedEnvironment;
 
+                var options = new CoreWebView2EnvironmentOptions(
+                    additionalBrowserArguments: "--disable-features=CalculateNativeWinOcclusion,SpareRendererForSitePerProcess --renderer-process-limit=6 --enable-features=msResourceUsageReport"
+                );
+
                 try
                 {
                     Directory.CreateDirectory(_userDataFolder);
-                    _sharedEnvironment = await CoreWebView2Environment.CreateAsync(null, _userDataFolder);
+                    _sharedEnvironment = await CoreWebView2Environment.CreateAsync(null, _userDataFolder, options);
                 }
                 catch (Exception ex)
                 {
@@ -554,7 +753,7 @@ namespace Browy
 
                     string fallbackFolder = Path.Combine(Path.GetTempPath(), $"Browy_WebView2_{Environment.ProcessId}");
                     Directory.CreateDirectory(fallbackFolder);
-                    _sharedEnvironment = await CoreWebView2Environment.CreateAsync(null, fallbackFolder);
+                    _sharedEnvironment = await CoreWebView2Environment.CreateAsync(null, fallbackFolder, options);
                 }
 
                 return _sharedEnvironment;
@@ -799,6 +998,50 @@ namespace Browy
                         if (root.TryGetProperty("selectedModel", out var sModel)) BrowserSettings.Current.SelectedAiModel = sModel.GetString() ?? "gpt-4o-mini";
                         BrowserSettings.Save();
                         break;
+
+                    case "set_backdrop_material":
+                        if (root.TryGetProperty("material", out var matProp))
+                        {
+                            string mat = matProp.GetString() ?? "Acrylic";
+                            BrowserSettings.Current.BackdropMaterial = mat;
+                            BrowserSettings.Save();
+                            WindowsBackdropService.ApplyConfiguredBackdrop(this, mat);
+                        }
+                        break;
+
+                    case "set_tab_suspension":
+                        if (root.TryGetProperty("enabled", out var susEnProp))
+                            BrowserSettings.Current.EnableIdleTabSuspension = susEnProp.GetBoolean();
+                        if (root.TryGetProperty("minutes", out var susMinProp))
+                            BrowserSettings.Current.IdleTabSuspensionMinutes = susMinProp.GetInt32();
+                        BrowserSettings.Save();
+                        break;
+
+                    case "set_gestures":
+                        if (root.TryGetProperty("mouse", out var mGProp))
+                            BrowserSettings.Current.EnableMouseGestures = mGProp.GetBoolean();
+                        if (root.TryGetProperty("trackpad", out var tpProp))
+                            BrowserSettings.Current.EnableTrackpadSwipe = tpProp.GetBoolean();
+                        BrowserSettings.Save();
+                        break;
+
+                    case "set_custom_shortcut":
+                        if (root.TryGetProperty("actionId", out var aProp) && root.TryGetProperty("shortcut", out var scProp))
+                        {
+                            string aId = aProp.GetString() ?? "";
+                            string sc = scProp.GetString() ?? "";
+                            if (!string.IsNullOrEmpty(aId))
+                            {
+                                BrowserSettings.Current.CustomKeyBindings[aId] = sc;
+                                BrowserSettings.Save();
+                            }
+                        }
+                        break;
+
+                    case "reset_custom_shortcuts":
+                        BrowserSettings.Current.CustomKeyBindings.Clear();
+                        BrowserSettings.Save();
+                        break;
                 }
             }
             catch (Exception ex)
@@ -813,7 +1056,7 @@ namespace Browy
 
             try
             {
-                var env = await EnsureEnvironmentAsync();
+                var env = await EnsureEnvironmentAsync(ActiveSpace);
                 await tab.WebViewInstance.EnsureCoreWebView2Async(env);
 
                 var core = tab.WebViewInstance.CoreWebView2;
@@ -3731,6 +3974,39 @@ namespace Browy
 
         private async void Window_KeyDown(object sender, KeyEventArgs e)
         {
+            if (e.Key == Key.Escape)
+            {
+                if (FindPopup.IsOpen) { FindPopup.IsOpen = false; e.Handled = true; return; }
+                if (DownloadsPopup.IsOpen) { DownloadsPopup.IsOpen = false; e.Handled = true; return; }
+                if (OmniboxSuggestionsPopup.IsOpen) { OmniboxSuggestionsPopup.IsOpen = false; e.Handled = true; return; }
+            }
+
+            // Hardware Media Keys Integration (#24)
+            if (e.Key == Key.MediaPlayPause)
+            {
+                await ToggleMediaPlaybackAsync();
+                e.Handled = true;
+                return;
+            }
+            if (e.Key == Key.MediaNextTrack)
+            {
+                await SkipMediaAsync(10);
+                e.Handled = true;
+                return;
+            }
+            if (e.Key == Key.MediaPreviousTrack)
+            {
+                await SkipMediaAsync(-10);
+                e.Handled = true;
+                return;
+            }
+            if (e.Key == Key.MediaStop)
+            {
+                await StopMediaAsync();
+                e.Handled = true;
+                return;
+            }
+
             if (Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift))
             {
                 if (e.Key == Key.B)
@@ -4275,6 +4551,18 @@ namespace Browy
             }
         }
 
+        private void ToggleSpaceIsolation_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement elem && elem.Tag is BrowserSpace space)
+            {
+                space.IsIsolated = !space.IsIsolated;
+                SessionService.SaveSpacesSession(Spaces, ActiveSpace, _activeTab);
+                NotificationService.ShowToast(
+                    "Space Container Profile",
+                    $"{space.Name} is now {(space.IsIsolated ? "Isolated (Independent Logins & Storage)" : "Shared Profile")}.");
+            }
+        }
+
         #endregion
 
         #region Split View Dual-Pane & Quad (Milestone 2 & Issue #11)
@@ -4612,6 +4900,54 @@ namespace Browy
                 {
                     System.Windows.MessageBox.Show($"Failed to load extension: {ex.Message}", "Extension Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
+            }
+        }
+
+        #endregion
+
+        #region Media Controls & SMTC Integration (#24)
+
+        public async Task ToggleMediaPlaybackAsync()
+        {
+            var targetTab = Tabs.FirstOrDefault(t => t.IsPlayingAudio) ?? _activeTab;
+            if (targetTab?.WebViewInstance?.CoreWebView2 != null)
+            {
+                await targetTab.WebViewInstance.CoreWebView2.ExecuteScriptAsync(@"
+                    (function() {
+                        var media = Array.from(document.querySelectorAll('video, audio'));
+                        if (media.length === 0) return;
+                        var anyPlaying = media.some(m => !m.paused);
+                        media.forEach(m => anyPlaying ? m.pause() : m.play());
+                    })();
+                ");
+            }
+        }
+
+        public async Task SkipMediaAsync(int seconds)
+        {
+            var targetTab = Tabs.FirstOrDefault(t => t.IsPlayingAudio) ?? _activeTab;
+            if (targetTab?.WebViewInstance?.CoreWebView2 != null)
+            {
+                await targetTab.WebViewInstance.CoreWebView2.ExecuteScriptAsync($@"
+                    (function() {{
+                        var media = document.querySelectorAll('video, audio');
+                        media.forEach(m => m.currentTime += {seconds});
+                    }})();
+                ");
+            }
+        }
+
+        public async Task StopMediaAsync()
+        {
+            var targetTab = Tabs.FirstOrDefault(t => t.IsPlayingAudio) ?? _activeTab;
+            if (targetTab?.WebViewInstance?.CoreWebView2 != null)
+            {
+                await targetTab.WebViewInstance.CoreWebView2.ExecuteScriptAsync(@"
+                    (function() {
+                        var media = document.querySelectorAll('video, audio');
+                        media.forEach(m => { m.pause(); m.currentTime = 0; });
+                    })();
+                ");
             }
         }
 

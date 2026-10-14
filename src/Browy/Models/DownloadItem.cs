@@ -9,7 +9,7 @@ namespace Browy.Models
 {
     public class DownloadItem : INotifyPropertyChanged
     {
-        public CoreWebView2DownloadOperation Operation { get; }
+        public CoreWebView2DownloadOperation? Operation { get; }
 
         private string _fileName = string.Empty;
         public string FileName
@@ -102,6 +102,10 @@ namespace Browy.Models
             }
         }
 
+        public DownloadItem()
+        {
+        }
+
         public DownloadItem(CoreWebView2DownloadOperation operation)
         {
             Operation = operation;
@@ -169,7 +173,7 @@ namespace Browy.Models
             {
                 if (IsInProgress)
                 {
-                    Operation.Cancel();
+                    Operation?.Cancel();
                 }
             }
             catch { }

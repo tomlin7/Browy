@@ -39,6 +39,9 @@ jobs:
       - name: Verify Build
         run: dotnet build Browy.sln -c Release --no-restore
 
+      - name: Run Unit & Integration Tests
+        run: dotnet test Browy.sln -c Release --no-build --verbosity normal
+
       - name: Check if Version Changed
         id: version_check
         shell: pwsh

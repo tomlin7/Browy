@@ -2136,7 +2136,7 @@ namespace Browy
                 };
                 if (sfd.ShowDialog() == true)
                 {
-                    string json = BackupService.CreateBackupJson(Bookmarks, BrowserSettings.Current, Spaces, _activeSpace, _activeTab);
+                    string json = BackupService.CreateBackupJson(Bookmarks, BrowserSettings.Current, Spaces, ActiveSpace, _activeTab);
                     File.WriteAllText(sfd.FileName, json);
                     System.Windows.MessageBox.Show("Backup successfully exported!", "Browy Backup", MessageBoxButton.OK, MessageBoxImage.Information);
                 }

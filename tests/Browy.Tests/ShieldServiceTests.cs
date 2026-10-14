@@ -47,5 +47,37 @@ namespace Browy.Tests
             bool isBlocked = ShieldService.IsBlocked(url!, out _);
             Assert.Equal(expected, isBlocked);
         }
+
+        [Fact]
+        public void ShieldService_WhitelistOverridesBlocking()
+        {
+            string url = "https://doubleclick.net/ad.js";
+            Assert.True(ShieldService.IsBlocked(url, out _));
+
+            ShieldService.AddToWhitelist("doubleclick.net");
+            Assert.True(ShieldService.IsWhitelisted("doubleclick.net"));
+            Assert.False(ShieldService.IsBlocked(url, out _));
+
+            // Remove from whitelist
+            ShieldService.RemoveFromWhitelist("doubleclick.net");
+            Assert.False(ShieldService.IsWhitelisted("doubleclick.net"));
+            Assert.True(ShieldService.IsBlocked(url, out _));
+        }
+
+        [Fact]
+        public void ShieldService_CustomFilterDomainsAndPatterns()
+        {
+            string customAdUrl = "https://my-custom-annoying-tracker.com/pixel.gif";
+            Assert.False(ShieldService.IsBlocked(customAdUrl, out _));
+
+            ShieldService.AddCustomFilterDomain("my-custom-annoying-tracker.com");
+            Assert.True(ShieldService.IsBlocked(customAdUrl, out string reason));
+            Assert.Contains("my-custom-annoying-tracker.com", reason);
+
+            string customPatternUrl = "https://news.example.com/telemetry/tracker-beacon.json";
+            ShieldService.AddCustomFilterPattern("/telemetry/tracker-beacon");
+            Assert.True(ShieldService.IsBlocked(customPatternUrl, out string patternReason));
+            Assert.Equal("Custom Filter Pattern", patternReason);
+        }
     }
 }

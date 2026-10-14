@@ -80,6 +80,69 @@ namespace Browy.Services
             "/ads.js"
         };
 
+        private static readonly HashSet<string> WhitelistedDomains = new(StringComparer.OrdinalIgnoreCase);
+        private static readonly List<string> DynamicBlockedPatterns = new();
+
+        public static int BlockedDomainCount => BlockedDomains.Count;
+
+        public static void AddToWhitelist(string domain)
+        {
+            if (string.IsNullOrWhiteSpace(domain)) return;
+            string clean = domain.Trim().ToLowerInvariant();
+            if (clean.StartsWith("www.")) clean = clean.Substring(4);
+            lock (WhitelistedDomains)
+            {
+                WhitelistedDomains.Add(clean);
+            }
+        }
+
+        public static void RemoveFromWhitelist(string domain)
+        {
+            if (string.IsNullOrWhiteSpace(domain)) return;
+            string clean = domain.Trim().ToLowerInvariant();
+            if (clean.StartsWith("www.")) clean = clean.Substring(4);
+            lock (WhitelistedDomains)
+            {
+                WhitelistedDomains.Remove(clean);
+            }
+        }
+
+        public static bool IsWhitelisted(string domainOrUrl)
+        {
+            if (string.IsNullOrWhiteSpace(domainOrUrl)) return false;
+            string clean = domainOrUrl.Trim().ToLowerInvariant();
+            if (clean.StartsWith("http://") || clean.StartsWith("https://"))
+            {
+                clean = NavigationHelper.ExtractDomain(clean);
+            }
+            if (clean.StartsWith("www.")) clean = clean.Substring(4);
+
+            lock (WhitelistedDomains)
+            {
+                return WhitelistedDomains.Contains(clean);
+            }
+        }
+
+        public static void AddCustomFilterDomain(string domain)
+        {
+            if (string.IsNullOrWhiteSpace(domain)) return;
+            string clean = domain.Trim().ToLowerInvariant();
+            if (clean.StartsWith("www.")) clean = clean.Substring(4);
+            lock (BlockedDomains)
+            {
+                BlockedDomains.Add(clean);
+            }
+        }
+
+        public static void AddCustomFilterPattern(string pattern)
+        {
+            if (string.IsNullOrWhiteSpace(pattern)) return;
+            lock (DynamicBlockedPatterns)
+            {
+                DynamicBlockedPatterns.Add(pattern.Trim());
+            }
+        }
+
         public static bool IsBlocked(string url, out string reason)
         {
             reason = string.Empty;
@@ -97,6 +160,11 @@ namespace Browy.Services
                 if (host.StartsWith("www.", StringComparison.OrdinalIgnoreCase))
                 {
                     host = host.Substring(4);
+                }
+
+                if (IsWhitelisted(host))
+                {
+                    return false;
                 }
 
                 if (BlockedDomains.Contains(host))
@@ -128,6 +196,18 @@ namespace Browy.Services
                     {
                         reason = "Ad/Tracking Script Pattern";
                         return true;
+                    }
+                }
+
+                lock (DynamicBlockedPatterns)
+                {
+                    foreach (var pattern in DynamicBlockedPatterns)
+                    {
+                        if (path.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            reason = "Custom Filter Pattern";
+                            return true;
+                        }
                     }
                 }
             }

@@ -534,6 +534,11 @@ namespace Browy.Services
         </div>
 
         <div class=""header-right"">
+            <!-- Text-to-Speech Read Aloud -->
+            <button class=""btn"" id=""tts-btn"" onclick=""toggleReadAloud()"" title=""Read article aloud"">
+                <span id=""tts-icon"">&#x1F50A;</span> <span id=""tts-text"">Read Aloud</span>
+            </button>
+
             <!-- Font Selection -->
             <div class=""control-group"">
                 <button class=""btn-icon"" onclick=""setFont('sans')"" id=""font-sans"">Sans</button>
@@ -570,10 +575,51 @@ namespace Browy.Services
 
     <script>
         function exitReader() {{
+            if ('speechSynthesis' in window) {{
+                window.speechSynthesis.cancel();
+            }}
             if (window.chrome && window.chrome.webview) {{
                 window.chrome.webview.postMessage({{ action: 'exit_reader' }});
             }} else {{
                 history.back();
+            }}
+        }}
+
+        let isSpeaking = false;
+        function toggleReadAloud() {{
+            if (!('speechSynthesis' in window)) {{
+                alert('Text-to-speech is not supported in this environment.');
+                return;
+            }}
+            if (isSpeaking) {{
+                window.speechSynthesis.cancel();
+                isSpeaking = false;
+                document.getElementById('tts-icon').innerHTML = '&#x1F50A;';
+                document.getElementById('tts-text').innerText = 'Read Aloud';
+                document.getElementById('tts-btn').classList.remove('active');
+            }} else {{
+                const articleElem = document.querySelector('.article-content');
+                const text = (articleElem ? articleElem.innerText : '') || document.body.innerText;
+                if (!text || !text.trim()) return;
+
+                const utter = new SpeechSynthesisUtterance(text.trim());
+                utter.onend = () => {{
+                    isSpeaking = false;
+                    document.getElementById('tts-icon').innerHTML = '&#x1F50A;';
+                    document.getElementById('tts-text').innerText = 'Read Aloud';
+                    document.getElementById('tts-btn').classList.remove('active');
+                }};
+                utter.onerror = () => {{
+                    isSpeaking = false;
+                    document.getElementById('tts-icon').innerHTML = '&#x1F50A;';
+                    document.getElementById('tts-text').innerText = 'Read Aloud';
+                    document.getElementById('tts-btn').classList.remove('active');
+                }};
+                window.speechSynthesis.speak(utter);
+                isSpeaking = true;
+                document.getElementById('tts-icon').innerHTML = '&#x23F8;';
+                document.getElementById('tts-text').innerText = 'Pause';
+                document.getElementById('tts-btn').classList.add('active');
             }}
         }}
 

@@ -208,6 +208,24 @@ namespace Browy.Services
     border-color: var(--accent);
   }
 
+  /* Accent Swatches */
+  .accent-swatch {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.15s ease;
+  }
+  .accent-swatch:hover {
+    transform: scale(1.18);
+  }
+  .accent-swatch.active {
+    border-color: #FFFFFF;
+    box-shadow: 0 0 0 2px var(--accent);
+    transform: scale(1.18);
+  }
+
   /* Buttons */
   .btn {
     padding: 8px 16px;
@@ -468,9 +486,31 @@ namespace Browy.Services
             <div class="row-title">Theme Mode</div>
             <div class="row-desc">Browy is optimized with an immersive modern dark palette.</div>
           </div>
-          <select>
-            <option selected>Dark (Arc & Zen Fluent)</option>
+          <select id="themeModeSelect" onchange="onThemeModeChange(this.value)">
+            <option value="Dark" {{(settings.ThemeMode == "Dark" ? "selected" : "")}}>Dark (Arc &amp; Zen Fluent)</option>
+            <option value="Light" {{(settings.ThemeMode == "Light" ? "selected" : "")}}>Light Mode</option>
+            <option value="System" {{(settings.ThemeMode == "System" ? "selected" : "")}}>Follow Windows System</option>
           </select>
+        </div>
+
+        <div class="settings-row" style="align-items: flex-start;">
+          <div class="row-info">
+            <div class="row-title">Accent Color &amp; Space Palette</div>
+            <div class="row-desc">Choose a signature Arc &amp; Zen accent tint for borders, active tabs, buttons, and highlights.</div>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+            <div class="color-palette-row" style="display: flex; gap: 8px; align-items: center;">
+              <div class="accent-swatch {{(settings.AccentColorHex == "#3B82F6" ? "active" : "")}}" style="background: #3B82F6;" onclick="onSelectAccentColor('#3B82F6')" title="Electric Blue"></div>
+              <div class="accent-swatch {{(settings.AccentColorHex == "#8B5CF6" ? "active" : "")}}" style="background: #8B5CF6;" onclick="onSelectAccentColor('#8B5CF6')" title="Arc Purple"></div>
+              <div class="accent-swatch {{(settings.AccentColorHex == "#10B981" ? "active" : "")}}" style="background: #10B981;" onclick="onSelectAccentColor('#10B981')" title="Emerald Green"></div>
+              <div class="accent-swatch {{(settings.AccentColorHex == "#F59E0B" ? "active" : "")}}" style="background: #F59E0B;" onclick="onSelectAccentColor('#F59E0B')" title="Sunset Amber"></div>
+              <div class="accent-swatch {{(settings.AccentColorHex == "#EC4899" ? "active" : "")}}" style="background: #EC4899;" onclick="onSelectAccentColor('#EC4899')" title="Rose Quartz"></div>
+              <div class="accent-swatch {{(settings.AccentColorHex == "#06B6D4" ? "active" : "")}}" style="background: #06B6D4;" onclick="onSelectAccentColor('#06B6D4')" title="Cyber Cyan"></div>
+              <div class="accent-swatch {{(settings.AccentColorHex == "#64748B" ? "active" : "")}}" style="background: #64748B;" onclick="onSelectAccentColor('#64748B')" title="Midnight Slate"></div>
+              <input type="color" id="customAccentPicker" value="{{settings.AccentColorHex}}" onchange="onSelectAccentColor(this.value)" title="Custom Color Picker" style="width: 26px; height: 26px; border: none; border-radius: 50%; cursor: pointer; background: transparent; padding: 0;">
+            </div>
+            <div style="font-size: 11px; color: #64748B;">Active Tint: <span id="activeAccentText" style="color: {{settings.AccentColorHex}}; font-weight: 600;">{{settings.AccentColorHex}}</span></div>
+          </div>
         </div>
 
         <div class="settings-row">
@@ -626,6 +666,17 @@ namespace Browy.Services
             <option value="30" {{(settings.IdleTabSuspensionMinutes == 30 ? "selected" : "")}}>30 minutes</option>
             <option value="60" {{(settings.IdleTabSuspensionMinutes == 60 ? "selected" : "")}}>1 hour</option>
           </select>
+        </div>
+
+        <div class="settings-row">
+          <div class="row-info">
+            <div class="row-title">Active Tab Memory Optimizer</div>
+            <div class="row-desc">Immediately suspend idle tabs to free memory, or wake all background tabs.</div>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-secondary" onclick="postAction('snooze_inactive_tabs'); showToast('Sleeping background tabs to free memory.');">Snooze Inactive Tabs</button>
+            <button class="btn btn-secondary" onclick="postAction('wake_all_tabs'); showToast('Resumed all tabs.');">Wake All Tabs</button>
+          </div>
         </div>
 
         <div class="settings-row">
@@ -798,6 +849,13 @@ namespace Browy.Services
         </div>
         <div class="settings-row">
           <div class="row-info">
+            <div class="row-title">Diagnostics &amp; System Hub</div>
+            <div class="row-desc">View hardware specs, memory usage, runtime stats, and WebView2 diagnostics (<code style="color: var(--accent);">browy://version</code>).</div>
+          </div>
+          <button class="btn btn-secondary" onclick="window.location.href='browy://version'">Open browy://version</button>
+        </div>
+        <div class="settings-row">
+          <div class="row-info">
             <div class="row-title">Source Repository</div>
             <div class="row-desc">github.com/tomlin7/Browy</div>
           </div>
@@ -878,6 +936,24 @@ namespace Browy.Services
   function onBackdropChange(val) {
     postAction('set_backdrop_material', { material: val });
     showToast('Backdrop material updated to ' + val);
+  }
+
+  function onThemeModeChange(val) {
+    postAction('set_theme_mode', { mode: val });
+    showToast('Theme mode updated to ' + val);
+  }
+
+  function onSelectAccentColor(color) {
+    if (!color) return;
+    postAction('set_accent_color', { color: color });
+    document.documentElement.style.setProperty('--accent', color);
+    const txt = document.getElementById('activeAccentText');
+    if (txt) { txt.innerText = color; txt.style.color = color; }
+    document.querySelectorAll('.accent-swatch').forEach(sw => {
+      const onclickAttr = sw.getAttribute('onclick') || '';
+      sw.classList.toggle('active', onclickAttr.includes(color));
+    });
+    showToast('Accent tint updated.');
   }
 
   function onPerformanceChange() {

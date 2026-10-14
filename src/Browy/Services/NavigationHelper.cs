@@ -54,6 +54,32 @@ namespace Browy.Services
                 return "browy://downloads";
             }
 
+            // Extensions aliases
+            if (input.Equals("extensions", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("browy://extensions", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("about:extensions", StringComparison.OrdinalIgnoreCase))
+            {
+                return "browy://extensions";
+            }
+
+            // Version & About aliases
+            if (input.Equals("version", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("about", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("browy://version", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("browy://about", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("about:version", StringComparison.OrdinalIgnoreCase))
+            {
+                return "browy://version";
+            }
+
+            // Shortcuts aliases
+            if (input.Equals("shortcuts", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("browy://shortcuts", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("about:shortcuts", StringComparison.OrdinalIgnoreCase))
+            {
+                return "browy://shortcuts";
+            }
+
             // New Tab / Start page aliases
             if (input.Equals("newtab", StringComparison.OrdinalIgnoreCase) ||
                 input.Equals("start", StringComparison.OrdinalIgnoreCase) ||

@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
+using System.Runtime.InteropServices;
 using Browy.Models;
 
 namespace Browy.Services
@@ -174,6 +176,7 @@ namespace Browy.Services
       <h1>Browsing History</h1>
     </div>
     <div class='header-actions'>
+      <button class='btn-secondary' onclick=""exportHistory()""><span style=""font-family: 'Segoe Fluent Icons';"">&#xE749;</span> Export JSON</button>
       <button class='btn-danger' onclick=""openClearModal()""><span style=""font-family: 'Segoe Fluent Icons';"">&#xE74D;</span> Clear Browsing Data...</button>
     </div>
   </div>
@@ -302,6 +305,9 @@ namespace Browy.Services
     document.getElementById('clearModal').style.display = 'none';
   }}
 
+  function exportHistory() {{
+    window.chrome.webview.postMessage(JSON.stringify({{ action: 'export_history_json' }}));
+  }}
   function confirmClearHistory() {{
     var tf = document.getElementById('timeframeSelect').value;
     window.chrome.webview.postMessage(JSON.stringify({{ action: 'clear_history_timeframe', timeframe: tf }}));
@@ -388,6 +394,9 @@ namespace Browy.Services
   .title-area {{ display: flex; align-items: center; gap: 14px; }}
   .header-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 28px; color: #F59E0B; }}
   h1 {{ font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }}
+  .header-actions {{ display: flex; align-items: center; gap: 10px; }}
+  .btn-secondary {{ background: #181822; color: #CBD5E1; border: 1px solid #282838; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s ease; }}
+  .btn-secondary:hover {{ background: #222230; color: #FFFFFF; border-color: #383848; }}
   .search-bar {{ width: 100%; background: #181822; border: 1px solid #282838; border-radius: 10px; padding: 12px 18px; color: #FFFFFF; font-size: 14px; margin-bottom: 24px; outline: none; transition: border-color 0.15s ease; }}
   .search-bar:focus {{ border-color: #F59E0B; box-shadow: 0 0 0 2px #F59E0B3F; }}
   .bookmark-list {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }}
@@ -412,6 +421,10 @@ namespace Browy.Services
       <div class='header-icon'>&#xE734;</div>
       <h1>Bookmarks</h1>
     </div>
+    <div class='header-actions'>
+      <button class='btn-secondary' onclick=""exportBookmarks()""><span style=""font-family: 'Segoe Fluent Icons';"">&#xE749;</span> Export HTML</button>
+      <button class='btn-secondary' onclick=""importBookmarks()""><span style=""font-family: 'Segoe Fluent Icons';"">&#xE8E5;</span> Import HTML</button>
+    </div>
   </div>
   <input type='text' class='search-bar' placeholder='Search bookmarks by title or URL...' oninput='filterBookmarks(this.value)'>
   <div class='bookmark-list' id='bookmarkList'>
@@ -432,6 +445,12 @@ namespace Browy.Services
     window.chrome.webview.postMessage(JSON.stringify({{ action: 'delete_bookmark', url: url, index: index }}));
     var card = document.querySelector(`.bookmark-card[data-index='${{index}}']`);
     if (card) card.remove();
+  }}
+  function exportBookmarks() {{
+    window.chrome.webview.postMessage(JSON.stringify({{ action: 'export_bookmarks_html' }}));
+  }}
+  function importBookmarks() {{
+    window.chrome.webview.postMessage(JSON.stringify({{ action: 'import_bookmarks_html' }}));
   }}
 </script>
 </body>
@@ -491,8 +510,10 @@ namespace Browy.Services
                                       <button class='btn-action' onclick=""showInFolder('{fullPath}')"">Show in folder</button>";
                     }
 
+                    string statusCategory = item.IsInProgress ? "in_progress" : (item.IsPaused ? "paused" : (item.IsCompleted ? "completed" : "cancelled"));
+
                     sb.Append($@"
-                    <div class='download-card' data-id='{id}' data-filename='{fileName}'>
+                    <div class='download-card' data-id='{id}' data-filename='{fileName}' data-status='{statusCategory}'>
                         <div class='card-icon'>{item.IconGlyph}</div>
                         <div class='card-info'>
                             <div class='card-title'>{fileName}</div>
@@ -527,6 +548,10 @@ namespace Browy.Services
   .btn-secondary:hover {{ background: #222230; color: #FFFFFF; }}
   .search-bar {{ width: 100%; background: #181822; border: 1px solid #282838; border-radius: 10px; padding: 12px 18px; color: #FFFFFF; font-size: 14px; margin-bottom: 24px; outline: none; transition: border-color 0.15s ease; }}
   .search-bar:focus {{ border-color: #10B981; box-shadow: 0 0 0 2px #10B9813F; }}
+  .filter-bar {{ display: flex; gap: 8px; margin-bottom: 16px; }}
+  .filter-btn {{ background: #14141E; border: 1px solid #202030; color: #94A3B8; padding: 6px 14px; border-radius: 20px; font-size: 12.5px; font-weight: 500; cursor: pointer; transition: all 0.15s ease; }}
+  .filter-btn:hover {{ background: #1E1E2C; color: #FFFFFF; border-color: #303048; }}
+  .filter-btn.active {{ background: #10B98122; color: #34D399; border-color: #10B98166; font-weight: 600; }}
   .download-list {{ display: flex; flex-direction: column; gap: 12px; }}
   .download-card {{ display: flex; align-items: center; background: #14141E; border: 1px solid #202030; border-radius: 12px; padding: 16px 20px; gap: 16px; transition: all 0.12s ease; }}
   .download-card:hover {{ background: #1A1A28; border-color: #303048; }}
@@ -559,18 +584,34 @@ namespace Browy.Services
       <button class='btn-secondary' onclick=""clearCompleted()"">Clear Completed</button>
     </div>
   </div>
-  <input type='text' class='search-bar' placeholder='Search downloads by file name...' oninput='filterDownloads(this.value)'>
+  <input type='text' id='downloadSearch' class='search-bar' placeholder='Search downloads by file name...' oninput='applyFilters()'>
+  <div class='filter-bar'>
+    <button class='filter-btn active' onclick=""setStatusFilter('all', this)"">All</button>
+    <button class='filter-btn' onclick=""setStatusFilter('in_progress', this)"">In Progress</button>
+    <button class='filter-btn' onclick=""setStatusFilter('completed', this)"">Completed</button>
+    <button class='filter-btn' onclick=""setStatusFilter('paused', this)"">Paused / Other</button>
+  </div>
   <div class='download-list' id='downloadList'>
     {itemsHtml}
   </div>
 </div>
 <script>
-  function filterDownloads(query) {{
-    var q = query.toLowerCase().trim();
+  var currentStatusFilter = 'all';
+  function setStatusFilter(status, btn) {{
+    currentStatusFilter = status;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    applyFilters();
+  }}
+  function applyFilters() {{
+    var q = (document.getElementById('downloadSearch').value || '').toLowerCase().trim();
     var cards = document.querySelectorAll('.download-card');
     cards.forEach(card => {{
       var name = (card.getAttribute('data-filename') || '').toLowerCase();
-      card.style.display = name.includes(q) ? 'flex' : 'none';
+      var status = card.getAttribute('data-status') || '';
+      var matchesQuery = name.includes(q);
+      var matchesStatus = (currentStatusFilter === 'all') || (status === currentStatusFilter);
+      card.style.display = (matchesQuery && matchesStatus) ? 'flex' : 'none';
     }});
   }}
   function openFile(path) {{
@@ -712,6 +753,292 @@ namespace Browy.Services
     window.chrome.webview.postMessage(JSON.stringify({{ action: 'remove_extension', id: id }}));
     var card = document.querySelector(`.ext-card[data-id='${{id}}']`);
     if (card) card.remove();
+  }}
+</script>
+</body>
+</html>";
+        }
+
+        public static string GetAboutHtml(int tabsCount = 1, int spacesCount = 1)
+        {
+            var settings = BrowserSettings.Current;
+            string version = "0.2.0";
+            string osDesc = RuntimeInformation.OSDescription;
+            string frameworkDesc = RuntimeInformation.FrameworkDescription;
+            string arch = RuntimeInformation.ProcessArchitecture.ToString();
+            string machine = Environment.MachineName;
+
+            long workingSetMb = 0;
+            try { workingSetMb = Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024); } catch { }
+            long gcHeapMb = 0;
+            try { gcHeapMb = GC.GetTotalMemory(false) / (1024 * 1024); } catch { }
+
+            string accent = settings.AccentColorHex;
+            string backdrop = settings.BackdropMaterial;
+            string shieldStatus = settings.IsShieldEnabled ? "Enabled (Proactive Ad & Tracker Interception)" : "Disabled";
+
+            return $@"<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='UTF-8'>
+<title>About Browy - System Diagnostics</title>
+<style>
+  * {{ box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif; }}
+  body {{ background: #0D0D12; color: #F1F5F9; min-height: 100vh; padding: 48px 24px; display: flex; justify-content: center; }}
+  .container {{ width: 100%; max-width: 840px; }}
+  .header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }}
+  .title-area {{ display: flex; align-items: center; gap: 14px; }}
+  .header-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 32px; color: {accent}; }}
+  h1 {{ font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }}
+  .header-badge {{ font-size: 11px; background: {accent}22; color: {accent}; border: 1px solid {accent}44; padding: 3px 8px; border-radius: 6px; font-weight: 600; margin-left: 8px; vertical-align: middle; }}
+  .header-actions {{ display: flex; align-items: center; gap: 10px; }}
+  .btn-primary {{ background: {accent}; color: #FFFFFF; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: opacity 0.15s ease; }}
+  .btn-primary:hover {{ opacity: 0.9; }}
+  .btn-secondary {{ background: #181822; color: #CBD5E1; border: 1px solid #282838; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s ease; }}
+  .btn-secondary:hover {{ background: #222230; color: #FFFFFF; border-color: #383848; }}
+  .grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 16px; margin-bottom: 24px; }}
+  .card {{ background: #14141E; border: 1px solid #202030; border-radius: 12px; padding: 20px; }}
+  .card-header {{ display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }}
+  .card-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 18px; color: {accent}; }}
+  .card-title {{ font-size: 15px; font-weight: 600; color: #F8FAFC; }}
+  .info-table {{ width: 100%; border-collapse: collapse; }}
+  .info-table tr {{ border-bottom: 1px solid #1C1C28; }}
+  .info-table tr:last-child {{ border-bottom: none; }}
+  .info-table td {{ padding: 8px 0; font-size: 12.5px; }}
+  .info-table td.label {{ color: #94A3B8; width: 45%; }}
+  .info-table td.value {{ color: #F1F5F9; font-weight: 500; word-break: break-all; }}
+  .value-code {{ font-family: Consolas, monospace; font-size: 11.5px; background: #1E1E2C; padding: 2px 6px; border-radius: 4px; color: #CBD5E1; }}
+  .toast {{ position: fixed; bottom: 24px; right: 24px; background: #1E293B; border: 1px solid #334155; color: #F8FAFC; padding: 12px 20px; border-radius: 8px; font-size: 13px; font-weight: 500; display: none; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 1000; }}
+</style>
+</head>
+<body>
+<div class='container'>
+  <div class='header'>
+    <div class='title-area'>
+      <div class='header-icon'>&#xE774;</div>
+      <div>
+        <h1>Browy <span class='header-badge'>v{version}</span></h1>
+        <div style='font-size:12.5px; color:#94A3B8; margin-top:2px;'>Modern Arc/Zen-Inspired Windows 11 Fluent Browser</div>
+      </div>
+    </div>
+    <div class='header-actions'>
+      <button class='btn-primary' onclick=""copyDiagnostics()""><span style=""font-family: 'Segoe Fluent Icons';"">&#xE8C8;</span> Copy Info</button>
+      <button class='btn-secondary' onclick=""openSettings()""><span style=""font-family: 'Segoe Fluent Icons';"">&#xE713;</span> Settings</button>
+    </div>
+  </div>
+
+  <div class='grid'>
+    <div class='card'>
+      <div class='card-header'>
+        <div class='card-icon'>&#xE7F4;</div>
+        <div class='card-title'>Operating System & Shell</div>
+      </div>
+      <table class='info-table'>
+        <tr><td class='label'>OS Version</td><td class='value'>{WebUtility.HtmlEncode(osDesc)}</td></tr>
+        <tr><td class='label'>Process Architecture</td><td class='value'><span class='value-code'>{arch}</span></td></tr>
+        <tr><td class='label'>Computer Name</td><td class='value'>{WebUtility.HtmlEncode(machine)}</td></tr>
+        <tr><td class='label'>Backdrop Material</td><td class='value'><span class='value-code'>{backdrop}</span></td></tr>
+        <tr><td class='label'>Accent Color</td><td class='value'><span style='display:inline-block; width:12px; height:12px; border-radius:50%; background:{accent}; vertical-align:middle; margin-right:6px;'></span>{accent}</td></tr>
+      </table>
+    </div>
+
+    <div class='card'>
+      <div class='card-header'>
+        <div class='card-icon'>&#xE950;</div>
+        <div class='card-title'>Runtime & Web Engine</div>
+      </div>
+      <table class='info-table'>
+        <tr><td class='label'>.NET Runtime</td><td class='value'>{WebUtility.HtmlEncode(frameworkDesc)}</td></tr>
+        <tr><td class='label'>Web Engine</td><td class='value'>Microsoft Edge WebView2 Evergreen</td></tr>
+        <tr><td class='label'>Browser Channel</td><td class='value'>Production Stable</td></tr>
+        <tr><td class='label'>Browy Shield</td><td class='value'>{shieldStatus}</td></tr>
+        <tr><td class='label'>Startup Mode</td><td class='value'>{settings.StartupBehavior}</td></tr>
+      </table>
+    </div>
+
+    <div class='card'>
+      <div class='card-header'>
+        <div class='card-icon'>&#xE9D9;</div>
+        <div class='card-title'>Memory & Performance</div>
+      </div>
+      <table class='info-table'>
+        <tr><td class='label'>Process Working Set</td><td class='value'><span class='value-code'>{workingSetMb} MB</span></td></tr>
+        <tr><td class='label'>GC Heap Memory</td><td class='value'><span class='value-code'>{gcHeapMb} MB</span></td></tr>
+        <tr><td class='label'>Sleeping Tabs Feature</td><td class='value'>{(settings.EnableIdleTabSuspension ? $"Enabled ({settings.IdleTabSuspensionMinutes} min idle)" : "Disabled")}</td></tr>
+        <tr><td class='label'>Mouse Gestures</td><td class='value'>{(settings.EnableMouseGestures ? "Enabled" : "Disabled")}</td></tr>
+        <tr><td class='label'>Trackpad Swipes</td><td class='value'>{(settings.EnableTrackpadSwipe ? "Enabled" : "Disabled")}</td></tr>
+      </table>
+    </div>
+
+    <div class='card'>
+      <div class='card-header'>
+        <div class='card-icon'>&#xE7C3;</div>
+        <div class='card-title'>Session Workspace Statistics</div>
+      </div>
+      <table class='info-table'>
+        <tr><td class='label'>Active Spaces Count</td><td class='value'><span class='value-code'>{spacesCount}</span></td></tr>
+        <tr><td class='label'>Open Tabs Count</td><td class='value'><span class='value-code'>{tabsCount}</span></td></tr>
+        <tr><td class='label'>Installed Extensions</td><td class='value'><span class='value-code'>{ExtensionService.Extensions.Count}</span></td></tr>
+        <tr><td class='label'>Bookmarks Bar</td><td class='value'>{(settings.ShowBookmarksBar ? "Visible" : "Hidden")}</td></tr>
+        <tr><td class='label'>AI Copilot Provider</td><td class='value'>{settings.AiProvider}</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class='card' style='text-align:center; padding:24px;'>
+    <div style='font-size:14px; font-weight:600; color:#F8FAFC; margin-bottom:6px;'>Browy Browser is fully up to date</div>
+    <div style='font-size:12px; color:#94A3B8; margin-bottom:16px;'>Built with WPF and Edge WebView2 for modern, fluid Windows 11 browsing.</div>
+    <div style='display:flex; justify-content:center; gap:12px;'>
+      <button class='btn-secondary' onclick=""openUrl('https://github.com/billy-browy/browy')""><span style=""font-family: 'Segoe Fluent Icons';"">&#xE774;</span> GitHub Repository</button>
+      <button class='btn-secondary' onclick=""openUrl('browy://shortcuts')""><span style=""font-family: 'Segoe Fluent Icons';"">&#xE765;</span> Shortcuts Reference</button>
+    </div>
+  </div>
+</div>
+
+<div class='toast' id='toast'>Diagnostics copied to clipboard!</div>
+
+<script>
+  function openUrl(url) {{
+    window.chrome.webview.postMessage(JSON.stringify({{ action: 'navigate', url: url }}));
+  }}
+  function openSettings() {{
+    window.chrome.webview.postMessage(JSON.stringify({{ action: 'navigate', url: 'browy://settings' }}));
+  }}
+  function copyDiagnostics() {{
+    var text = `Browy Version: {version}\\nOS: {osDesc}\\nArch: {arch}\\n.NET: {frameworkDesc}\\nProcess RAM: {workingSetMb} MB\\nGC Memory: {gcHeapMb} MB\\nSpaces: {spacesCount}\\nTabs: {tabsCount}`;
+    window.chrome.webview.postMessage(JSON.stringify({{ action: 'copy_diagnostics', text: text }}));
+    var toast = document.getElementById('toast');
+    toast.style.display = 'block';
+    setTimeout(() => {{ toast.style.display = 'none'; }}, 2500);
+  }}
+</script>
+</body>
+</html>";
+        }
+
+        public static string GetShortcutsHtml(Dictionary<string, string>? customShortcuts = null)
+        {
+            var settings = BrowserSettings.Current;
+            string accent = settings.AccentColorHex;
+
+            return $@"<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='UTF-8'>
+<title>Keyboard Shortcuts - Browy</title>
+<style>
+  * {{ box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif; }}
+  body {{ background: #0D0D12; color: #F1F5F9; min-height: 100vh; padding: 48px 24px; display: flex; justify-content: center; }}
+  .container {{ width: 100%; max-width: 860px; }}
+  .header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }}
+  .title-area {{ display: flex; align-items: center; gap: 14px; }}
+  .header-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 30px; color: {accent}; }}
+  h1 {{ font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }}
+  .btn-secondary {{ background: #181822; color: #CBD5E1; border: 1px solid #282838; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s ease; }}
+  .btn-secondary:hover {{ background: #222230; color: #FFFFFF; border-color: #383848; }}
+  .search-bar {{ width: 100%; background: #181822; border: 1px solid #282838; border-radius: 10px; padding: 12px 18px; color: #FFFFFF; font-size: 14px; margin-bottom: 24px; outline: none; transition: border-color 0.15s ease; }}
+  .search-bar:focus {{ border-color: {accent}; box-shadow: 0 0 0 2px {accent}3F; }}
+  .section {{ margin-bottom: 28px; }}
+  .section-title {{ font-size: 16px; font-weight: 600; color: #F8FAFC; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }}
+  .section-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 16px; color: {accent}; }}
+  .shortcuts-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 10px; }}
+  .shortcut-card {{ display: flex; justify-content: space-between; align-items: center; background: #14141E; border: 1px solid #202030; border-radius: 10px; padding: 12px 16px; transition: all 0.12s ease; }}
+  .shortcut-card:hover {{ background: #1A1A28; border-color: #303048; }}
+  .shortcut-desc {{ font-size: 13.5px; font-weight: 500; color: #F1F5F9; }}
+  .shortcut-keys {{ display: flex; gap: 4px; align-items: center; }}
+  .key {{ background: #222232; border: 1px solid #333348; border-bottom: 2px solid #3b3b54; border-radius: 6px; padding: 3px 8px; font-size: 11.5px; font-weight: 600; color: #E2E8F0; font-family: 'Segoe UI', system-ui, monospace; box-shadow: 0 1px 2px rgba(0,0,0,0.3); }}
+  .plus {{ color: #64748B; font-size: 11px; }}
+</style>
+</head>
+<body>
+<div class='container'>
+  <div class='header'>
+    <div class='title-area'>
+      <div class='header-icon'>&#xE765;</div>
+      <div>
+        <h1>Keyboard Shortcuts</h1>
+        <div style='font-size:12.5px; color:#94A3B8; margin-top:2px;'>Comprehensive command reference and mouse gestures</div>
+      </div>
+    </div>
+    <div class='header-actions'>
+      <button class='btn-secondary' onclick=""openCustomize()""><span style=""font-family: 'Segoe Fluent Icons';"">&#xE713;</span> Customize in Settings</button>
+    </div>
+  </div>
+
+  <input type='text' id='scSearch' class='search-bar' placeholder='Search shortcuts by action name or key (e.g. Tab, Reload, Split)...' oninput='filterShortcuts(this.value)'>
+
+  <div class='section'>
+    <div class='section-title'><span class='section-icon'>&#xE7C3;</span> Tabs &amp; Windows</div>
+    <div class='shortcuts-grid'>
+      <div class='shortcut-card' data-search='new tab ctrl t'><div class='shortcut-desc'>New Tab</div><div class='shortcut-keys'><span class='key'>Ctrl</span><span class='plus'>+</span><span class='key'>T</span></div></div>
+      <div class='shortcut-card' data-search='close tab ctrl w'><div class='shortcut-desc'>Close Current Tab</div><div class='shortcut-keys'><span class='key'>Ctrl</span><span class='plus'>+</span><span class='key'>W</span></div></div>
+      <div class='shortcut-card' data-search='middle click close tab'><div class='shortcut-desc'>Close Tab (Quick Action)</div><div class='shortcut-keys'><span class='key'>Middle Click</span></div></div>
+      <div class='shortcut-card' data-search='reopen closed tab ctrl shift t'><div class='shortcut-desc'>Reopen Closed Tab</div><div class='shortcut-keys'><span class='key'>Ctrl</span><span class='plus'>+</span><span class='key'>Shift</span><span class='plus'>+</span><span class='key'>T</span></div></div>
+      <div class='shortcut-card' data-search='next tab ctrl tab'><div class='shortcut-desc'>Next Tab</div><div class='shortcut-keys'><span class='key'>Ctrl</span><span class='plus'>+</span><span class='key'>Tab</span></div></div>
+      <div class='shortcut-card' data-search='previous tab ctrl shift tab'><div class='shortcut-desc'>Previous Tab</div><div class='shortcut-keys'><span class='key'>Ctrl</span><span class='plus'>+</span><span class='key'>Shift</span><span class='plus'>+</span><span class='key'>Tab</span></div></div>
+      <div class='shortcut-card' data-search='switch to tab 1-8 ctrl 1 8'><div class='shortcut-desc'>Switch to Tab 1 through 8</div><div class='shortcut-keys'><span class='key'>Ctrl</span><span class='plus'>+</span><span class='key'>1..8</span></div></div>
+      <div class='shortcut-card' data-search='switch to last tab ctrl 9'><div class='shortcut-desc'>Switch to Last Tab</div><div class='shortcut-keys'><span class='key'>Ctrl</span><span class='plus'>+</span><span class='key'>9</span></div></div>
+      <div class='shortcut-card' data-search='mute unmute tab ctrl m'><div class='shortcut-desc'>Mute / Unmute Tab Audio</div><div class='shortcut-keys'><span class='key'>Ctrl</span><span class='plus'>+</span><span class='key'>M</span></div></div>
+      <div class='shortcut-card' data-search='inprivate window ctrl shift n'><div class='shortcut-desc'>New InPrivate Window</div><div class='shortcut-keys'><span class='key'>Ctrl</span><span class='plus'>+</span><span class='key'>Shift</span><span class='plus'>+</span><span class='key'>N</span></div></div>
+    </div>
+  </div>
+
+  <div class='section'>
+    <div class='section-title'><span class='section-icon'>&#xE72C;</span> Navigation &amp; Webpage</div>
+    <div class='shortcuts-grid'>
+      <div class='shortcut-card' data-search='focus address bar omnibox ctrl l'><div class='shortcut-desc'>Focus Address Bar</div><div class='shortcut-keys'><span class='key'>Ctrl</span><span class='plus'>+</span><span class='key'>L</span></div></div>
+      <div class='shortcut-card' data-search='reload page ctrl r f5'><div class='shortcut-desc'>Reload Page</div><div class='shortcut-keys'><span class='key'>Ctrl</span><span class='plus'>+</span><span class='key'>R</span></div></div>
+      <div class='shortcut-card' data-search='hard reload cache bypass ctrl f5'><div class='shortcut-desc'>Hard Reload (Bypass Cache)</div><div class='shortcut-keys'><span class='key'>Ctrl</span><span class='plus'>+</span><span class='key'>F5</span></div></div>
+      <div class='shortcut-card' data-search='navigate back alt left'><div class='shortcut-desc'>Go Back</div><div class='shortcut-keys'><span class='key'>Alt</span><span class='plus'>+</span><span class='key'>&#x2190;</span></div></div>
+      <div class='shortcut-card' data-search='navigate forward alt right'><div class='shortcut-desc'>Go Forward</div><div class='shortcut-keys'><span class='key'>Alt</span><span class='plus'>+</span><span class='key'>&#x2192;</span></div></div>
+      <div class='shortcut-card' data-search='find in page ctrl f'><div class='shortcut-desc'>Find in Page</div><div class='shortcut-keys'><span class='key'>Ctrl</span><span class='plus'>+</span><span class='key'>F</span></div></div>
+      <div class='shortcut-card' data-search='bookmark page ctrl d'><div class='shortcut-desc'>Bookmark Page</div><div class='shortcut-keys'><span class='key'>Ctrl</span><span class='plus'>+</span><span class='key'>D</span></div></div>
+      <div class='shortcut-card' data-search='print pdf ctrl p'><div class='shortcut-desc'>Print or Save as PDF</div><div class='shortcut-keys'><span class='key'>Ctrl</span><span class='plus'>+</span><span class='key'>P</span></div></div>
+      <div class='shortcut-card' data-search='view page source ctrl u'><div class='shortcut-desc'>View Page Source</div><div class='shortcut-keys'><span class='key'>Ctrl</span><span class='plus'>+</span><span class='key'>U</span></div></div>
+      <div class='shortcut-card' data-search='developer tools f12 ctrl shift i'><div class='shortcut-desc'>Developer Tools</div><div class='shortcut-keys'><span class='key'>F12</span></div></div>
+    </div>
+  </div>
+
+  <div class='section'>
+    <div class='section-title'><span class='section-icon'>&#xE7FB;</span> Views, Spaces &amp; Tools</div>
+    <div class='shortcuts-grid'>
+      <div class='shortcut-card' data-search='command palette ctrl k ctrl shift p'><div class='shortcut-desc'>Command Palette</div><div class='shortcut-keys'><span class='key'>Ctrl</span><span class='plus'>+</span><span class='key'>K</span></div></div>
+      <div class='shortcut-card' data-search='split view dual pane ctrl backslash'><div class='shortcut-desc'>Toggle Dual-Pane Split View</div><div class='shortcut-keys'><span class='key'>Ctrl</span><span class='plus'>+</span><span class='key'>\</span></div></div>
+      <div class='shortcut-card' data-search='collapse sidebar vertical tabs ctrl s'><div class='shortcut-desc'>Toggle Vertical Sidebar</div><div class='shortcut-keys'><span class='key'>Ctrl</span><span class='plus'>+</span><span class='key'>S</span></div></div>
+      <div class='shortcut-card' data-search='ai copilot panel ctrl j'><div class='shortcut-desc'>Toggle AI Copilot Panel</div><div class='shortcut-keys'><span class='key'>Ctrl</span><span class='plus'>+</span><span class='key'>J</span></div></div>
+      <div class='shortcut-card' data-search='bookmarks bar ctrl shift b'><div class='shortcut-desc'>Toggle Bookmarks Bar</div><div class='shortcut-keys'><span class='key'>Ctrl</span><span class='plus'>+</span><span class='key'>Shift</span><span class='plus'>+</span><span class='key'>B</span></div></div>
+      <div class='shortcut-card' data-search='reader mode f9 ctrl shift r'><div class='shortcut-desc'>Toggle Reader Mode</div><div class='shortcut-keys'><span class='key'>F9</span></div></div>
+      <div class='shortcut-card' data-search='fullscreen f11'><div class='shortcut-desc'>Toggle Fullscreen</div><div class='shortcut-keys'><span class='key'>F11</span></div></div>
+      <div class='shortcut-card' data-search='history drawer ctrl h'><div class='shortcut-desc'>Browsing History</div><div class='shortcut-keys'><span class='key'>Ctrl</span><span class='plus'>+</span><span class='key'>H</span></div></div>
+      <div class='shortcut-card' data-search='downloads ctrl shift j'><div class='shortcut-desc'>File Downloads</div><div class='shortcut-keys'><span class='key'>Ctrl</span><span class='plus'>+</span><span class='key'>Shift</span><span class='plus'>+</span><span class='key'>J</span></div></div>
+      <div class='shortcut-card' data-search='switch space ctrl alt 1 9'><div class='shortcut-desc'>Switch Workspace Space</div><div class='shortcut-keys'><span class='key'>Ctrl</span><span class='plus'>+</span><span class='key'>Alt</span><span class='plus'>+</span><span class='key'>1..9</span></div></div>
+      <div class='shortcut-card' data-search='new space workspace ctrl alt n'><div class='shortcut-desc'>New Workspace Space</div><div class='shortcut-keys'><span class='key'>Ctrl</span><span class='plus'>+</span><span class='key'>Alt</span><span class='plus'>+</span><span class='key'>N</span></div></div>
+      <div class='shortcut-card' data-search='zoom in out reset ctrl + - 0'><div class='shortcut-desc'>Zoom In / Out / Reset</div><div class='shortcut-keys'><span class='key'>Ctrl</span><span class='plus'>+</span><span class='key'>+/-/0</span></div></div>
+    </div>
+  </div>
+
+  <div class='section'>
+    <div class='section-title'><span class='section-icon'>&#xE708;</span> Mouse Gestures (Right-Click Drag)</div>
+    <div class='shortcuts-grid'>
+      <div class='shortcut-card' data-search='gesture back drag left'><div class='shortcut-desc'>Navigate Back</div><div class='shortcut-keys'><span class='key'>Hold Right-Click + Drag &#x2190;</span></div></div>
+      <div class='shortcut-card' data-search='gesture forward drag right'><div class='shortcut-desc'>Navigate Forward</div><div class='shortcut-keys'><span class='key'>Hold Right-Click + Drag &#x2192;</span></div></div>
+      <div class='shortcut-card' data-search='gesture new tab drag down'><div class='shortcut-desc'>Open New Tab</div><div class='shortcut-keys'><span class='key'>Hold Right-Click + Drag &#x2193;</span></div></div>
+      <div class='shortcut-card' data-search='gesture reload drag up'><div class='shortcut-desc'>Reload Active Tab</div><div class='shortcut-keys'><span class='key'>Hold Right-Click + Drag &#x2191;</span></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function filterShortcuts(query) {{
+    var q = query.toLowerCase().trim();
+    var cards = document.querySelectorAll('.shortcut-card');
+    cards.forEach(card => {{
+      var text = (card.getAttribute('data-search') || '').toLowerCase();
+      card.style.display = text.includes(q) ? 'flex' : 'none';
+    }});
+  }}
+  function openCustomize() {{
+    window.chrome.webview.postMessage(JSON.stringify({{ action: 'navigate', url: 'browy://settings#shortcuts' }}));
   }}
 </script>
 </body>

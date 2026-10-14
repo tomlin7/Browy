@@ -307,6 +307,9 @@ namespace Browy
                 new("Snooze Current Tab (Save Memory)", "Tabs", "\uE708", "", "Suspend background resources for active tab", w => w.SnoozeCurrentTab()),
                 new("Close Other Tabs", "Tabs", "\uE711", "", "Close all tabs except active tab", w => w.CloseOtherTabsCurrent()),
                 new("Close Tabs to the Right", "Tabs", "\uE711", "", "Close all tabs to the right of active tab", w => w.CloseTabsToRightCurrent()),
+                new("Close Tabs to the Left", "Tabs", "\uE711", "", "Close all tabs to the left of active tab", w => w.CloseTabsToLeftCurrent()),
+                new("Snooze All Inactive Tabs (Save RAM)", "Tabs", "\uE708", "", "Suspend background resources for all inactive tabs", w => w.SnoozeAllInactiveTabs()),
+                new("Wake All Tabs", "Tabs", "\uE708", "", "Resume all sleeping background tabs", w => w.WakeAllTabs()),
 
                 // Navigation
                 new("Reload Page", "Navigation", "\uE72C", "Ctrl+R", "Reload the current webpage", w => w.ReloadCurrentPage()),
@@ -331,6 +334,8 @@ namespace Browy
                 new("Open Bookmarks Manager", "Hubs", "\uE734", "", "Open full-page bookmarks organizer", w => w.OpenBookmarksPage()),
                 new("Open Downloads Page", "Hubs", "\uE896", "Ctrl+Shift+J", "Open full-page file downloads manager", w => w.OpenDownloadsPage()),
                 new("Open Extensions Manager", "Hubs", "\uE74C", "", "Manage installed Chrome and Edge extensions", w => w.OpenExtensionsPage()),
+                new("About Browy & System Diagnostics", "Hubs", "\uE946", "", "View Browy version, runtime info, and memory diagnostics", w => w.NavigateActiveTab("browy://version")),
+                new("Keyboard Shortcuts Reference", "Hubs", "\uE765", "", "View full keyboard shortcuts and gesture guide", w => w.NavigateActiveTab("browy://shortcuts")),
                 new("Load Unpacked Extension", "Extensions", "\uE710", "", "Load unpacked extension directory into browser", w => _ = w.LoadUnpackedExtensionAsync()),
                 new("Toggle Full Screen", "View", "\uE740", "F11", "Toggle distraction-free full screen mode", w => w.ToggleFullscreen()),
                 new("Toggle Left Sidebar (Tabs)", "View", "\uE8A0", "Ctrl+S", "Collapse or expand vertical tab sidebar", w => w.ToggleSidebar()),
@@ -353,6 +358,7 @@ namespace Browy
                 new("Export Full Backup Bundle", "Tools", "\uE749", "", "Export settings, spaces, and bookmarks to JSON", w => w.ExportBackup()),
                 new("Restore Full Backup Bundle", "Tools", "\uE8E5", "", "Restore settings, spaces, and bookmarks from JSON", w => w.ImportBackup()),
                 new("Browsing History", "Tools", "\uE81C", "Ctrl+H", "Open browsing history drawer", w => w.ToggleHistory()),
+                new("Export Browsing History (JSON)", "Tools", "\uE749", "", "Export full browsing history to JSON file", w => w.ExportHistoryJson()),
                 new("Clear Browsing History", "Tools", "\uE74D", "", "Erase all saved history entries", w => w.ClearAllHistory()),
 
                 // AI & Agents

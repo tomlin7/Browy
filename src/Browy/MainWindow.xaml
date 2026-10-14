@@ -123,7 +123,8 @@
                                         DragOver="TabItem_DragOver"
                                         Drop="TabItem_Drop"
                                         MouseLeftButtonDown="TabItem_MouseLeftButtonDown"
-                                        MouseRightButtonUp="TabItem_MouseRightButtonUp">
+                                        MouseRightButtonUp="TabItem_MouseRightButtonUp"
+                                        MouseDown="TabItem_MouseDown">
                                     <Grid>
                                         <!-- Snappy Animated Active Highlight Layer -->
                                         <Border x:Name="ActiveHighlight"
@@ -524,7 +525,8 @@
                                             DragOver="TabItem_DragOver"
                                             Drop="TabItem_Drop"
                                             MouseLeftButtonDown="TabItem_MouseLeftButtonDown"
-                                            MouseRightButtonUp="TabItem_MouseRightButtonUp">
+                                            MouseRightButtonUp="TabItem_MouseRightButtonUp"
+                                            MouseDown="TabItem_MouseDown">
                                         <Grid>
                                             <!-- Snappy Animated Active Highlight Layer -->
                                             <Border x:Name="ActiveHighlight"

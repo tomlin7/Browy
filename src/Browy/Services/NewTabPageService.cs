@@ -9,6 +9,7 @@ namespace Browy.Services
             var settings = BrowserSettings.Current;
             string engineName = settings.SearchEngineName;
             string engineUrl = settings.SearchEngineUrl;
+            string accent = settings.AccentColorHex;
 
             return $$"""
 <!DOCTYPE html>
@@ -27,8 +28,8 @@ namespace Browy.Services
     --card-hover: rgba(255, 255, 255, 0.08);
     --border-color: rgba(255, 255, 255, 0.08);
     --border-hover: rgba(59, 130, 246, 0.5);
-    --accent: #3B82F6;
-    --accent-hover: #2563EB;
+    --accent: {{accent}};
+    --accent-hover: {{accent}};
     --accent-glow: rgba(59, 130, 246, 0.25);
     --font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, sans-serif;
   }

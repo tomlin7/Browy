@@ -29,6 +29,8 @@ namespace Browy.Services
 
         // Appearance & Backdrop (#4)
         public string BackdropMaterial { get; set; } = "Acrylic"; // "Acrylic", "Mica", "MicaAlt", "SolidDark"
+        public string AccentColorHex { get; set; } = "#3B82F6"; // Electric Blue default, supports Arc Purple, Emerald, Amber, etc.
+        public string ThemeMode { get; set; } = "Dark"; // "Dark", "Light", "System"
 
         // Performance & Tab Suspension (#18)
         public bool EnableIdleTabSuspension { get; set; } = true;
@@ -145,6 +147,26 @@ namespace Browy.Services
                 {
                     _current.SiteZoomLevels[domain] = Math.Round(zoomFactor, 2);
                 }
+            }
+            Save();
+        }
+
+        public static void SetAccentColor(string hex)
+        {
+            if (string.IsNullOrWhiteSpace(hex)) return;
+            lock (_lock)
+            {
+                _current.AccentColorHex = hex;
+            }
+            Save();
+        }
+
+        public static void SetThemeMode(string mode)
+        {
+            if (string.IsNullOrWhiteSpace(mode)) return;
+            lock (_lock)
+            {
+                _current.ThemeMode = mode;
             }
             Save();
         }

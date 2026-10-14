@@ -358,12 +358,30 @@ namespace Browy
             }
         }
 
+        public void ApplyThemeAccent(string hexColor)
+        {
+            if (string.IsNullOrWhiteSpace(hexColor)) return;
+            try
+            {
+                if (!hexColor.StartsWith("#")) hexColor = "#" + hexColor;
+                var color = (Color)ColorConverter.ConvertFromString(hexColor);
+                var brush = new SolidColorBrush(color);
+                brush.Freeze();
+                Application.Current.Resources["AccentColor"] = color;
+                Application.Current.Resources["AccentBrush"] = brush;
+            }
+            catch { }
+        }
+
         #endregion
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
             // Apply native Windows 11 Desktop Acrylic / Mica backdrop
             WindowsBackdropService.ApplyConfiguredBackdrop(this, BrowserSettings.Current.BackdropMaterial);
+
+            // Apply configured theme accent tint
+            ApplyThemeAccent(BrowserSettings.Current.AccentColorHex);
 
             // Populate initial bookmarks matching the sleek Arc/Zen style in screenshot 2
             LoadInitialBookmarks();
@@ -1042,6 +1060,55 @@ namespace Browy
                         BrowserSettings.Current.CustomKeyBindings.Clear();
                         BrowserSettings.Save();
                         break;
+
+                    case "set_theme_mode":
+                        if (root.TryGetProperty("mode", out var tmProp))
+                        {
+                            string mode = tmProp.GetString() ?? "Dark";
+                            BrowserSettings.SetThemeMode(mode);
+                        }
+                        break;
+
+                    case "set_accent_color":
+                        if (root.TryGetProperty("color", out var colProp))
+                        {
+                            string hex = colProp.GetString() ?? "#3B82F6";
+                            BrowserSettings.SetAccentColor(hex);
+                            ApplyThemeAccent(hex);
+                        }
+                        break;
+
+                    case "snooze_inactive_tabs":
+                        SnoozeAllInactiveTabs();
+                        break;
+
+                    case "wake_all_tabs":
+                        WakeAllTabs();
+                        break;
+
+                    case "export_bookmarks_html":
+                        ExportBookmarksHtml();
+                        break;
+
+                    case "import_bookmarks_html":
+                        ImportBookmarksHtml();
+                        break;
+
+                    case "export_history_json":
+                        ExportHistoryJson();
+                        break;
+
+                    case "copy_diagnostics":
+                    case "copy_to_clipboard":
+                        if (root.TryGetProperty("text", out var diagTextProp))
+                        {
+                            string diagText = diagTextProp.GetString() ?? "";
+                            if (!string.IsNullOrEmpty(diagText))
+                            {
+                                try { Clipboard.SetText(diagText); } catch { }
+                            }
+                        }
+                        break;
                 }
             }
             catch (Exception ex)
@@ -1340,6 +1407,41 @@ namespace Browy
                         return;
                     }
 
+                    if (args.Uri.StartsWith("browy://version", StringComparison.OrdinalIgnoreCase) ||
+                        args.Uri.StartsWith("browy://about", StringComparison.OrdinalIgnoreCase) ||
+                        args.Uri.StartsWith("about:version", StringComparison.OrdinalIgnoreCase))
+                    {
+                        args.Cancel = true;
+                        Dispatcher.Invoke(() =>
+                        {
+                            tab.Url = "browy://version";
+                            tab.Title = "About - Browy";
+                            tab.FallbackIcon = "\uE946";
+                            tab.IsLoading = false;
+                            tab.BlockedCount = 0;
+                            if (_activeTab == tab) UpdateNavigationUI(tab);
+                            tab.WebViewInstance.NavigateToString(InternalHubService.GetAboutHtml(Tabs.Count, Spaces.Count));
+                        });
+                        return;
+                    }
+
+                    if (args.Uri.StartsWith("browy://shortcuts", StringComparison.OrdinalIgnoreCase) ||
+                        args.Uri.StartsWith("about:shortcuts", StringComparison.OrdinalIgnoreCase))
+                    {
+                        args.Cancel = true;
+                        Dispatcher.Invoke(() =>
+                        {
+                            tab.Url = "browy://shortcuts";
+                            tab.Title = "Shortcuts - Browy";
+                            tab.FallbackIcon = "\uE765";
+                            tab.IsLoading = false;
+                            tab.BlockedCount = 0;
+                            if (_activeTab == tab) UpdateNavigationUI(tab);
+                            tab.WebViewInstance.NavigateToString(InternalHubService.GetShortcutsHtml(BrowserSettings.Current.CustomKeyBindings));
+                        });
+                        return;
+                    }
+
                     if (args.Uri.StartsWith("browy://newtab", StringComparison.OrdinalIgnoreCase) ||
                         args.Uri.StartsWith("browy://start", StringComparison.OrdinalIgnoreCase) ||
                         args.Uri.StartsWith("about:newtab", StringComparison.OrdinalIgnoreCase) ||
@@ -1519,6 +1621,23 @@ namespace Browy
                         tab.Title = "Extensions - Browy";
                         tab.FallbackIcon = "\uE74C";
                         tab.WebViewInstance.NavigateToString(InternalHubService.GetExtensionsHtml(ExtensionService.Extensions));
+                    }
+                    else if (initialUrl.StartsWith("browy://version", StringComparison.OrdinalIgnoreCase) ||
+                             initialUrl.StartsWith("browy://about", StringComparison.OrdinalIgnoreCase) ||
+                             initialUrl.StartsWith("about:version", StringComparison.OrdinalIgnoreCase))
+                    {
+                        tab.Url = "browy://version";
+                        tab.Title = "About - Browy";
+                        tab.FallbackIcon = "\uE946";
+                        tab.WebViewInstance.NavigateToString(InternalHubService.GetAboutHtml(Tabs.Count, Spaces.Count));
+                    }
+                    else if (initialUrl.StartsWith("browy://shortcuts", StringComparison.OrdinalIgnoreCase) ||
+                             initialUrl.StartsWith("about:shortcuts", StringComparison.OrdinalIgnoreCase))
+                    {
+                        tab.Url = "browy://shortcuts";
+                        tab.Title = "Shortcuts - Browy";
+                        tab.FallbackIcon = "\uE765";
+                        tab.WebViewInstance.NavigateToString(InternalHubService.GetShortcutsHtml(BrowserSettings.Current.CustomKeyBindings));
                     }
                     else if (initialUrl.StartsWith("browy://newtab", StringComparison.OrdinalIgnoreCase) ||
                              initialUrl.StartsWith("browy://start", StringComparison.OrdinalIgnoreCase) ||
@@ -2002,6 +2121,29 @@ namespace Browy
                 return;
             }
 
+            if (targetUrl.StartsWith("browy://version", StringComparison.OrdinalIgnoreCase) ||
+                targetUrl.StartsWith("browy://about", StringComparison.OrdinalIgnoreCase) ||
+                targetUrl.StartsWith("about:version", StringComparison.OrdinalIgnoreCase))
+            {
+                _activeTab.Url = "browy://version";
+                _activeTab.Title = "About - Browy";
+                _activeTab.FallbackIcon = "\uE946";
+                UpdateNavigationUI(_activeTab);
+                _activeTab.WebViewInstance?.NavigateToString(InternalHubService.GetAboutHtml(Tabs.Count, Spaces.Count));
+                return;
+            }
+
+            if (targetUrl.StartsWith("browy://shortcuts", StringComparison.OrdinalIgnoreCase) ||
+                targetUrl.StartsWith("about:shortcuts", StringComparison.OrdinalIgnoreCase))
+            {
+                _activeTab.Url = "browy://shortcuts";
+                _activeTab.Title = "Shortcuts - Browy";
+                _activeTab.FallbackIcon = "\uE765";
+                UpdateNavigationUI(_activeTab);
+                _activeTab.WebViewInstance?.NavigateToString(InternalHubService.GetShortcutsHtml(BrowserSettings.Current.CustomKeyBindings));
+                return;
+            }
+
             if (targetUrl.StartsWith("browy://newtab", StringComparison.OrdinalIgnoreCase) ||
                 targetUrl.StartsWith("browy://start", StringComparison.OrdinalIgnoreCase) ||
                 targetUrl.StartsWith("about:newtab", StringComparison.OrdinalIgnoreCase) ||
@@ -2262,6 +2404,28 @@ namespace Browy
                     return;
                 }
 
+                if (_activeTab.Url.StartsWith("browy://extensions", StringComparison.OrdinalIgnoreCase) ||
+                    _activeTab.Url.StartsWith("about:extensions", StringComparison.OrdinalIgnoreCase))
+                {
+                    _activeTab.WebViewInstance.NavigateToString(InternalHubService.GetExtensionsHtml(ExtensionService.Extensions));
+                    return;
+                }
+
+                if (_activeTab.Url.StartsWith("browy://version", StringComparison.OrdinalIgnoreCase) ||
+                    _activeTab.Url.StartsWith("browy://about", StringComparison.OrdinalIgnoreCase) ||
+                    _activeTab.Url.StartsWith("about:version", StringComparison.OrdinalIgnoreCase))
+                {
+                    _activeTab.WebViewInstance.NavigateToString(InternalHubService.GetAboutHtml(Tabs.Count, Spaces.Count));
+                    return;
+                }
+
+                if (_activeTab.Url.StartsWith("browy://shortcuts", StringComparison.OrdinalIgnoreCase) ||
+                    _activeTab.Url.StartsWith("about:shortcuts", StringComparison.OrdinalIgnoreCase))
+                {
+                    _activeTab.WebViewInstance.NavigateToString(InternalHubService.GetShortcutsHtml(BrowserSettings.Current.CustomKeyBindings));
+                    return;
+                }
+
                 if (_activeTab.Url.StartsWith("browy://newtab", StringComparison.OrdinalIgnoreCase) ||
                     _activeTab.Url.StartsWith("browy://start", StringComparison.OrdinalIgnoreCase) ||
                     _activeTab.Url.StartsWith("about:newtab", StringComparison.OrdinalIgnoreCase) ||
@@ -2489,6 +2653,21 @@ namespace Browy
                 _activeTab?.Url.StartsWith("about:extensions", StringComparison.OrdinalIgnoreCase) == true)
             {
                 _activeTab.WebViewInstance?.NavigateToString(InternalHubService.GetExtensionsHtml(ExtensionService.Extensions));
+                return;
+            }
+
+            if (_activeTab?.Url.StartsWith("browy://version", StringComparison.OrdinalIgnoreCase) == true ||
+                _activeTab?.Url.StartsWith("browy://about", StringComparison.OrdinalIgnoreCase) == true ||
+                _activeTab?.Url.StartsWith("about:version", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                _activeTab.WebViewInstance?.NavigateToString(InternalHubService.GetAboutHtml(Tabs.Count, Spaces.Count));
+                return;
+            }
+
+            if (_activeTab?.Url.StartsWith("browy://shortcuts", StringComparison.OrdinalIgnoreCase) == true ||
+                _activeTab?.Url.StartsWith("about:shortcuts", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                _activeTab.WebViewInstance?.NavigateToString(InternalHubService.GetShortcutsHtml(BrowserSettings.Current.CustomKeyBindings));
                 return;
             }
 
@@ -2748,6 +2927,28 @@ namespace Browy
             catch (Exception ex)
             {
                 System.Windows.MessageBox.Show($"Failed to import bookmarks: {ex.Message}", "Bookmarks Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        public void ExportHistoryJson()
+        {
+            try
+            {
+                var sfd = new Microsoft.Win32.SaveFileDialog
+                {
+                    Filter = "JSON History (*.json)|*.json",
+                    FileName = $"browy_history_{DateTime.Now:yyyyMMdd_HHmmss}.json"
+                };
+                if (sfd.ShowDialog() == true)
+                {
+                    string json = System.Text.Json.JsonSerializer.Serialize(History, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+                    File.WriteAllText(sfd.FileName, json);
+                    System.Windows.MessageBox.Show("Browsing history exported to JSON!", "Browy History", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show($"Failed to export history: {ex.Message}", "History Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -3184,6 +3385,15 @@ namespace Browy
             e.Handled = true;
         }
 
+        private void TabItem_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton == MouseButton.Middle && sender is FrameworkElement elem && elem.DataContext is BrowserTab tab)
+            {
+                CloseTab(tab);
+                e.Handled = true;
+            }
+        }
+
         private void TabItem_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
         {
             if (sender is FrameworkElement elem && elem.DataContext is BrowserTab tab)
@@ -3289,6 +3499,11 @@ namespace Browy
             var closeOthers = new MenuItem { Header = "Close Other Tabs" };
             closeOthers.Click += (s, args) => CloseOtherTabs(tab);
             cm.Items.Add(closeOthers);
+
+            // Close to the Left
+            var closeLeft = new MenuItem { Header = "Close Tabs to the Left" };
+            closeLeft.Click += (s, args) => CloseTabsToLeft(tab);
+            cm.Items.Add(closeLeft);
 
             // Close to the Right
             var closeRight = new MenuItem { Header = "Close Tabs to the Right" };
@@ -3486,6 +3701,47 @@ namespace Browy
         public void CloseTabsToRightCurrent()
         {
             if (_activeTab != null) CloseTabsToRight(_activeTab);
+        }
+
+        public void CloseTabsToLeft(BrowserTab currentTab)
+        {
+            if (currentTab == null) return;
+            int index = Tabs.IndexOf(currentTab);
+            if (index > 0)
+            {
+                var toRemove = Tabs.Take(index).Where(t => !t.IsPinned).ToList();
+                foreach (var t in toRemove)
+                {
+                    CloseTab(t);
+                }
+            }
+        }
+
+        public void CloseTabsToLeftCurrent()
+        {
+            if (_activeTab != null) CloseTabsToLeft(_activeTab);
+        }
+
+        public void SnoozeAllInactiveTabs()
+        {
+            foreach (var tab in Tabs)
+            {
+                if (tab != _activeTab && !tab.IsPinned && !tab.IsPlayingAudio && !tab.IsSleeping)
+                {
+                    SnoozeTab(tab);
+                }
+            }
+        }
+
+        public void WakeAllTabs()
+        {
+            foreach (var tab in Tabs)
+            {
+                if (tab.IsSleeping)
+                {
+                    WakeTab(tab);
+                }
+            }
         }
 
         public void ToggleFullscreen()
@@ -4034,6 +4290,11 @@ namespace Browy
                     OpenInPrivateWindow();
                     e.Handled = true;
                 }
+                else if (e.Key == Key.Tab)
+                {
+                    SelectPreviousTab();
+                    e.Handled = true;
+                }
             }
             else if (Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Alt))
             {
@@ -4185,15 +4446,19 @@ namespace Browy
                     e.Handled = true;
                     OpenDevTools();
                 }
+                else if (e.Key >= Key.D1 && e.Key <= Key.D9)
+                {
+                    e.Handled = true;
+                    int targetIdx = e.Key == Key.D9 ? Tabs.Count - 1 : (e.Key - Key.D1);
+                    if (targetIdx >= 0 && targetIdx < Tabs.Count)
+                    {
+                        SwitchToTab(Tabs[targetIdx]);
+                    }
+                }
                 else if (e.Key == Key.Tab)
                 {
                     e.Handled = true;
-                    if (Tabs.Count > 1 && _activeTab != null)
-                    {
-                        int idx = Tabs.IndexOf(_activeTab);
-                        int nextIdx = (idx + 1) % Tabs.Count;
-                        SwitchToTab(Tabs[nextIdx]);
-                    }
+                    SelectNextTab();
                 }
                 else if (e.Key == Key.M)
                 {

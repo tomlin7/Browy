@@ -115,7 +115,7 @@
                 <!-- Search Placeholder -->
                 <TextBlock x:Name="SearchPlaceholderText"
                            Grid.Column="1"
-                           Text="Type a command or search options..."
+                           Text="Search commands, open tabs, or bookmarks (e.g. >cmd, /tab, /bm)..."
                            Foreground="#55FFFFFF"
                            FontSize="13"
                            VerticalAlignment="Center"

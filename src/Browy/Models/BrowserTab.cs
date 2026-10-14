@@ -192,6 +192,41 @@ namespace Browy.Models
         public string AudioIconGlyph => _isMuted ? "\uE74F" : "\uE767";
         public string AudioToolTip => _isMuted ? "Unmute tab" : "Mute tab";
 
+        private bool _isReaderModeActive = false;
+        public bool IsReaderModeActive
+        {
+            get => _isReaderModeActive;
+            set
+            {
+                if (_isReaderModeActive != value)
+                {
+                    _isReaderModeActive = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(ReaderModeIconGlyph));
+                    OnPropertyChanged(nameof(ReaderModeToolTip));
+                }
+            }
+        }
+
+        public string? OriginalUrlBeforeReader { get; set; }
+
+        private bool _canEnterReaderMode = false;
+        public bool CanEnterReaderMode
+        {
+            get => _canEnterReaderMode;
+            set
+            {
+                if (_canEnterReaderMode != value)
+                {
+                    _canEnterReaderMode = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public string ReaderModeIconGlyph => _isReaderModeActive ? "\uE737" : "\uE736";
+        public string ReaderModeToolTip => _isReaderModeActive ? "Exit Reader Mode (Ctrl+Shift+R, F9)" : "Enter Reader Mode (Ctrl+Shift+R, F9)";
+
         public WebView2? WebViewInstance { get; set; }
 
         public event PropertyChangedEventHandler? PropertyChanged;

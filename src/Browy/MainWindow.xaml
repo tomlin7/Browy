@@ -101,7 +101,10 @@
                               HorizontalScrollBarVisibility="Disabled"
                               Margin="6,4,6,6"
                               WindowChrome.IsHitTestVisibleInChrome="True">
-                    <ItemsControl x:Name="TabsItemsControl">
+                    <ItemsControl x:Name="TabsItemsControl"
+                                  AllowDrop="True"
+                                  DragOver="TabsContainer_DragOver"
+                                  Drop="TabsContainer_Drop">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border x:Name="TabBorder"
@@ -112,6 +115,11 @@
                                         BorderBrush="Transparent"
                                         Cursor="Hand"
                                         ToolTip="{Binding Title}"
+                                        AllowDrop="True"
+                                        PreviewMouseLeftButtonDown="TabItem_PreviewMouseLeftButtonDown"
+                                        PreviewMouseMove="TabItem_PreviewMouseMove"
+                                        DragOver="TabItem_DragOver"
+                                        Drop="TabItem_Drop"
                                         MouseLeftButtonDown="TabItem_MouseLeftButtonDown"
                                         MouseRightButtonUp="TabItem_MouseRightButtonUp">
                                     <Grid>
@@ -356,7 +364,10 @@
                               PreviewMouseWheel="HorizontalTabsScrollViewer_PreviewMouseWheel"
                               PreviewMouseLeftButtonDown="HorizontalTabsScrollViewer_PreviewMouseLeftButtonDown">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <ItemsControl x:Name="HorizontalTabsItemsControl">
+                        <ItemsControl x:Name="HorizontalTabsItemsControl"
+                                      AllowDrop="True"
+                                      DragOver="TabsContainer_DragOver"
+                                      Drop="TabsContainer_Drop">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <StackPanel Orientation="Horizontal"/>
@@ -373,6 +384,11 @@
                                             Cursor="Hand"
                                             ToolTip="{Binding Title}"
                                             WindowChrome.IsHitTestVisibleInChrome="True"
+                                            AllowDrop="True"
+                                            PreviewMouseLeftButtonDown="TabItem_PreviewMouseLeftButtonDown"
+                                            PreviewMouseMove="TabItem_PreviewMouseMove"
+                                            DragOver="TabItem_DragOver"
+                                            Drop="TabItem_Drop"
                                             MouseLeftButtonDown="TabItem_MouseLeftButtonDown"
                                             MouseRightButtonUp="TabItem_MouseRightButtonUp">
                                         <Grid>
@@ -604,6 +620,8 @@
                                     <ColumnDefinition Width="*"/>
                                     <!-- Page Zoom Level Indicator -->
                                     <ColumnDefinition Width="Auto"/>
+                                    <!-- Reader Mode Button -->
+                                    <ColumnDefinition Width="Auto"/>
                                     <!-- Bookmark Star -->
                                     <ColumnDefinition Width="30"/>
                                 </Grid.ColumnDefinitions>
@@ -667,8 +685,23 @@
                                     </Border>
                                 </Button>
 
+                                <!-- Reader Mode Button -->
+                                <Button x:Name="ReaderModeButton"
+                                        Grid.Column="3"
+                                        Style="{StaticResource IconButton}"
+                                        ToolTip="Toggle Reader Mode (Ctrl+Shift+R, F9)"
+                                        Click="ReaderModeButton_Click"
+                                        Width="26" Height="26"
+                                        Margin="0,0,2,0">
+                                    <TextBlock x:Name="ReaderModeIconText"
+                                               Style="{StaticResource FluentIcon}"
+                                               Text="&#xE736;"
+                                               FontSize="11"
+                                               Foreground="#FFFFFF"/>
+                                </Button>
+
                                 <!-- Monochrome Bookmark Star Button -->
-                                <Button Grid.Column="3"
+                                <Button Grid.Column="4"
                                         Style="{StaticResource IconButton}"
                                         ToolTip="Bookmark this page (Ctrl+D)"
                                         Click="BookmarkCurrentPage_Click"

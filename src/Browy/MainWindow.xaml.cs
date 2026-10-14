@@ -50,6 +50,9 @@ namespace Browy
         private CommandPaletteWindow? _commandPalette;
         private static CoreWebView2Environment? _sharedEnvironment;
         private static readonly SemaphoreSlim _envLock = new(1, 1);
+        private Point _tabDragStartPoint;
+        private BrowserTab? _draggedTab;
+        private bool _isDraggingTab = false;
 
         public MainWindow()
         {
@@ -404,6 +407,10 @@ namespace Browy
                     case "open_downloads_folder":
                         OpenDownloadsFolder_Click(this, new RoutedEventArgs());
                         break;
+
+                    case "exit_reader":
+                        ExitReaderMode(tab);
+                        break;
                 }
             }
             catch (Exception ex)
@@ -615,6 +622,11 @@ namespace Browy
                         }
                         ClipWebViewToRoundedCorners(tab.WebViewInstance);
 
+                        if (args.IsSuccess && !tab.IsReaderModeActive && !tab.Url.StartsWith("browy://", StringComparison.OrdinalIgnoreCase))
+                        {
+                            _ = DetectReaderModeAsync(tab);
+                        }
+
                         // Record in History with fetched favicon if successful navigation
                         if (args.IsSuccess && !tab.Url.StartsWith("browy://", StringComparison.OrdinalIgnoreCase) && !tab.Url.StartsWith("about:", StringComparison.OrdinalIgnoreCase))
                         {
@@ -808,6 +820,116 @@ namespace Browy
 
             UpdateBookmarkStarUI();
             UpdateZoomUI();
+            UpdateReaderModeUI(tab);
+        }
+
+        private void ReaderModeButton_Click(object sender, RoutedEventArgs e)
+        {
+            ToggleReaderMode();
+        }
+
+        public void ToggleReaderMode()
+        {
+            _ = ToggleReaderModeAsync();
+        }
+
+        public async Task ToggleReaderModeAsync()
+        {
+            if (_activeTab == null) return;
+
+            if (_activeTab.IsReaderModeActive)
+            {
+                ExitReaderMode(_activeTab);
+            }
+            else
+            {
+                await EnterReaderModeAsync(_activeTab);
+            }
+        }
+
+        public void ExitReaderMode(BrowserTab tab)
+        {
+            tab.IsReaderModeActive = false;
+            UpdateReaderModeUI(tab);
+
+            if (!string.IsNullOrWhiteSpace(tab.OriginalUrlBeforeReader))
+            {
+                string target = tab.OriginalUrlBeforeReader;
+                tab.OriginalUrlBeforeReader = null;
+                tab.Url = target;
+                if (tab.WebViewInstance?.CoreWebView2 != null)
+                {
+                    tab.WebViewInstance.CoreWebView2.Navigate(target);
+                }
+            }
+            else if (tab.WebViewInstance != null && tab.WebViewInstance.CanGoBack)
+            {
+                tab.WebViewInstance.GoBack();
+            }
+        }
+
+        public async Task EnterReaderModeAsync(BrowserTab tab)
+        {
+            if (tab.WebViewInstance?.CoreWebView2 == null) return;
+            if (tab.Url.StartsWith("browy://", StringComparison.OrdinalIgnoreCase)) return;
+
+            try
+            {
+                tab.OriginalUrlBeforeReader = tab.Url;
+                string json = await tab.WebViewInstance.CoreWebView2.ExecuteScriptAsync(ReaderModeService.ExtractionScript);
+                var article = ReaderModeService.ParseExtractionResult(json);
+                if (article != null && !string.IsNullOrWhiteSpace(article.Content))
+                {
+                    string readerHtml = ReaderModeService.GenerateReaderHtml(article);
+                    tab.IsReaderModeActive = true;
+                    UpdateReaderModeUI(tab);
+                    tab.WebViewInstance.NavigateToString(readerHtml);
+                }
+            }
+            catch (Exception ex)
+            {
+                try { File.AppendAllText(@"E:\browy\crash.log", $"[{DateTime.Now:O}] EnterReaderModeAsync error: {ex}\n"); } catch { }
+            }
+        }
+
+        private void UpdateReaderModeUI(BrowserTab tab)
+        {
+            if (ReaderModeIconText == null || ReaderModeButton == null) return;
+
+            if (tab.IsReaderModeActive)
+            {
+                ReaderModeIconText.Text = "\uE737";
+                ReaderModeIconText.Foreground = new SolidColorBrush(Color.FromRgb(0x38, 0xBD, 0xF8));
+                ReaderModeButton.ToolTip = "Exit Reader Mode (Ctrl+Shift+R, F9)";
+                ReaderModeButton.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                ReaderModeIconText.Text = "\uE736";
+                ReaderModeIconText.Foreground = tab.CanEnterReaderMode
+                    ? new SolidColorBrush(Color.FromRgb(0xFA, 0xFA, 0xF9))
+                    : new SolidColorBrush(Color.FromArgb(0x70, 0xFF, 0xFF, 0xFF));
+                ReaderModeButton.ToolTip = "Toggle Reader Mode (Ctrl+Shift+R, F9)";
+                ReaderModeButton.Visibility = tab.Url.StartsWith("browy://", StringComparison.OrdinalIgnoreCase)
+                    ? Visibility.Collapsed
+                    : Visibility.Visible;
+            }
+        }
+
+        private async Task DetectReaderModeAsync(BrowserTab tab)
+        {
+            if (tab.WebViewInstance?.CoreWebView2 == null) return;
+            try
+            {
+                string res = await tab.WebViewInstance.CoreWebView2.ExecuteScriptAsync(ReaderModeService.ArticleDetectionScript);
+                bool canRead = bool.TryParse(res, out bool b) && b;
+                tab.CanEnterReaderMode = canRead;
+                if (_activeTab == tab)
+                {
+                    Dispatcher.Invoke(() => UpdateReaderModeUI(tab));
+                }
+            }
+            catch { }
         }
 
         #endregion
@@ -913,7 +1035,7 @@ namespace Browy
 
         #region Navigation & Omnibox Handlers
 
-        private void NavigateActiveTab(string input)
+        public void NavigateActiveTab(string input)
         {
             if (string.IsNullOrWhiteSpace(input)) return;
 
@@ -1784,6 +1906,113 @@ namespace Browy
 
         #region Tab & Sidebar UI Interactions
 
+        private static T? FindVisualParent<T>(DependencyObject? child) where T : DependencyObject
+        {
+            while (child != null)
+            {
+                if (child is T parent) return parent;
+                child = VisualTreeHelper.GetParent(child);
+            }
+            return null;
+        }
+
+        private void TabItem_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.OriginalSource is DependencyObject dep && FindVisualParent<Button>(dep) != null)
+            {
+                return;
+            }
+
+            _tabDragStartPoint = e.GetPosition(this);
+            _draggedTab = (sender as FrameworkElement)?.DataContext as BrowserTab;
+            if (_draggedTab != null)
+            {
+                SwitchToTab(_draggedTab);
+            }
+        }
+
+        private void TabItem_PreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            if (e.LeftButton != MouseButtonState.Pressed || _draggedTab == null || _isDraggingTab) return;
+
+            Point currentPoint = e.GetPosition(this);
+            Vector diff = _tabDragStartPoint - currentPoint;
+            if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance ||
+                Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
+            {
+                _isDraggingTab = true;
+                try
+                {
+                    if (sender is DependencyObject dragSource)
+                    {
+                        DragDrop.DoDragDrop(dragSource, _draggedTab, DragDropEffects.Move);
+                    }
+                }
+                finally
+                {
+                    _isDraggingTab = false;
+                    _draggedTab = null;
+                }
+            }
+        }
+
+        private void TabItem_DragOver(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(typeof(BrowserTab)))
+            {
+                e.Effects = DragDropEffects.Move;
+            }
+            else
+            {
+                e.Effects = DragDropEffects.None;
+            }
+            e.Handled = true;
+        }
+
+        private void TabItem_Drop(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetData(typeof(BrowserTab)) is BrowserTab sourceTab &&
+                sender is FrameworkElement elem && elem.DataContext is BrowserTab targetTab)
+            {
+                if (sourceTab != targetTab)
+                {
+                    int oldIndex = Tabs.IndexOf(sourceTab);
+                    int newIndex = Tabs.IndexOf(targetTab);
+                    if (oldIndex >= 0 && newIndex >= 0)
+                    {
+                        Tabs.Move(oldIndex, newIndex);
+                    }
+                }
+                e.Handled = true;
+            }
+        }
+
+        private void TabsContainer_DragOver(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(typeof(BrowserTab)))
+            {
+                e.Effects = DragDropEffects.Move;
+            }
+            else
+            {
+                e.Effects = DragDropEffects.None;
+            }
+            e.Handled = true;
+        }
+
+        private void TabsContainer_Drop(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetData(typeof(BrowserTab)) is BrowserTab sourceTab)
+            {
+                int oldIndex = Tabs.IndexOf(sourceTab);
+                if (oldIndex >= 0 && oldIndex != Tabs.Count - 1)
+                {
+                    Tabs.Move(oldIndex, Tabs.Count - 1);
+                }
+                e.Handled = true;
+            }
+        }
+
         private void TabItem_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (sender is FrameworkElement elem && elem.DataContext is BrowserTab tab)
@@ -2460,7 +2689,7 @@ namespace Browy
                 }
                 else if (e.Key == Key.R)
                 {
-                    HardReloadCurrentPage();
+                    ToggleReaderMode();
                     e.Handled = true;
                 }
             }
@@ -2604,6 +2833,11 @@ namespace Browy
                     e.Handled = true;
                 }
             }
+            else if (e.Key == Key.F9)
+            {
+                e.Handled = true;
+                ToggleReaderMode();
+            }
             else if (e.Key == Key.F11)
             {
                 e.Handled = true;
@@ -2612,7 +2846,14 @@ namespace Browy
             else if (e.Key == Key.F5)
             {
                 e.Handled = true;
-                ReloadButton_Click(this, new RoutedEventArgs());
+                if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+                {
+                    HardReloadCurrentPage();
+                }
+                else
+                {
+                    ReloadButton_Click(this, new RoutedEventArgs());
+                }
             }
             else if (e.Key == Key.F12)
             {

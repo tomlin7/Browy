@@ -181,9 +181,44 @@ namespace Browy
         private void FilterCommands(string query)
         {
             _filteredCommands.Clear();
-            var matches = _allCommands.Where(c => c.Matches(query)).ToList();
+            string trimmed = (query ?? string.Empty).Trim();
 
-            foreach (var cmd in matches)
+            IEnumerable<BrowserCommand> source;
+
+            if (trimmed.StartsWith("tab ", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("/tab", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("t:", StringComparison.OrdinalIgnoreCase))
+            {
+                int sep = trimmed.IndexOfAny(new[] { ' ', ':' });
+                string subQuery = sep >= 0 ? trimmed.Substring(sep + 1).Trim() : string.Empty;
+                source = _allCommands.Where(c => c.Category == "Open Tabs" && c.Matches(subQuery));
+            }
+            else if (trimmed.StartsWith("bm ", StringComparison.OrdinalIgnoreCase) ||
+                     trimmed.StartsWith("/bm", StringComparison.OrdinalIgnoreCase) ||
+                     trimmed.StartsWith("b:", StringComparison.OrdinalIgnoreCase) ||
+                     trimmed.StartsWith("bookmark", StringComparison.OrdinalIgnoreCase))
+            {
+                int sep = trimmed.IndexOfAny(new[] { ' ', ':' });
+                string subQuery = sep >= 0 ? trimmed.Substring(sep + 1).Trim() : string.Empty;
+                source = _allCommands.Where(c => c.Category == "Bookmarks" && c.Matches(subQuery));
+            }
+            else if (trimmed.StartsWith(">") || trimmed.StartsWith("/cmd", StringComparison.OrdinalIgnoreCase) || trimmed.StartsWith("cmd:", StringComparison.OrdinalIgnoreCase))
+            {
+                string subQuery = trimmed.StartsWith(">") ? trimmed.Substring(1).Trim() :
+                                  (trimmed.Contains(' ') ? trimmed.Substring(trimmed.IndexOf(' ') + 1).Trim() :
+                                   trimmed.Contains(':') ? trimmed.Substring(trimmed.IndexOf(':') + 1).Trim() : string.Empty);
+                source = _allCommands.Where(c => c.Category != "Open Tabs" && c.Category != "Bookmarks" && c.Matches(subQuery));
+            }
+            else
+            {
+                source = _allCommands
+                    .Where(c => c.Matches(trimmed))
+                    .OrderByDescending(c => !string.IsNullOrEmpty(trimmed) && c.Title.StartsWith(trimmed, StringComparison.OrdinalIgnoreCase))
+                    .ThenByDescending(c => c.Category == "Open Tabs")
+                    .ThenBy(c => c.Category == "Bookmarks" ? 1 : 0);
+            }
+
+            foreach (var cmd in source)
             {
                 _filteredCommands.Add(cmd);
             }
@@ -219,7 +254,26 @@ namespace Browy
 
         private List<BrowserCommand> BuildCommandRegistry()
         {
-            return new List<BrowserCommand>
+            var list = new List<BrowserCommand>();
+
+            // Open Tabs Switcher
+            for (int i = 0; i < _mainWindow.Tabs.Count; i++)
+            {
+                var tab = _mainWindow.Tabs[i];
+                string title = string.IsNullOrWhiteSpace(tab.Title) ? "New Tab" : tab.Title;
+                string shortcut = tab.IsActive ? "Active" : $"Tab {i + 1}";
+                list.Add(new BrowserCommand(title, "Open Tabs", "\uE7C3", shortcut, tab.Url, w => w.SwitchToTab(tab)));
+            }
+
+            // Bookmarks Switcher
+            foreach (var bm in _mainWindow.Bookmarks)
+            {
+                string title = string.IsNullOrWhiteSpace(bm.Title) ? bm.Url : bm.Title;
+                list.Add(new BrowserCommand(title, "Bookmarks", "\uE734", "", bm.Url, w => w.NavigateActiveTab(bm.Url)));
+            }
+
+            // Browser Commands
+            list.AddRange(new BrowserCommand[]
             {
                 // Tabs
                 new("New Tab", "Tabs", "\uE710", "Ctrl+T", "Open a new browser tab", w => w.AddNewTab()),
@@ -235,7 +289,7 @@ namespace Browy
 
                 // Navigation
                 new("Reload Page", "Navigation", "\uE72C", "Ctrl+R", "Reload the current webpage", w => w.ReloadCurrentPage()),
-                new("Hard Reload (Bypass Cache)", "Navigation", "\uE895", "Ctrl+Shift+R", "Reload page ignoring local browser cache", w => w.HardReloadCurrentPage()),
+                new("Hard Reload (Bypass Cache)", "Navigation", "\uE895", "Ctrl+F5", "Reload page ignoring local browser cache", w => w.HardReloadCurrentPage()),
                 new("Go Back", "Navigation", "\uE76B", "Alt+Left", "Navigate back in browser history", w => w.GoBack()),
                 new("Go Forward", "Navigation", "\uE76C", "Alt+Right", "Navigate forward in browser history", w => w.GoForward()),
                 new("Open Home / Start Page", "Navigation", "\uE80F", "Alt+Home", "Return to the Browy start page", w => w.OpenStartPage()),
@@ -243,6 +297,7 @@ namespace Browy
                 new("Copy Page URL", "Navigation", "\uE8C8", "", "Copy current web address to clipboard", w => w.CopyCurrentUrl()),
 
                 // Panels & Views
+                new("Toggle Reader View", "View", "\uE736", "Ctrl+Shift+R", "Read distraction-free article formatted for focus", w => w.ToggleReaderMode()),
                 new("Open Settings", "Settings", "\uE713", "Ctrl+,", "Open Browy browser preferences and configuration", w => w.OpenSettingsPage()),
                 new("Toggle Full Screen", "View", "\uE740", "F11", "Toggle distraction-free full screen mode", w => w.ToggleFullscreen()),
                 new("Toggle Left Sidebar (Tabs)", "View", "\uE8A0", "Ctrl+S", "Collapse or expand vertical tab sidebar", w => w.ToggleSidebar()),
@@ -267,7 +322,9 @@ namespace Browy
                 new("Summarize Webpage", "AI & Agents", "\uE890", "", "Generate a concise summary of the active site", w => w.TriggerAgentPrompt("Summarize current page")),
                 new("Explain Webpage", "AI & Agents", "\uE8BD", "", "Explain the key concepts of the active site", w => w.TriggerAgentPrompt("Explain this webpage")),
                 new("Extract Key Takeaways", "AI & Agents", "\uE721", "", "List actionable insights from this article", w => w.TriggerAgentPrompt("Find key takeaways"))
-            };
+            });
+
+            return list;
         }
     }
 }

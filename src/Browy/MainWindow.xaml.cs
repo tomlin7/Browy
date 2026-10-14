@@ -2125,6 +2125,115 @@ namespace Browy
             BookmarkCurrentPage_Click(this, new RoutedEventArgs());
         }
 
+        public void ExportBackup()
+        {
+            try
+            {
+                var sfd = new Microsoft.Win32.SaveFileDialog
+                {
+                    Filter = "Browy Backup Bundle (*.json)|*.json",
+                    FileName = $"browy_backup_{DateTime.Now:yyyyMMdd_HHmmss}.json"
+                };
+                if (sfd.ShowDialog() == true)
+                {
+                    string json = BackupService.CreateBackupJson(Bookmarks, BrowserSettings.Current, Spaces, _activeSpace, _activeTab);
+                    File.WriteAllText(sfd.FileName, json);
+                    System.Windows.MessageBox.Show("Backup successfully exported!", "Browy Backup", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show($"Failed to export backup: {ex.Message}", "Backup Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        public void ImportBackup()
+        {
+            try
+            {
+                var ofd = new Microsoft.Win32.OpenFileDialog
+                {
+                    Filter = "Browy Backup Bundle (*.json)|*.json"
+                };
+                if (ofd.ShowDialog() == true)
+                {
+                    string json = File.ReadAllText(ofd.FileName);
+                    var bundle = BackupService.RestoreBackupFromJson(json);
+                    if (bundle != null)
+                    {
+                        if (bundle.Bookmarks?.Count > 0)
+                        {
+                            Bookmarks.Clear();
+                            foreach (var b in bundle.Bookmarks)
+                            {
+                                Bookmarks.Add(new BookmarkItem(b.Title, b.Url));
+                            }
+                            BookmarkService.SaveBookmarks(Bookmarks);
+                        }
+                        System.Windows.MessageBox.Show("Backup successfully restored!", "Browy Backup", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show($"Failed to import backup: {ex.Message}", "Backup Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        public void ExportBookmarksHtml()
+        {
+            try
+            {
+                var sfd = new Microsoft.Win32.SaveFileDialog
+                {
+                    Filter = "HTML Bookmarks (*.html)|*.html",
+                    FileName = "bookmarks.html"
+                };
+                if (sfd.ShowDialog() == true)
+                {
+                    string html = BookmarkService.ExportToHtml(Bookmarks);
+                    File.WriteAllText(sfd.FileName, html);
+                    System.Windows.MessageBox.Show("Bookmarks exported to HTML!", "Browy Bookmarks", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show($"Failed to export bookmarks: {ex.Message}", "Bookmarks Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        public void ImportBookmarksHtml()
+        {
+            try
+            {
+                var ofd = new Microsoft.Win32.OpenFileDialog
+                {
+                    Filter = "HTML Bookmarks (*.html;*.htm)|*.html;*.htm"
+                };
+                if (ofd.ShowDialog() == true)
+                {
+                    string html = File.ReadAllText(ofd.FileName);
+                    var imported = BookmarkService.ImportFromHtml(html);
+                    if (imported.Count > 0)
+                    {
+                        foreach (var item in imported)
+                        {
+                            if (!Bookmarks.Any(b => b.Url.Equals(item.Url, StringComparison.OrdinalIgnoreCase)))
+                            {
+                                Bookmarks.Add(item);
+                            }
+                        }
+                        BookmarkService.SaveBookmarks(Bookmarks);
+                        System.Windows.MessageBox.Show($"Successfully imported {imported.Count} bookmarks!", "Browy Bookmarks", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show($"Failed to import bookmarks: {ex.Message}", "Bookmarks Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         public void ToggleHistory()
         {
             HistoryPopup.IsOpen = !HistoryPopup.IsOpen;

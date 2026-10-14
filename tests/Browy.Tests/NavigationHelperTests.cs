@@ -60,6 +60,20 @@ namespace Browy.Tests
             Assert.Equal(expected, result);
         }
 
+        [Theory]
+        [InlineData("!yt lo-fi hip hop", "https://www.youtube.com/results?search_query=lo-fi%20hip%20hop")]
+        [InlineData("!gh webview2", "https://github.com/search?q=webview2")]
+        [InlineData("!w quantum physics", "https://en.wikipedia.org/wiki/Special:Search?search=quantum%20physics")]
+        [InlineData("!d privacy browser", "https://duckduckgo.com/?q=privacy%20browser")]
+        [InlineData("!r dotnet", "https://www.reddit.com/search/?q=dotnet")]
+        [InlineData("!kagi fast search", "https://kagi.com/search?q=fast%20search")]
+        [InlineData("!so null reference", "https://stackoverflow.com/search?q=null%20reference")]
+        public void ResolveInputToUrl_ExpandsKeywordBangs(string input, string expected)
+        {
+            string result = NavigationHelper.ResolveInputToUrl(input);
+            Assert.Equal(expected, result);
+        }
+
         [Fact]
         public void ResolveInputToUrl_EmptyOrWhitespaceReturnsStartPage()
         {

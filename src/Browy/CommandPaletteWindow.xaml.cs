@@ -336,6 +336,10 @@ namespace Browy
                 new("Print Page", "Tools", "\uE749", "Ctrl+P", "Print or export current page to PDF", w => w.PrintCurrentPage()),
                 new("Save Page as PDF", "Tools", "\uE749", "", "Export the current webpage as a PDF file", w => _ = w.SaveActiveTabAsPdfAsync()),
                 new("Bookmark This Page", "Tools", "\uE734", "Ctrl+D", "Save active page to your bookmarks", w => w.BookmarkCurrentPage()),
+                new("Export Bookmarks to HTML", "Tools", "\uE749", "", "Export all bookmarks to standard Netscape HTML", w => w.ExportBookmarksHtml()),
+                new("Import Bookmarks from HTML", "Tools", "\uE8E5", "", "Import bookmarks from an HTML file", w => w.ImportBookmarksHtml()),
+                new("Export Full Backup Bundle", "Tools", "\uE749", "", "Export settings, spaces, and bookmarks to JSON", w => w.ExportBackup()),
+                new("Restore Full Backup Bundle", "Tools", "\uE8E5", "", "Restore settings, spaces, and bookmarks from JSON", w => w.ImportBackup()),
                 new("Browsing History", "Tools", "\uE81C", "Ctrl+H", "Open browsing history drawer", w => w.ToggleHistory()),
                 new("Clear Browsing History", "Tools", "\uE74D", "", "Erase all saved history entries", w => w.ClearAllHistory()),
 

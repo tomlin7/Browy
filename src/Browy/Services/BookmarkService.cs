@@ -92,5 +92,47 @@ namespace Browy.Services
 
             return url.ToLowerInvariant();
         }
+
+        public static string ExportToHtml(IEnumerable<BookmarkItem> bookmarks)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("<!DOCTYPE NETSCAPE-Bookmark-file-1>");
+            sb.AppendLine("<!-- This is an automatically generated file. It will be read and overwritten. Do Not Edit! -->");
+            sb.AppendLine("<META HTTP-EQUIV=\"Content-Type\" CONTENT=\"text/html; charset=UTF-8\">");
+            sb.AppendLine("<TITLE>Bookmarks</TITLE>");
+            sb.AppendLine("<H1>Bookmarks</H1>");
+            sb.AppendLine("<DL><p>");
+            foreach (var b in bookmarks)
+            {
+                string title = System.Net.WebUtility.HtmlEncode(b.Title);
+                string url = System.Net.WebUtility.HtmlEncode(b.Url);
+                sb.AppendLine($"    <DT><A HREF=\"{url}\">{title}</A>");
+            }
+            sb.AppendLine("</DL><p>");
+            return sb.ToString();
+        }
+
+        public static List<BookmarkItem> ImportFromHtml(string html)
+        {
+            var list = new List<BookmarkItem>();
+            if (string.IsNullOrWhiteSpace(html)) return list;
+
+            var matches = System.Text.RegularExpressions.Regex.Matches(
+                html,
+                @"<A\s+(?:[^>]*?\s+)?HREF=""([^""]*)""[^>]*>(.*?)</A>",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+            foreach (System.Text.RegularExpressions.Match match in matches)
+            {
+                string url = System.Net.WebUtility.HtmlDecode(match.Groups[1].Value.Trim());
+                string title = System.Net.WebUtility.HtmlDecode(match.Groups[2].Value.Trim());
+                if (!string.IsNullOrEmpty(url))
+                {
+                    if (string.IsNullOrWhiteSpace(title)) title = url;
+                    list.Add(new BookmarkItem(title, url));
+                }
+            }
+            return list;
+        }
     }
 }

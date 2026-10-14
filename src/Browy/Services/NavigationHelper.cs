@@ -77,6 +77,25 @@ namespace Browy.Services
                 return input;
             }
 
+            // Keyword Bangs support (e.g. !yt lo-fi, !gh dotnet, !w alan turing)
+            if (input.StartsWith("!") && input.Length > 2)
+            {
+                int spaceIndex = input.IndexOf(' ');
+                if (spaceIndex > 1)
+                {
+                    string bang = input.Substring(1, spaceIndex - 1).ToLowerInvariant();
+                    string query = input.Substring(spaceIndex + 1).Trim();
+                    if (!string.IsNullOrEmpty(query))
+                    {
+                        string? bangUrl = GetBangSearchUrl(bang, query);
+                        if (bangUrl != null)
+                        {
+                            return bangUrl;
+                        }
+                    }
+                }
+            }
+
             // If it contains spaces, it's definitely a search query
             if (input.Contains(' '))
             {
@@ -111,6 +130,29 @@ namespace Browy.Services
             {
                 return url;
             }
+        }
+
+        public static string? GetBangSearchUrl(string bang, string query)
+        {
+            string encoded = Uri.EscapeDataString(query);
+            return bang switch
+            {
+                "g" or "google" => $"https://www.google.com/search?q={encoded}",
+                "d" or "ddg" or "duck" => $"https://duckduckgo.com/?q={encoded}",
+                "b" or "bing" => $"https://www.bing.com/search?q={encoded}",
+                "yt" or "youtube" => $"https://www.youtube.com/results?search_query={encoded}",
+                "w" or "wiki" or "wikipedia" => $"https://en.wikipedia.org/wiki/Special:Search?search={encoded}",
+                "gh" or "github" => $"https://github.com/search?q={encoded}",
+                "r" or "reddit" => $"https://www.reddit.com/search/?q={encoded}",
+                "k" or "kagi" => $"https://kagi.com/search?q={encoded}",
+                "brave" => $"https://search.brave.com/search?q={encoded}",
+                "eco" or "ecosia" => $"https://www.ecosia.org/search?q={encoded}",
+                "so" or "stackoverflow" => $"https://stackoverflow.com/search?q={encoded}",
+                "npm" => $"https://www.npmjs.com/search?q={encoded}",
+                "nuget" => $"https://www.nuget.org/packages?q={encoded}",
+                "a" or "amz" or "amazon" => $"https://www.amazon.com/s?k={encoded}",
+                _ => null
+            };
         }
     }
 }

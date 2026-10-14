@@ -185,37 +185,43 @@ namespace Browy
 
             IEnumerable<BrowserCommand> source;
 
-            if (trimmed.StartsWith("tab ", StringComparison.OrdinalIgnoreCase) ||
+            if (trimmed.StartsWith("@") ||
+                trimmed.StartsWith("tab ", StringComparison.OrdinalIgnoreCase) ||
                 trimmed.StartsWith("/tab", StringComparison.OrdinalIgnoreCase) ||
                 trimmed.StartsWith("t:", StringComparison.OrdinalIgnoreCase))
             {
-                int sep = trimmed.IndexOfAny(new[] { ' ', ':' });
-                string subQuery = sep >= 0 ? trimmed.Substring(sep + 1).Trim() : string.Empty;
-                source = _allCommands.Where(c => c.Category == "Open Tabs" && c.Matches(subQuery));
+                string subQuery = trimmed.StartsWith("@") ? trimmed.Substring(1).Trim() :
+                                  (trimmed.IndexOfAny(new[] { ' ', ':' }) >= 0 ? trimmed.Substring(trimmed.IndexOfAny(new[] { ' ', ':' }) + 1).Trim() : string.Empty);
+                source = _allCommands
+                    .Where(c => c.Category == "Open Tabs" && c.Matches(subQuery))
+                    .OrderByDescending(c => c.GetFuzzyScore(subQuery));
             }
-            else if (trimmed.StartsWith("bm ", StringComparison.OrdinalIgnoreCase) ||
+            else if (trimmed.StartsWith("*") ||
+                     trimmed.StartsWith("bm ", StringComparison.OrdinalIgnoreCase) ||
                      trimmed.StartsWith("/bm", StringComparison.OrdinalIgnoreCase) ||
                      trimmed.StartsWith("b:", StringComparison.OrdinalIgnoreCase) ||
                      trimmed.StartsWith("bookmark", StringComparison.OrdinalIgnoreCase))
             {
-                int sep = trimmed.IndexOfAny(new[] { ' ', ':' });
-                string subQuery = sep >= 0 ? trimmed.Substring(sep + 1).Trim() : string.Empty;
-                source = _allCommands.Where(c => c.Category == "Bookmarks" && c.Matches(subQuery));
+                string subQuery = trimmed.StartsWith("*") ? trimmed.Substring(1).Trim() :
+                                  (trimmed.IndexOfAny(new[] { ' ', ':' }) >= 0 ? trimmed.Substring(trimmed.IndexOfAny(new[] { ' ', ':' }) + 1).Trim() : string.Empty);
+                source = _allCommands
+                    .Where(c => c.Category == "Bookmarks" && c.Matches(subQuery))
+                    .OrderByDescending(c => c.GetFuzzyScore(subQuery));
             }
             else if (trimmed.StartsWith(">") || trimmed.StartsWith("/cmd", StringComparison.OrdinalIgnoreCase) || trimmed.StartsWith("cmd:", StringComparison.OrdinalIgnoreCase))
             {
                 string subQuery = trimmed.StartsWith(">") ? trimmed.Substring(1).Trim() :
                                   (trimmed.Contains(' ') ? trimmed.Substring(trimmed.IndexOf(' ') + 1).Trim() :
                                    trimmed.Contains(':') ? trimmed.Substring(trimmed.IndexOf(':') + 1).Trim() : string.Empty);
-                source = _allCommands.Where(c => c.Category != "Open Tabs" && c.Category != "Bookmarks" && c.Matches(subQuery));
+                source = _allCommands
+                    .Where(c => c.Category != "Open Tabs" && c.Category != "Bookmarks" && c.Matches(subQuery))
+                    .OrderByDescending(c => c.GetFuzzyScore(subQuery));
             }
             else
             {
                 source = _allCommands
                     .Where(c => c.Matches(trimmed))
-                    .OrderByDescending(c => !string.IsNullOrEmpty(trimmed) && c.Title.StartsWith(trimmed, StringComparison.OrdinalIgnoreCase))
-                    .ThenByDescending(c => c.Category == "Open Tabs")
-                    .ThenBy(c => c.Category == "Bookmarks" ? 1 : 0);
+                    .OrderByDescending(c => c.GetFuzzyScore(trimmed));
             }
 
             foreach (var cmd in source)
@@ -313,6 +319,7 @@ namespace Browy
 
                 // Panels & Views
                 new("Toggle Split View (Dual-Pane)", "View", "\uE7FB", "Ctrl+\\", "Open two tabs side-by-side in dual pane", w => w.ToggleSplitView()),
+                new("Toggle Picture-in-Picture (PiP)", "View", "\uE714", "Alt+P", "Pop out video to a floating picture-in-picture window", w => w.TogglePictureInPicture()),
                 new("Toggle Browy Shield (Ad-Blocker)", "Privacy", "\uEA1F", "", "Toggle proactive ad and tracker blocking", w => w.ToggleShield()),
                 new("New InPrivate Window", "Privacy", "\uE727", "Ctrl+Shift+N", "Open a stealth browsing window with zero footprint", w => w.OpenInPrivateWindow()),
                 new("Toggle Reader View", "View", "\uE736", "Ctrl+Shift+R", "Read distraction-free article formatted for focus", w => w.ToggleReaderMode()),
@@ -345,6 +352,7 @@ namespace Browy
 
                 // AI & Agents
                 new("New Agent Chat Session", "AI & Agents", "\uF4A5", "", "Start a fresh AI assistant conversation", w => w.StartNewAgentChat()),
+                new("Capture Viewport Screenshot", "AI & Agents", "\uEB9F", "", "Capture page screenshot for multimodal analysis", w => _ = w.CaptureActiveTabScreenshotBase64Async()),
                 new("Summarize Webpage", "AI & Agents", "\uE890", "", "Generate a concise summary of the active site", w => w.TriggerAgentPrompt("Summarize current page")),
                 new("Explain Webpage", "AI & Agents", "\uE8BD", "", "Explain the key concepts of the active site", w => w.TriggerAgentPrompt("Explain this webpage")),
                 new("Extract Key Takeaways", "AI & Agents", "\uE721", "", "List actionable insights from this article", w => w.TriggerAgentPrompt("Find key takeaways"))

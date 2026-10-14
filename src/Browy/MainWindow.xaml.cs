@@ -2890,6 +2890,48 @@ namespace Browy
             catch { }
         }
 
+        public async void TogglePictureInPicture()
+        {
+            if (_activeTab?.WebViewInstance?.CoreWebView2 == null) return;
+            try
+            {
+                string script = @"(() => {
+                    const video = document.querySelector('video');
+                    if (!video) return false;
+                    if (document.pictureInPictureElement) {
+                        document.exitPictureInPicture();
+                        return true;
+                    } else if (document.pictureInPictureEnabled) {
+                        video.requestPictureInPicture();
+                        return true;
+                    }
+                    return false;
+                })()";
+                string result = await _activeTab.WebViewInstance.CoreWebView2.ExecuteScriptAsync(script);
+                if (result == "false")
+                {
+                    System.Windows.MessageBox.Show("No active video found on this page to pop out.", "Picture-in-Picture", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch { }
+        }
+
+        public async Task<string?> CaptureActiveTabScreenshotBase64Async()
+        {
+            if (_activeTab?.WebViewInstance?.CoreWebView2 == null) return null;
+            try
+            {
+                using var ms = new MemoryStream();
+                await _activeTab.WebViewInstance.CoreWebView2.CapturePreviewAsync(
+                    CoreWebView2CapturePreviewImageFormat.Png, ms);
+                return Convert.ToBase64String(ms.ToArray());
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         public void CloseOtherTabs(BrowserTab keepTab)
         {
             var toRemove = Tabs.Where(t => t != keepTab && !t.IsPinned).ToList();

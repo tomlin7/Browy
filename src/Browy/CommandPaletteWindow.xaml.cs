@@ -272,9 +272,22 @@ namespace Browy
                 list.Add(new BrowserCommand(title, "Bookmarks", "\uE734", "", bm.Url, w => w.NavigateActiveTab(bm.Url)));
             }
 
+            // Spaces Switcher
+            for (int s = 0; s < _mainWindow.Spaces.Count; s++)
+            {
+                var sp = _mainWindow.Spaces[s];
+                string shortcut = sp.IsActive ? "Active" : $"Ctrl+Alt+{s + 1}";
+                list.Add(new BrowserCommand($"Switch to Space: {sp.Name}", "Spaces", sp.IconGlyph, shortcut, $"Switch to {sp.Name} workspace", w => _ = w.SwitchToSpaceAsync(sp)));
+            }
+
             // Browser Commands
             list.AddRange(new BrowserCommand[]
             {
+                // Spaces & Workspaces
+                new("New Workspace Space", "Spaces", "\uE710", "Ctrl+Alt+N", "Create a new Arc/Zen workspace space", w => w.PromptCreateNewSpace()),
+                new("Next Space", "Spaces", "\uE76C", "Ctrl+Alt+Right", "Switch to the next workspace space", w => w.SwitchToNextSpace()),
+                new("Previous Space", "Spaces", "\uE76B", "Ctrl+Alt+Left", "Switch to the previous workspace space", w => w.SwitchToPreviousSpace()),
+
                 // Tabs
                 new("New Tab", "Tabs", "\uE710", "Ctrl+T", "Open a new browser tab", w => w.AddNewTab()),
                 new("Close Tab", "Tabs", "\uE711", "Ctrl+W", "Close the current active tab", w => w.CloseCurrentTab()),
@@ -297,9 +310,14 @@ namespace Browy
                 new("Copy Page URL", "Navigation", "\uE8C8", "", "Copy current web address to clipboard", w => w.CopyCurrentUrl()),
 
                 // Panels & Views
+                new("Toggle Split View (Dual-Pane)", "View", "\uE7FB", "Ctrl+\\", "Open two tabs side-by-side in dual pane", w => w.ToggleSplitView()),
                 new("Toggle Browy Shield (Ad-Blocker)", "Privacy", "\uEA1F", "", "Toggle proactive ad and tracker blocking", w => w.ToggleShield()),
+                new("New InPrivate Window", "Privacy", "\uE727", "Ctrl+Shift+N", "Open a stealth browsing window with zero footprint", w => w.OpenInPrivateWindow()),
                 new("Toggle Reader View", "View", "\uE736", "Ctrl+Shift+R", "Read distraction-free article formatted for focus", w => w.ToggleReaderMode()),
                 new("Open Settings", "Settings", "\uE713", "Ctrl+,", "Open Browy browser preferences and configuration", w => w.OpenSettingsPage()),
+                new("Open History Page", "Hubs", "\uE81C", "Ctrl+H", "Open full-page browsing history manager", w => w.OpenHistoryPage()),
+                new("Open Bookmarks Manager", "Hubs", "\uE734", "", "Open full-page bookmarks organizer", w => w.OpenBookmarksPage()),
+                new("Open Downloads Page", "Hubs", "\uE896", "Ctrl+Shift+J", "Open full-page file downloads manager", w => w.OpenDownloadsPage()),
                 new("Toggle Full Screen", "View", "\uE740", "F11", "Toggle distraction-free full screen mode", w => w.ToggleFullscreen()),
                 new("Toggle Left Sidebar (Tabs)", "View", "\uE8A0", "Ctrl+S", "Collapse or expand vertical tab sidebar", w => w.ToggleSidebar()),
                 new("Toggle Right Sidebar (Agents)", "View", "\uF4A5", "Ctrl+J", "Collapse or expand intelligent AI copilot panel", w => w.ToggleAgentsPanel()),

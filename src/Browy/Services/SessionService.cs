@@ -15,8 +15,23 @@ namespace Browy.Services
         public bool IsActive { get; set; } = false;
     }
 
+    public class SpaceSessionData
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = "Personal";
+        public string IconGlyph { get; set; } = "\uE80F";
+        public string AccentColorHex { get; set; } = "#6366F1";
+        public bool IsActive { get; set; } = false;
+        public int ActiveTabIndex { get; set; } = 0;
+        public List<SessionTabData> Tabs { get; set; } = new();
+    }
+
     public class BrowserSessionData
     {
+        public List<SpaceSessionData> Spaces { get; set; } = new();
+        public int ActiveSpaceIndex { get; set; } = 0;
+
+        // Legacy / active space tabs fallback
         public List<SessionTabData> Tabs { get; set; } = new();
         public int ActiveTabIndex { get; set; } = 0;
         public DateTime SavedAt { get; set; } = DateTime.UtcNow;
@@ -31,51 +46,84 @@ namespace Browy.Services
 
         private static readonly object _lock = new();
 
-        public static void SaveSession(IEnumerable<BrowserTab> tabs, BrowserTab? activeTab)
+        public static void SaveSpacesSession(IEnumerable<BrowserSpace> spaces, BrowserSpace? activeSpace, BrowserTab? activeTab)
         {
             lock (_lock)
             {
                 try
                 {
-                    var tabList = tabs.ToList();
-                    if (tabList.Count == 0)
+                    var spaceList = spaces.ToList();
+                    if (spaceList.Count == 0)
                     {
                         ClearSession();
                         return;
                     }
 
                     var session = new BrowserSessionData();
-                    int activeIndex = 0;
+                    int activeSpaceIdx = 0;
 
-                    for (int i = 0; i < tabList.Count; i++)
+                    for (int s = 0; s < spaceList.Count; s++)
                     {
-                        var tab = tabList[i];
-                        string url = tab.IsReaderModeActive && !string.IsNullOrEmpty(tab.OriginalUrlBeforeReader)
-                            ? tab.OriginalUrlBeforeReader
-                            : tab.Url;
+                        var space = spaceList[s];
+                        bool isSpaceActive = (space == activeSpace) || space.IsActive;
+                        if (isSpaceActive) activeSpaceIdx = s;
 
-                        // Skip temporary or blank error tabs
-                        if (string.IsNullOrWhiteSpace(url) || url.Equals("about:blank", StringComparison.OrdinalIgnoreCase))
+                        var spaceData = new SpaceSessionData
                         {
-                            url = "browy://newtab";
+                            Id = space.Id,
+                            Name = space.Name,
+                            IconGlyph = space.IconGlyph,
+                            AccentColorHex = space.AccentColorHex,
+                            IsActive = isSpaceActive,
+                            ActiveTabIndex = space.ActiveTabIndex
+                        };
+
+                        var tabList = space.Tabs.ToList();
+                        for (int t = 0; t < tabList.Count; t++)
+                        {
+                            var tab = tabList[t];
+                            string url = tab.IsReaderModeActive && !string.IsNullOrEmpty(tab.OriginalUrlBeforeReader)
+                                ? tab.OriginalUrlBeforeReader
+                                : tab.Url;
+
+                            if (string.IsNullOrWhiteSpace(url) || url.Equals("about:blank", StringComparison.OrdinalIgnoreCase))
+                            {
+                                url = "browy://newtab";
+                            }
+
+                            bool isTabActive = (tab == activeTab) || tab.IsActive;
+                            if (isTabActive) spaceData.ActiveTabIndex = t;
+
+                            spaceData.Tabs.Add(new SessionTabData
+                            {
+                                Url = url,
+                                Title = string.IsNullOrWhiteSpace(tab.Title) ? "New Tab" : tab.Title,
+                                IsPinned = tab.IsPinned,
+                                IsActive = isTabActive
+                            });
                         }
 
-                        bool isActive = tab == activeTab || tab.IsActive;
-                        if (isActive)
+                        if (spaceData.Tabs.Count == 0)
                         {
-                            activeIndex = i;
+                            spaceData.Tabs.Add(new SessionTabData
+                            {
+                                Url = "browy://newtab",
+                                Title = "New Tab",
+                                IsActive = true
+                            });
                         }
 
-                        session.Tabs.Add(new SessionTabData
-                        {
-                            Url = url,
-                            Title = string.IsNullOrWhiteSpace(tab.Title) ? "New Tab" : tab.Title,
-                            IsPinned = tab.IsPinned,
-                            IsActive = isActive
-                        });
+                        session.Spaces.Add(spaceData);
                     }
 
-                    session.ActiveTabIndex = activeIndex;
+                    session.ActiveSpaceIndex = activeSpaceIdx;
+
+                    // Fallback legacy Tabs from active space
+                    if (session.Spaces.Count > activeSpaceIdx)
+                    {
+                        session.Tabs = session.Spaces[activeSpaceIdx].Tabs;
+                        session.ActiveTabIndex = session.Spaces[activeSpaceIdx].ActiveTabIndex;
+                    }
 
                     string dir = Path.GetDirectoryName(SessionFilePath)!;
                     Directory.CreateDirectory(dir);
@@ -84,9 +132,22 @@ namespace Browy.Services
                 }
                 catch (Exception ex)
                 {
-                    try { File.AppendAllText(@"E:\browy\crash.log", $"[{DateTime.Now:O}] SaveSession error: {ex}\n"); } catch { }
+                    try { File.AppendAllText(@"E:\browy\crash.log", $"[{DateTime.Now:O}] SaveSpacesSession error: {ex}\n"); } catch { }
                 }
             }
+        }
+
+        public static void SaveSession(IEnumerable<BrowserTab> tabs, BrowserTab? activeTab)
+        {
+            var defaultSpace = new BrowserSpace
+            {
+                Name = "Personal",
+                IconGlyph = "\uE80F",
+                AccentColorHex = "#6366F1",
+                IsActive = true
+            };
+            foreach (var t in tabs) defaultSpace.Tabs.Add(t);
+            SaveSpacesSession(new[] { defaultSpace }, defaultSpace, activeTab);
         }
 
         public static BrowserSessionData? LoadSession()
@@ -99,9 +160,31 @@ namespace Browy.Services
 
                     string json = File.ReadAllText(SessionFilePath);
                     var session = JsonSerializer.Deserialize<BrowserSessionData>(json);
-                    if (session != null && session.Tabs != null && session.Tabs.Count > 0)
+                    if (session != null)
                     {
-                        return session;
+                        // Backwards compatibility migration
+                        if ((session.Spaces == null || session.Spaces.Count == 0) && session.Tabs != null && session.Tabs.Count > 0)
+                        {
+                            session.Spaces = new List<SpaceSessionData>
+                            {
+                                new SpaceSessionData
+                                {
+                                    Id = Guid.NewGuid().ToString("N"),
+                                    Name = "Personal",
+                                    IconGlyph = "\uE80F",
+                                    AccentColorHex = "#6366F1",
+                                    IsActive = true,
+                                    ActiveTabIndex = session.ActiveTabIndex,
+                                    Tabs = session.Tabs
+                                }
+                            };
+                            session.ActiveSpaceIndex = 0;
+                        }
+
+                        if (session.Spaces != null && session.Spaces.Count > 0)
+                        {
+                            return session;
+                        }
                     }
                 }
                 catch (Exception ex)

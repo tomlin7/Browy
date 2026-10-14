@@ -30,6 +30,30 @@ namespace Browy.Services
                 return "browy://settings";
             }
 
+            // History aliases
+            if (input.Equals("history", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("browy://history", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("about:history", StringComparison.OrdinalIgnoreCase))
+            {
+                return "browy://history";
+            }
+
+            // Bookmarks aliases
+            if (input.Equals("bookmarks", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("browy://bookmarks", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("about:bookmarks", StringComparison.OrdinalIgnoreCase))
+            {
+                return "browy://bookmarks";
+            }
+
+            // Downloads aliases
+            if (input.Equals("downloads", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("browy://downloads", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("about:downloads", StringComparison.OrdinalIgnoreCase))
+            {
+                return "browy://downloads";
+            }
+
             // New Tab / Start page aliases
             if (input.Equals("newtab", StringComparison.OrdinalIgnoreCase) ||
                 input.Equals("start", StringComparison.OrdinalIgnoreCase) ||

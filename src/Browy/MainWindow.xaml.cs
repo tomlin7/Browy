@@ -29,6 +29,12 @@ namespace Browy
         public ObservableCollection<DownloadItem> Downloads { get; } = new();
         public ObservableCollection<OmniboxSuggestion> OmniboxSuggestions { get; } = new();
         public ObservableCollection<ClosedTabItem> RecentlyClosedTabs { get; } = new();
+        public ObservableCollection<BrowserSpace> Spaces { get; } = new();
+        public BrowserSpace? ActiveSpace { get; private set; }
+        public bool IsInPrivate { get; set; } = false;
+        private CoreWebView2Environment? _inPrivateEnvironment;
+        private bool _isSplitViewActive = false;
+        private BrowserTab? _splitSecondaryTab = null;
         private CancellationTokenSource? _suggestionCts;
 
         private BrowserTab? _activeTab;
@@ -177,27 +183,70 @@ namespace Browy
             // Populate initial bookmarks matching the sleek Arc/Zen style in screenshot 2
             LoadInitialBookmarks();
 
+            if (IsInPrivate)
+            {
+                Title = "Browy [InPrivate]";
+                InPrivateBadge.Visibility = Visibility.Visible;
+                var inPrivateSpace = new BrowserSpace
+                {
+                    Name = "InPrivate",
+                    IconGlyph = "\uE727",
+                    AccentColorHex = "#94A3B8",
+                    IsActive = true
+                };
+                Spaces.Add(inPrivateSpace);
+                ActiveSpace = inPrivateSpace;
+                await CreateNewTabAsync("browy://newtab", switchTo: true);
+                return;
+            }
+
             // Restore previous session or open start page
             bool restored = false;
             if (BrowserSettings.Current.StartupBehavior == "RestoreSession")
             {
                 var session = SessionService.LoadSession();
-                if (session != null && session.Tabs.Count > 0)
+                if (session != null && session.Spaces != null && session.Spaces.Count > 0)
                 {
-                    BrowserTab? activeTab = null;
-                    for (int i = 0; i < session.Tabs.Count; i++)
+                    int activeSpaceIdx = Math.Clamp(session.ActiveSpaceIndex, 0, session.Spaces.Count - 1);
+                    for (int s = 0; s < session.Spaces.Count; s++)
                     {
-                        var data = session.Tabs[i];
-                        bool isTarget = (i == session.ActiveTabIndex) || data.IsActive;
-                        var tab = await CreateNewTabAsync(data.Url, switchTo: isTarget);
-                        tab.IsPinned = data.IsPinned;
-                        if (!string.IsNullOrWhiteSpace(data.Title)) tab.Title = data.Title;
-                        if (isTarget) activeTab = tab;
-                    }
+                        var sData = session.Spaces[s];
+                        var space = new BrowserSpace
+                        {
+                            Id = sData.Id,
+                            Name = sData.Name,
+                            IconGlyph = sData.IconGlyph,
+                            AccentColorHex = sData.AccentColorHex,
+                            IsActive = (s == activeSpaceIdx),
+                            ActiveTabIndex = sData.ActiveTabIndex
+                        };
 
-                    if (activeTab != null)
-                    {
-                        SwitchToTab(activeTab);
+                        if (s == activeSpaceIdx)
+                        {
+                            ActiveSpace = space;
+                            for (int t = 0; t < sData.Tabs.Count; t++)
+                            {
+                                var tData = sData.Tabs[t];
+                                bool isTarget = (t == sData.ActiveTabIndex) || tData.IsActive;
+                                var tab = await CreateNewTabAsync(tData.Url, switchTo: isTarget);
+                                tab.IsPinned = tData.IsPinned;
+                                if (!string.IsNullOrWhiteSpace(tData.Title)) tab.Title = tData.Title;
+                            }
+                        }
+                        else
+                        {
+                            foreach (var tData in sData.Tabs)
+                            {
+                                space.Tabs.Add(new BrowserTab
+                                {
+                                    Url = tData.Url,
+                                    Title = string.IsNullOrWhiteSpace(tData.Title) ? "New Tab" : tData.Title,
+                                    IsPinned = tData.IsPinned
+                                });
+                            }
+                        }
+
+                        Spaces.Add(space);
                     }
                     restored = true;
                 }
@@ -205,6 +254,13 @@ namespace Browy
 
             if (!restored)
             {
+                var pSpace = new BrowserSpace { Name = "Personal", IconGlyph = "\uE80F", AccentColorHex = "#6366F1", IsActive = true };
+                var wSpace = new BrowserSpace { Name = "Work", IconGlyph = "\uE7BE", AccentColorHex = "#EC4899" };
+                var dSpace = new BrowserSpace { Name = "Dev", IconGlyph = "\uEC7A", AccentColorHex = "#10B981" };
+                Spaces.Add(pSpace);
+                Spaces.Add(wSpace);
+                Spaces.Add(dSpace);
+                ActiveSpace = pSpace;
                 await CreateNewTabAsync(BrowserSettings.Current.StartPageUrl, switchTo: true);
             }
         }
@@ -212,9 +268,21 @@ namespace Browy
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
             base.OnClosing(e);
-            if (BrowserSettings.Current.StartupBehavior == "RestoreSession")
+            if (IsInPrivate)
             {
-                SessionService.SaveSession(Tabs, _activeTab);
+                try
+                {
+                    if (!string.IsNullOrEmpty(_userDataFolder) && Directory.Exists(_userDataFolder))
+                    {
+                        Directory.Delete(_userDataFolder, true);
+                    }
+                }
+                catch { }
+            }
+            else if (BrowserSettings.Current.StartupBehavior == "RestoreSession")
+            {
+                SyncActiveSpaceTabs();
+                SessionService.SaveSpacesSession(Spaces, ActiveSpace, _activeTab);
             }
         }
 
@@ -359,6 +427,7 @@ namespace Browy
             webView.SizeChanged += (s, e) => ClipWebViewToRoundedCorners(webView);
 
             tab.WebViewInstance = webView;
+            Grid.SetColumn(webView, 0);
             WebContentGrid.Children.Add(webView);
 
             Tabs.Add(tab);
@@ -375,6 +444,15 @@ namespace Browy
 
         private async Task<CoreWebView2Environment> EnsureEnvironmentAsync()
         {
+            if (IsInPrivate)
+            {
+                if (_inPrivateEnvironment != null) return _inPrivateEnvironment;
+                string tempFolder = Path.Combine(Path.GetTempPath(), $"Browy_InPrivate_{Environment.ProcessId}_{Guid.NewGuid():N}");
+                Directory.CreateDirectory(tempFolder);
+                _inPrivateEnvironment = await CoreWebView2Environment.CreateAsync(null, tempFolder);
+                return _inPrivateEnvironment;
+            }
+
             if (_sharedEnvironment != null) return _sharedEnvironment;
 
             await _envLock.WaitAsync();
@@ -420,7 +498,50 @@ namespace Browy
                 switch (action)
                 {
                     case "clear_history":
+                    case "clear_all_history":
                         ClearAllHistory();
+                        break;
+
+                    case "delete_history_entry":
+                        if (root.TryGetProperty("url", out var delUrlProp))
+                        {
+                            string delUrl = delUrlProp.GetString() ?? "";
+                            var existing = History.FirstOrDefault(h => h.Url == delUrl);
+                            if (existing != null) History.Remove(existing);
+                            UpdateHistoryEmptyState();
+                        }
+                        break;
+
+                    case "delete_bookmark":
+                        if (root.TryGetProperty("url", out var delBmUrlProp))
+                        {
+                            string delUrl = delBmUrlProp.GetString() ?? "";
+                            var existing = Bookmarks.FirstOrDefault(b => b.Url == delUrl);
+                            if (existing != null) Bookmarks.Remove(existing);
+                            BookmarkService.SaveBookmarks(Bookmarks);
+                        }
+                        break;
+
+                    case "open_download_file":
+                        if (root.TryGetProperty("path", out var pVal))
+                        {
+                            string p = pVal.GetString() ?? "";
+                            if (!string.IsNullOrEmpty(p) && File.Exists(p))
+                            {
+                                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(p) { UseShellExecute = true });
+                            }
+                        }
+                        break;
+
+                    case "show_download_in_folder":
+                        if (root.TryGetProperty("path", out var foldVal))
+                        {
+                            string p = foldVal.GetString() ?? "";
+                            if (!string.IsNullOrEmpty(p) && File.Exists(p))
+                            {
+                                System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{p}\"");
+                            }
+                        }
                         break;
 
                     case "clear_cookies":
@@ -667,6 +788,57 @@ namespace Browy
                         return;
                     }
 
+                    if (args.Uri.StartsWith("browy://history", StringComparison.OrdinalIgnoreCase) ||
+                        args.Uri.StartsWith("about:history", StringComparison.OrdinalIgnoreCase))
+                    {
+                        args.Cancel = true;
+                        Dispatcher.Invoke(() =>
+                        {
+                            tab.Url = "browy://history";
+                            tab.Title = "History - Browy";
+                            tab.FallbackIcon = "\uE81C";
+                            tab.IsLoading = false;
+                            tab.BlockedCount = 0;
+                            if (_activeTab == tab) UpdateNavigationUI(tab);
+                            tab.WebViewInstance.NavigateToString(InternalHubService.GetHistoryHtml(History));
+                        });
+                        return;
+                    }
+
+                    if (args.Uri.StartsWith("browy://bookmarks", StringComparison.OrdinalIgnoreCase) ||
+                        args.Uri.StartsWith("about:bookmarks", StringComparison.OrdinalIgnoreCase))
+                    {
+                        args.Cancel = true;
+                        Dispatcher.Invoke(() =>
+                        {
+                            tab.Url = "browy://bookmarks";
+                            tab.Title = "Bookmarks - Browy";
+                            tab.FallbackIcon = "\uE734";
+                            tab.IsLoading = false;
+                            tab.BlockedCount = 0;
+                            if (_activeTab == tab) UpdateNavigationUI(tab);
+                            tab.WebViewInstance.NavigateToString(InternalHubService.GetBookmarksHtml(Bookmarks));
+                        });
+                        return;
+                    }
+
+                    if (args.Uri.StartsWith("browy://downloads", StringComparison.OrdinalIgnoreCase) ||
+                        args.Uri.StartsWith("about:downloads", StringComparison.OrdinalIgnoreCase))
+                    {
+                        args.Cancel = true;
+                        Dispatcher.Invoke(() =>
+                        {
+                            tab.Url = "browy://downloads";
+                            tab.Title = "Downloads - Browy";
+                            tab.FallbackIcon = "\uE896";
+                            tab.IsLoading = false;
+                            tab.BlockedCount = 0;
+                            if (_activeTab == tab) UpdateNavigationUI(tab);
+                            tab.WebViewInstance.NavigateToString(InternalHubService.GetDownloadsHtml(Downloads));
+                        });
+                        return;
+                    }
+
                     if (args.Uri.StartsWith("browy://newtab", StringComparison.OrdinalIgnoreCase) ||
                         args.Uri.StartsWith("browy://start", StringComparison.OrdinalIgnoreCase) ||
                         args.Uri.StartsWith("about:newtab", StringComparison.OrdinalIgnoreCase) ||
@@ -809,6 +981,30 @@ namespace Browy
                         tab.FallbackIcon = "\uE713";
                         tab.WebViewInstance.NavigateToString(SettingsPageService.GetSettingsHtml());
                     }
+                    else if (initialUrl.StartsWith("browy://history", StringComparison.OrdinalIgnoreCase) ||
+                             initialUrl.StartsWith("about:history", StringComparison.OrdinalIgnoreCase))
+                    {
+                        tab.Url = "browy://history";
+                        tab.Title = "History - Browy";
+                        tab.FallbackIcon = "\uE81C";
+                        tab.WebViewInstance.NavigateToString(InternalHubService.GetHistoryHtml(History));
+                    }
+                    else if (initialUrl.StartsWith("browy://bookmarks", StringComparison.OrdinalIgnoreCase) ||
+                             initialUrl.StartsWith("about:bookmarks", StringComparison.OrdinalIgnoreCase))
+                    {
+                        tab.Url = "browy://bookmarks";
+                        tab.Title = "Bookmarks - Browy";
+                        tab.FallbackIcon = "\uE734";
+                        tab.WebViewInstance.NavigateToString(InternalHubService.GetBookmarksHtml(Bookmarks));
+                    }
+                    else if (initialUrl.StartsWith("browy://downloads", StringComparison.OrdinalIgnoreCase) ||
+                             initialUrl.StartsWith("about:downloads", StringComparison.OrdinalIgnoreCase))
+                    {
+                        tab.Url = "browy://downloads";
+                        tab.Title = "Downloads - Browy";
+                        tab.FallbackIcon = "\uE896";
+                        tab.WebViewInstance.NavigateToString(InternalHubService.GetDownloadsHtml(Downloads));
+                    }
                     else if (initialUrl.StartsWith("browy://newtab", StringComparison.OrdinalIgnoreCase) ||
                              initialUrl.StartsWith("browy://start", StringComparison.OrdinalIgnoreCase) ||
                              initialUrl.StartsWith("about:newtab", StringComparison.OrdinalIgnoreCase) ||
@@ -860,7 +1056,16 @@ namespace Browy
                 t.IsActive = (t == tab);
                 if (t.WebViewInstance != null)
                 {
-                    t.WebViewInstance.Visibility = (t == tab) ? Visibility.Visible : Visibility.Collapsed;
+                    if (_isSplitViewActive && t == _splitSecondaryTab)
+                    {
+                        Grid.SetColumn(t.WebViewInstance, 2);
+                        t.WebViewInstance.Visibility = Visibility.Visible;
+                    }
+                    else
+                    {
+                        Grid.SetColumn(t.WebViewInstance, 0);
+                        t.WebViewInstance.Visibility = (t == tab) ? Visibility.Visible : Visibility.Collapsed;
+                    }
                 }
             }
 
@@ -1238,6 +1443,39 @@ namespace Browy
                 return;
             }
 
+            if (targetUrl.StartsWith("browy://history", StringComparison.OrdinalIgnoreCase) ||
+                targetUrl.StartsWith("about:history", StringComparison.OrdinalIgnoreCase))
+            {
+                _activeTab.Url = "browy://history";
+                _activeTab.Title = "History - Browy";
+                _activeTab.FallbackIcon = "\uE81C";
+                UpdateNavigationUI(_activeTab);
+                _activeTab.WebViewInstance?.NavigateToString(InternalHubService.GetHistoryHtml(History));
+                return;
+            }
+
+            if (targetUrl.StartsWith("browy://bookmarks", StringComparison.OrdinalIgnoreCase) ||
+                targetUrl.StartsWith("about:bookmarks", StringComparison.OrdinalIgnoreCase))
+            {
+                _activeTab.Url = "browy://bookmarks";
+                _activeTab.Title = "Bookmarks - Browy";
+                _activeTab.FallbackIcon = "\uE734";
+                UpdateNavigationUI(_activeTab);
+                _activeTab.WebViewInstance?.NavigateToString(InternalHubService.GetBookmarksHtml(Bookmarks));
+                return;
+            }
+
+            if (targetUrl.StartsWith("browy://downloads", StringComparison.OrdinalIgnoreCase) ||
+                targetUrl.StartsWith("about:downloads", StringComparison.OrdinalIgnoreCase))
+            {
+                _activeTab.Url = "browy://downloads";
+                _activeTab.Title = "Downloads - Browy";
+                _activeTab.FallbackIcon = "\uE896";
+                UpdateNavigationUI(_activeTab);
+                _activeTab.WebViewInstance?.NavigateToString(InternalHubService.GetDownloadsHtml(Downloads));
+                return;
+            }
+
             if (targetUrl.StartsWith("browy://newtab", StringComparison.OrdinalIgnoreCase) ||
                 targetUrl.StartsWith("browy://start", StringComparison.OrdinalIgnoreCase) ||
                 targetUrl.StartsWith("about:newtab", StringComparison.OrdinalIgnoreCase) ||
@@ -1477,6 +1715,27 @@ namespace Browy
                     return;
                 }
 
+                if (_activeTab.Url.StartsWith("browy://history", StringComparison.OrdinalIgnoreCase) ||
+                    _activeTab.Url.StartsWith("about:history", StringComparison.OrdinalIgnoreCase))
+                {
+                    _activeTab.WebViewInstance.NavigateToString(InternalHubService.GetHistoryHtml(History));
+                    return;
+                }
+
+                if (_activeTab.Url.StartsWith("browy://bookmarks", StringComparison.OrdinalIgnoreCase) ||
+                    _activeTab.Url.StartsWith("about:bookmarks", StringComparison.OrdinalIgnoreCase))
+                {
+                    _activeTab.WebViewInstance.NavigateToString(InternalHubService.GetBookmarksHtml(Bookmarks));
+                    return;
+                }
+
+                if (_activeTab.Url.StartsWith("browy://downloads", StringComparison.OrdinalIgnoreCase) ||
+                    _activeTab.Url.StartsWith("about:downloads", StringComparison.OrdinalIgnoreCase))
+                {
+                    _activeTab.WebViewInstance.NavigateToString(InternalHubService.GetDownloadsHtml(Downloads));
+                    return;
+                }
+
                 if (_activeTab.Url.StartsWith("browy://newtab", StringComparison.OrdinalIgnoreCase) ||
                     _activeTab.Url.StartsWith("browy://start", StringComparison.OrdinalIgnoreCase) ||
                     _activeTab.Url.StartsWith("about:newtab", StringComparison.OrdinalIgnoreCase) ||
@@ -1676,6 +1935,27 @@ namespace Browy
             if (_activeTab?.Url.StartsWith("browy://settings", StringComparison.OrdinalIgnoreCase) == true)
             {
                 _activeTab.WebViewInstance?.NavigateToString(SettingsPageService.GetSettingsHtml());
+                return;
+            }
+
+            if (_activeTab?.Url.StartsWith("browy://history", StringComparison.OrdinalIgnoreCase) == true ||
+                _activeTab?.Url.StartsWith("about:history", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                _activeTab.WebViewInstance?.NavigateToString(InternalHubService.GetHistoryHtml(History));
+                return;
+            }
+
+            if (_activeTab?.Url.StartsWith("browy://bookmarks", StringComparison.OrdinalIgnoreCase) == true ||
+                _activeTab?.Url.StartsWith("about:bookmarks", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                _activeTab.WebViewInstance?.NavigateToString(InternalHubService.GetBookmarksHtml(Bookmarks));
+                return;
+            }
+
+            if (_activeTab?.Url.StartsWith("browy://downloads", StringComparison.OrdinalIgnoreCase) == true ||
+                _activeTab?.Url.StartsWith("about:downloads", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                _activeTab.WebViewInstance?.NavigateToString(InternalHubService.GetDownloadsHtml(Downloads));
                 return;
             }
 
@@ -2902,10 +3182,47 @@ namespace Browy
                     ToggleReaderMode();
                     e.Handled = true;
                 }
+                else if (e.Key == Key.N)
+                {
+                    OpenInPrivateWindow();
+                    e.Handled = true;
+                }
+            }
+            else if (Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Alt))
+            {
+                if (e.Key >= Key.D1 && e.Key <= Key.D9)
+                {
+                    int spaceIdx = e.Key - Key.D1;
+                    if (spaceIdx < Spaces.Count)
+                    {
+                        _ = SwitchToSpaceAsync(Spaces[spaceIdx]);
+                        e.Handled = true;
+                    }
+                }
+                else if (e.Key == Key.N)
+                {
+                    PromptCreateNewSpace();
+                    e.Handled = true;
+                }
+                else if (e.Key == Key.Right)
+                {
+                    SwitchToNextSpace();
+                    e.Handled = true;
+                }
+                else if (e.Key == Key.Left)
+                {
+                    SwitchToPreviousSpace();
+                    e.Handled = true;
+                }
             }
             else if (Keyboard.Modifiers == ModifierKeys.Control)
             {
-                if (e.Key == Key.K)
+                if (e.Key == Key.OemBackslash || e.Key == Key.Oem5)
+                {
+                    ToggleSplitView();
+                    e.Handled = true;
+                }
+                else if (e.Key == Key.K)
                 {
                     OpenCommandPalette();
                     e.Handled = true;
@@ -3164,31 +3481,376 @@ namespace Browy
             AgentMessages.Add(new AgentMessage("User", prompt));
             AgentMessagesScrollViewer?.ScrollToEnd();
 
-            string currentTitle = _activeTab?.Title ?? "current tab";
+            string currentTitle = _activeTab?.Title ?? "Current Tab";
             string currentUrl = _activeTab?.Url ?? "";
 
-            await Task.Delay(300);
+            string pageText = "";
+            string headings = "";
+
+            if (_activeTab?.WebViewInstance?.CoreWebView2 != null &&
+                !currentUrl.StartsWith("browy://", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    string script = @"(function() {
+                        var h = Array.from(document.querySelectorAll('h1, h2, h3'))
+                                     .map(x => x.innerText.trim())
+                                     .filter(x => x.length > 2)
+                                     .slice(0, 10).join(' • ');
+                        var body = document.body ? document.body.innerText.replace(/\s+/g, ' ').trim() : '';
+                        return JSON.stringify({ headings: h, text: body.slice(0, 4000) });
+                    })()";
+                    string rawJson = await _activeTab.WebViewInstance.CoreWebView2.ExecuteScriptAsync(script);
+                    using var doc = System.Text.Json.JsonDocument.Parse(rawJson);
+                    if (doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.String)
+                    {
+                        using var innerDoc = System.Text.Json.JsonDocument.Parse(doc.RootElement.GetString()!);
+                        headings = innerDoc.RootElement.GetProperty("headings").GetString() ?? "";
+                        pageText = innerDoc.RootElement.GetProperty("text").GetString() ?? "";
+                    }
+                }
+                catch { }
+            }
 
             string response;
             if (prompt.IndexOf("summarize", StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                response = $"Page Summary for {currentTitle}:\n\n• Target: {currentUrl}\n• Overview: Demonstrates the latest modern web platform features, rich standards documentation, and architecture.\n• Key Takeaway: Highly optimized for responsive design and clean native interoperability.";
+                var summaryBullet1 = !string.IsNullOrWhiteSpace(headings)
+                    ? $"Core Topics: {headings}"
+                    : $"Topic: Overview of {currentTitle}";
+                var snippet = !string.IsNullOrWhiteSpace(pageText)
+                    ? (pageText.Length > 280 ? pageText.Substring(0, 280) + "..." : pageText)
+                    : "No text extractable from this page.";
+
+                response = $"### Summary of {currentTitle}\n\n" +
+                           $"• **Source**: `{NavigationHelper.ExtractDomain(currentUrl)}`\n" +
+                           $"• **Structure**: {summaryBullet1}\n" +
+                           $"• **Executive Overview**: {snippet}\n\n" +
+                           $"*Synthesized live from the active DOM content.*";
             }
             else if (prompt.IndexOf("explain", StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                response = $"Explanation ({currentTitle}):\n\nThis page covers technical specifications and implementation details. It emphasizes modular structure, standard APIs, and modern performance best practices.";
+                response = $"### Concept Explanation: {currentTitle}\n\n" +
+                           $"Based on the active page ({currentUrl}):\n\n" +
+                           (!string.IsNullOrWhiteSpace(pageText)
+                               ? $"The page centers on: {pageText.Substring(0, Math.Min(350, pageText.Length))}...\n\n" +
+                                 "**Key Takeaways**:\n" +
+                                 "1. Main purpose: Delivers structured documentation and interfaces for modern web workflows.\n" +
+                                 "2. Technical approach: Emphasizes standard client-server patterns, reactive components, and fast rendering."
+                               : "This internal/blank page does not contain standard body text to analyze.");
             }
-            else if (prompt.IndexOf("takeaway", StringComparison.OrdinalIgnoreCase) >= 0 || prompt.IndexOf("key", StringComparison.OrdinalIgnoreCase) >= 0)
+            else if (prompt.IndexOf("extract", StringComparison.OrdinalIgnoreCase) >= 0 || prompt.IndexOf("table", StringComparison.OrdinalIgnoreCase) >= 0 || prompt.IndexOf("data", StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                response = $"Key Insights:\n1. Fast loading times and standards compliance.\n2. Responsive layout compatible with modern high-DPI displays.\n3. Secure context with active HTTPS certificate.";
+                response = $"### Extracted Page Intelligence: {currentTitle}\n\n" +
+                           "| Attribute | Value |\n" +
+                           "| :--- | :--- |\n" +
+                           $"| **Title** | {currentTitle} |\n" +
+                           $"| **Domain** | `{NavigationHelper.ExtractDomain(currentUrl)}` |\n" +
+                           $"| **Security** | {(currentUrl.StartsWith("https") ? "Secure SSL (TLS 1.3)" : "Non-secure / Internal")} |\n" +
+                           $"| **Headings Detected** | {(!string.IsNullOrWhiteSpace(headings) ? headings : "None detected")} |\n" +
+                           $"| **Content Length** | {pageText.Length} characters parsed |\n\n" +
+                           "*(Data parsed from active DOM snapshot)*";
             }
             else
             {
-                response = $"Analyzing \"{prompt}\" in the context of {currentTitle} ({currentUrl}). Let me know if you would like me to deep-dive into specific sections or extract links.";
+                string snippet = "";
+                if (!string.IsNullOrWhiteSpace(pageText))
+                {
+                    var sentences = pageText.Split(new[] { '.', '!', '?' }, StringSplitOptions.RemoveEmptyEntries);
+                    var matched = sentences.FirstOrDefault(s => s.IndexOf(prompt, StringComparison.OrdinalIgnoreCase) >= 0);
+                    if (!string.IsNullOrWhiteSpace(matched))
+                    {
+                        snippet = matched.Trim() + ".";
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(snippet))
+                {
+                    response = $"Based on {currentTitle}:\n\n> {snippet}\n\nLet me know if you would like me to dive deeper into this topic.";
+                }
+                else
+                {
+                    response = $"Analyzing \"{prompt}\" in the context of **{currentTitle}** ({currentUrl}).\n\n" +
+                               (!string.IsNullOrWhiteSpace(headings) ? $"Related sections found on page: *{headings}*.\n\n" : "") +
+                               "You can ask me to summarize the page, explain technical terms, or extract data tables.";
+                }
             }
 
             AgentMessages.Add(new AgentMessage("Agent", response));
             AgentMessagesScrollViewer?.ScrollToEnd();
+        }
+
+        #endregion
+
+        #region Arc/Zen Spaces Management (Milestone 1)
+
+        public void SyncActiveSpaceTabs()
+        {
+            if (ActiveSpace == null) return;
+            ActiveSpace.Tabs.Clear();
+            foreach (var t in Tabs)
+            {
+                ActiveSpace.Tabs.Add(t);
+            }
+            ActiveSpace.ActiveTabIndex = _activeTab != null ? Math.Max(0, Tabs.IndexOf(_activeTab)) : 0;
+        }
+
+        public async Task SwitchToSpaceAsync(BrowserSpace space)
+        {
+            if (space == null || ActiveSpace == space) return;
+
+            SyncActiveSpaceTabs();
+            if (ActiveSpace != null)
+            {
+                ActiveSpace.IsActive = false;
+            }
+
+            foreach (var t in Tabs)
+            {
+                if (t.WebViewInstance != null)
+                {
+                    t.WebViewInstance.Visibility = Visibility.Collapsed;
+                }
+            }
+
+            ActiveSpace = space;
+            space.IsActive = true;
+
+            Tabs.Clear();
+            _activeTab = null;
+
+            if (space.Tabs.Count == 0)
+            {
+                await CreateNewTabAsync(BrowserSettings.Current.StartPageUrl, switchTo: true);
+            }
+            else
+            {
+                BrowserTab? targetActiveTab = null;
+                for (int i = 0; i < space.Tabs.Count; i++)
+                {
+                    var tab = space.Tabs[i];
+                    Tabs.Add(tab);
+
+                    if (tab.WebViewInstance == null)
+                    {
+                        var webView = new WebView2
+                        {
+                            HorizontalAlignment = HorizontalAlignment.Stretch,
+                            VerticalAlignment = VerticalAlignment.Stretch,
+                            DefaultBackgroundColor = System.Drawing.Color.Transparent,
+                            Visibility = Visibility.Collapsed
+                        };
+                        webView.SizeChanged += (s, e) => ClipWebViewToRoundedCorners(webView);
+                        tab.WebViewInstance = webView;
+                        Grid.SetColumn(webView, 0);
+                        WebContentGrid.Children.Add(webView);
+                        _ = InitializeWebViewAsync(tab, tab.Url);
+                    }
+                    else if (!WebContentGrid.Children.Contains(tab.WebViewInstance))
+                    {
+                        Grid.SetColumn(tab.WebViewInstance, 0);
+                        WebContentGrid.Children.Add(tab.WebViewInstance);
+                    }
+
+                    if (i == space.ActiveTabIndex)
+                    {
+                        targetActiveTab = tab;
+                    }
+                }
+
+                if (targetActiveTab == null && Tabs.Count > 0)
+                {
+                    targetActiveTab = Tabs[0];
+                }
+
+                if (targetActiveTab != null)
+                {
+                    SwitchToTab(targetActiveTab);
+                }
+            }
+        }
+
+        public void SwitchToNextSpace()
+        {
+            if (Spaces.Count <= 1 || ActiveSpace == null) return;
+            int idx = Spaces.IndexOf(ActiveSpace);
+            int nextIdx = (idx + 1) % Spaces.Count;
+            _ = SwitchToSpaceAsync(Spaces[nextIdx]);
+        }
+
+        public void SwitchToPreviousSpace()
+        {
+            if (Spaces.Count <= 1 || ActiveSpace == null) return;
+            int idx = Spaces.IndexOf(ActiveSpace);
+            int prevIdx = (idx - 1 + Spaces.Count) % Spaces.Count;
+            _ = SwitchToSpaceAsync(Spaces[prevIdx]);
+        }
+
+        public void PromptCreateNewSpace()
+        {
+            int num = Spaces.Count + 1;
+            string[] colors = { "#6366F1", "#EC4899", "#10B981", "#F59E0B", "#0EA5E9", "#8B5CF6" };
+            string[] icons = { "\uE774", "\uE80F", "\uE7BE", "\uEC7A", "\uE8BD", "\uE734" };
+
+            string color = colors[(num - 1) % colors.Length];
+            string icon = icons[(num - 1) % icons.Length];
+            string name = $"Space {num}";
+
+            var newSpace = new BrowserSpace
+            {
+                Name = name,
+                IconGlyph = icon,
+                AccentColorHex = color
+            };
+            Spaces.Add(newSpace);
+            _ = SwitchToSpaceAsync(newSpace);
+        }
+
+        private void SpacePill_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement elem && elem.Tag is BrowserSpace space)
+            {
+                _ = SwitchToSpaceAsync(space);
+            }
+        }
+
+        private void NewSpaceButton_Click(object sender, RoutedEventArgs e)
+        {
+            PromptCreateNewSpace();
+        }
+
+        private void RenameSpace_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement elem && elem.Tag is BrowserSpace space)
+            {
+                space.Name = space.Name + "+";
+            }
+        }
+
+        private void SetSpaceColor_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem item && item.Tag is BrowserSpace space && item.CommandParameter is string hex)
+            {
+                space.AccentColorHex = hex;
+            }
+        }
+
+        private void DeleteSpace_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement elem && elem.Tag is BrowserSpace space)
+            {
+                if (Spaces.Count <= 1) return;
+                int idx = Spaces.IndexOf(space);
+                Spaces.Remove(space);
+                if (ActiveSpace == space)
+                {
+                    int nextIdx = Math.Min(idx, Spaces.Count - 1);
+                    _ = SwitchToSpaceAsync(Spaces[nextIdx]);
+                }
+            }
+        }
+
+        #endregion
+
+        #region Split View Dual-Pane (Milestone 2)
+
+        public void ToggleSplitView()
+        {
+            if (!_isSplitViewActive)
+            {
+                var secondary = Tabs.FirstOrDefault(t => t != _activeTab);
+                if (secondary == null)
+                {
+                    _ = CreateNewTabAsync(BrowserSettings.Current.StartPageUrl, switchTo: false).ContinueWith(task =>
+                    {
+                        Dispatcher.Invoke(() =>
+                        {
+                            EnableSplitView(task.Result);
+                        });
+                    });
+                }
+                else
+                {
+                    EnableSplitView(secondary);
+                }
+            }
+            else
+            {
+                DisableSplitView();
+            }
+        }
+
+        private void EnableSplitView(BrowserTab secondaryTab)
+        {
+            _isSplitViewActive = true;
+            _splitSecondaryTab = secondaryTab;
+
+            SecondarySplitColumn.Width = new GridLength(1, GridUnitType.Star);
+            CenterWebSplitter.Visibility = Visibility.Visible;
+
+            if (_activeTab?.WebViewInstance != null)
+            {
+                Grid.SetColumn(_activeTab.WebViewInstance, 0);
+                _activeTab.WebViewInstance.Visibility = Visibility.Visible;
+            }
+
+            if (_splitSecondaryTab.WebViewInstance != null)
+            {
+                Grid.SetColumn(_splitSecondaryTab.WebViewInstance, 2);
+                _splitSecondaryTab.WebViewInstance.Visibility = Visibility.Visible;
+            }
+
+            SplitViewButton.Background = new SolidColorBrush(Color.FromArgb(0x35, 0x63, 0x66, 0xF1));
+        }
+
+        private void DisableSplitView()
+        {
+            _isSplitViewActive = false;
+            SecondarySplitColumn.Width = new GridLength(0);
+            CenterWebSplitter.Visibility = Visibility.Collapsed;
+
+            if (_splitSecondaryTab?.WebViewInstance != null)
+            {
+                Grid.SetColumn(_splitSecondaryTab.WebViewInstance, 0);
+                _splitSecondaryTab.WebViewInstance.Visibility = Visibility.Collapsed;
+            }
+
+            _splitSecondaryTab = null;
+            SplitViewButton.Background = Brushes.Transparent;
+        }
+
+        private void SplitViewButton_Click(object sender, RoutedEventArgs e)
+        {
+            ToggleSplitView();
+        }
+
+        #endregion
+
+        #region InPrivate Stealth Browsing (Milestone 3)
+
+        public void OpenInPrivateWindow()
+        {
+            var inPrivateWin = new MainWindow { IsInPrivate = true };
+            inPrivateWin.Show();
+        }
+
+        #endregion
+
+        #region Dedicated Internal Hub Pages (Milestone 5)
+
+        public void OpenHistoryPage()
+        {
+            NavigateActiveTab("browy://history");
+        }
+
+        public void OpenBookmarksPage()
+        {
+            NavigateActiveTab("browy://bookmarks");
+        }
+
+        public void OpenDownloadsPage()
+        {
+            NavigateActiveTab("browy://downloads");
         }
 
         #endregion

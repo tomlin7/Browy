@@ -25,6 +25,13 @@ namespace Browy.Services
 
             string cleanQuery = query.Trim();
 
+            // 0. Check Omnibox Instant Math Calculator if enabled
+            if (BrowserSettings.IsFeatureEnabled("experimental_omnibox_calculator", true) &&
+                OmniboxCalculator.TryEvaluate(cleanQuery, out string calcResult, out _))
+            {
+                results.Add(new OmniboxSuggestion(calcResult, null, SuggestionType.Calculator));
+            }
+
             // 1. Add current search query as first item
             results.Add(new OmniboxSuggestion(cleanQuery, null, SuggestionType.Search));
 

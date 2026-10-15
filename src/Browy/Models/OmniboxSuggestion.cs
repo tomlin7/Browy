@@ -6,7 +6,8 @@ namespace Browy.Models
     {
         Search,
         History,
-        Bookmark
+        Bookmark,
+        Calculator
     }
 
     public class OmniboxSuggestion
@@ -20,6 +21,7 @@ namespace Browy.Models
             SuggestionType.Search => "\uE721",
             SuggestionType.History => "\uE81C",
             SuggestionType.Bookmark => "\uE734",
+            SuggestionType.Calculator => "\uE947",
             _ => "\uE721"
         };
 
@@ -28,6 +30,7 @@ namespace Browy.Models
             SuggestionType.Search => "Search",
             SuggestionType.History => "History",
             SuggestionType.Bookmark => "Bookmark",
+            SuggestionType.Calculator => "Calculation",
             _ => ""
         };
 

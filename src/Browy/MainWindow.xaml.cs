@@ -1109,6 +1109,43 @@ namespace Browy
                             }
                         }
                         break;
+
+                    case "set_feature_flag":
+                        if (root.TryGetProperty("key", out var flagKeyProp) && root.TryGetProperty("value", out var flagValProp))
+                        {
+                            string fKey = flagKeyProp.GetString() ?? "";
+                            string fVal = flagValProp.GetString() ?? "default";
+                            if (!string.IsNullOrEmpty(fKey))
+                            {
+                                if (fVal.Equals("default", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    BrowserSettings.Current.FeatureFlags.Remove(fKey);
+                                }
+                                else
+                                {
+                                    BrowserSettings.Current.FeatureFlags[fKey] = fVal.Equals("enabled", StringComparison.OrdinalIgnoreCase);
+                                }
+                                BrowserSettings.Save();
+                            }
+                        }
+                        break;
+
+                    case "reset_feature_flags":
+                        BrowserSettings.ResetFeatureFlags();
+                        break;
+
+                    case "relaunch_browser":
+                        try
+                        {
+                            var exePath = Environment.ProcessPath ?? System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
+                            if (!string.IsNullOrEmpty(exePath))
+                            {
+                                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exePath) { UseShellExecute = true });
+                                Application.Current.Shutdown();
+                            }
+                        }
+                        catch { }
+                        break;
                 }
             }
             catch (Exception ex)
@@ -1442,6 +1479,40 @@ namespace Browy
                         return;
                     }
 
+                    if (args.Uri.StartsWith("browy://flags", StringComparison.OrdinalIgnoreCase) ||
+                        args.Uri.StartsWith("about:flags", StringComparison.OrdinalIgnoreCase))
+                    {
+                        args.Cancel = true;
+                        Dispatcher.Invoke(() =>
+                        {
+                            tab.Url = "browy://flags";
+                            tab.Title = "Experiments - Browy";
+                            tab.FallbackIcon = "\uE7C1";
+                            tab.IsLoading = false;
+                            tab.BlockedCount = 0;
+                            if (_activeTab == tab) UpdateNavigationUI(tab);
+                            tab.WebViewInstance.NavigateToString(InternalHubService.GetFlagsHtml(BrowserSettings.Current.FeatureFlags));
+                        });
+                        return;
+                    }
+
+                    if (args.Uri.StartsWith("browy://system", StringComparison.OrdinalIgnoreCase) ||
+                        args.Uri.StartsWith("about:system", StringComparison.OrdinalIgnoreCase))
+                    {
+                        args.Cancel = true;
+                        Dispatcher.Invoke(() =>
+                        {
+                            tab.Url = "browy://system";
+                            tab.Title = "System Diagnostics - Browy";
+                            tab.FallbackIcon = "\uE946";
+                            tab.IsLoading = false;
+                            tab.BlockedCount = 0;
+                            if (_activeTab == tab) UpdateNavigationUI(tab);
+                            tab.WebViewInstance.NavigateToString(InternalHubService.GetAboutHtml(Tabs.Count, Spaces.Count));
+                        });
+                        return;
+                    }
+
                     if (args.Uri.StartsWith("browy://newtab", StringComparison.OrdinalIgnoreCase) ||
                         args.Uri.StartsWith("browy://start", StringComparison.OrdinalIgnoreCase) ||
                         args.Uri.StartsWith("about:newtab", StringComparison.OrdinalIgnoreCase) ||
@@ -1638,6 +1709,22 @@ namespace Browy
                         tab.Title = "Shortcuts - Browy";
                         tab.FallbackIcon = "\uE765";
                         tab.WebViewInstance.NavigateToString(InternalHubService.GetShortcutsHtml(BrowserSettings.Current.CustomKeyBindings));
+                    }
+                    else if (initialUrl.StartsWith("browy://flags", StringComparison.OrdinalIgnoreCase) ||
+                             initialUrl.StartsWith("about:flags", StringComparison.OrdinalIgnoreCase))
+                    {
+                        tab.Url = "browy://flags";
+                        tab.Title = "Experiments - Browy";
+                        tab.FallbackIcon = "\uE7C1";
+                        tab.WebViewInstance.NavigateToString(InternalHubService.GetFlagsHtml(BrowserSettings.Current.FeatureFlags));
+                    }
+                    else if (initialUrl.StartsWith("browy://system", StringComparison.OrdinalIgnoreCase) ||
+                             initialUrl.StartsWith("about:system", StringComparison.OrdinalIgnoreCase))
+                    {
+                        tab.Url = "browy://system";
+                        tab.Title = "System Diagnostics - Browy";
+                        tab.FallbackIcon = "\uE946";
+                        tab.WebViewInstance.NavigateToString(InternalHubService.GetAboutHtml(Tabs.Count, Spaces.Count));
                     }
                     else if (initialUrl.StartsWith("browy://newtab", StringComparison.OrdinalIgnoreCase) ||
                              initialUrl.StartsWith("browy://start", StringComparison.OrdinalIgnoreCase) ||
@@ -2144,6 +2231,28 @@ namespace Browy
                 return;
             }
 
+            if (targetUrl.StartsWith("browy://flags", StringComparison.OrdinalIgnoreCase) ||
+                targetUrl.StartsWith("about:flags", StringComparison.OrdinalIgnoreCase))
+            {
+                _activeTab.Url = "browy://flags";
+                _activeTab.Title = "Experiments - Browy";
+                _activeTab.FallbackIcon = "\uE7C1";
+                UpdateNavigationUI(_activeTab);
+                _activeTab.WebViewInstance?.NavigateToString(InternalHubService.GetFlagsHtml(BrowserSettings.Current.FeatureFlags));
+                return;
+            }
+
+            if (targetUrl.StartsWith("browy://system", StringComparison.OrdinalIgnoreCase) ||
+                targetUrl.StartsWith("about:system", StringComparison.OrdinalIgnoreCase))
+            {
+                _activeTab.Url = "browy://system";
+                _activeTab.Title = "System Diagnostics - Browy";
+                _activeTab.FallbackIcon = "\uE946";
+                UpdateNavigationUI(_activeTab);
+                _activeTab.WebViewInstance?.NavigateToString(InternalHubService.GetAboutHtml(Tabs.Count, Spaces.Count));
+                return;
+            }
+
             if (targetUrl.StartsWith("browy://newtab", StringComparison.OrdinalIgnoreCase) ||
                 targetUrl.StartsWith("browy://start", StringComparison.OrdinalIgnoreCase) ||
                 targetUrl.StartsWith("about:newtab", StringComparison.OrdinalIgnoreCase) ||
@@ -2426,6 +2535,20 @@ namespace Browy
                     return;
                 }
 
+                if (_activeTab.Url.StartsWith("browy://flags", StringComparison.OrdinalIgnoreCase) ||
+                    _activeTab.Url.StartsWith("about:flags", StringComparison.OrdinalIgnoreCase))
+                {
+                    _activeTab.WebViewInstance.NavigateToString(InternalHubService.GetFlagsHtml(BrowserSettings.Current.FeatureFlags));
+                    return;
+                }
+
+                if (_activeTab.Url.StartsWith("browy://system", StringComparison.OrdinalIgnoreCase) ||
+                    _activeTab.Url.StartsWith("about:system", StringComparison.OrdinalIgnoreCase))
+                {
+                    _activeTab.WebViewInstance.NavigateToString(InternalHubService.GetAboutHtml(Tabs.Count, Spaces.Count));
+                    return;
+                }
+
                 if (_activeTab.Url.StartsWith("browy://newtab", StringComparison.OrdinalIgnoreCase) ||
                     _activeTab.Url.StartsWith("browy://start", StringComparison.OrdinalIgnoreCase) ||
                     _activeTab.Url.StartsWith("about:newtab", StringComparison.OrdinalIgnoreCase) ||
@@ -2671,6 +2794,20 @@ namespace Browy
                 return;
             }
 
+            if (_activeTab?.Url.StartsWith("browy://flags", StringComparison.OrdinalIgnoreCase) == true ||
+                _activeTab?.Url.StartsWith("about:flags", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                _activeTab.WebViewInstance?.NavigateToString(InternalHubService.GetFlagsHtml(BrowserSettings.Current.FeatureFlags));
+                return;
+            }
+
+            if (_activeTab?.Url.StartsWith("browy://system", StringComparison.OrdinalIgnoreCase) == true ||
+                _activeTab?.Url.StartsWith("about:system", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                _activeTab.WebViewInstance?.NavigateToString(InternalHubService.GetAboutHtml(Tabs.Count, Spaces.Count));
+                return;
+            }
+
             if (_activeTab?.Url.StartsWith("browy://newtab", StringComparison.OrdinalIgnoreCase) == true ||
                 _activeTab?.Url.StartsWith("browy://start", StringComparison.OrdinalIgnoreCase) == true ||
                 _activeTab?.Url.StartsWith("about:newtab", StringComparison.OrdinalIgnoreCase) == true ||
@@ -2705,7 +2842,12 @@ namespace Browy
         {
             if (_activeTab != null && !string.IsNullOrEmpty(_activeTab.Url))
             {
-                Clipboard.SetText(_activeTab.Url);
+                string urlToCopy = _activeTab.Url;
+                if (BrowserSettings.IsFeatureEnabled("experimental_smart_copy_cleaner", true))
+                {
+                    urlToCopy = NavigationHelper.CleanTrackingParameters(urlToCopy);
+                }
+                Clipboard.SetText(urlToCopy);
             }
         }
 
@@ -4261,6 +4403,70 @@ namespace Browy
                 await StopMediaAsync();
                 e.Handled = true;
                 return;
+            }
+
+            // Dynamic Custom Keyboard Shortcut Dispatcher (#9)
+            if (BrowserSettings.Current.CustomKeyBindings.Count > 0 &&
+                ShortcutService.TryMatchAction(e, BrowserSettings.Current.CustomKeyBindings, out string customAction))
+            {
+                e.Handled = true;
+                switch (customAction)
+                {
+                    case "new_tab":
+                        await CreateNewTabAsync(BrowserSettings.Current.StartPageUrl, switchTo: true);
+                        UrlTextBox.Focus();
+                        UrlTextBox.SelectAll();
+                        return;
+                    case "close_tab":
+                        if (_activeTab != null) CloseTab(_activeTab);
+                        return;
+                    case "reopen_tab":
+                        ReopenClosedTab();
+                        return;
+                    case "command_palette":
+                        OpenCommandPalette();
+                        return;
+                    case "find":
+                        OpenFindInPage();
+                        return;
+                    case "downloads":
+                        ToggleDownloads();
+                        return;
+                    case "history":
+                        HistoryPopup.IsOpen = !HistoryPopup.IsOpen;
+                        UpdateHistoryEmptyState();
+                        return;
+                    case "split_view":
+                        ToggleSplitView();
+                        return;
+                    case "mute":
+                        ToggleMuteCurrentTab();
+                        return;
+                    case "fullscreen":
+                        ToggleFullscreen();
+                        return;
+                    case "sidebar":
+                        SetSidebarCollapsed(!_isSidebarCollapsed);
+                        return;
+                    case "devtools":
+                        OpenDevTools();
+                        return;
+                    case "reader_mode":
+                        ToggleReaderMode();
+                        return;
+                    case "bookmarks_bar":
+                        ToggleBookmarksBar();
+                        return;
+                    case "reload":
+                        ReloadButton_Click(this, new RoutedEventArgs());
+                        return;
+                    case "print":
+                        PrintActiveTab();
+                        return;
+                    case "pip":
+                        TogglePictureInPicture();
+                        return;
+                }
             }
 
             if (Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift))

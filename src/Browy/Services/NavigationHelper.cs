@@ -80,6 +80,22 @@ namespace Browy.Services
                 return "browy://shortcuts";
             }
 
+            // Flags aliases (#flags)
+            if (input.Equals("flags", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("browy://flags", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("about:flags", StringComparison.OrdinalIgnoreCase))
+            {
+                return "browy://flags";
+            }
+
+            // System Diagnostics aliases
+            if (input.Equals("system", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("browy://system", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("about:system", StringComparison.OrdinalIgnoreCase))
+            {
+                return "browy://system";
+            }
+
             // New Tab / Start page aliases
             if (input.Equals("newtab", StringComparison.OrdinalIgnoreCase) ||
                 input.Equals("start", StringComparison.OrdinalIgnoreCase) ||
@@ -179,6 +195,64 @@ namespace Browy.Services
                 "a" or "amz" or "amazon" => $"https://www.amazon.com/s?k={encoded}",
                 _ => null
             };
+        }
+
+        public static string CleanTrackingParameters(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url)) return url;
+            try
+            {
+                if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+                {
+                    return url;
+                }
+
+                if (string.IsNullOrEmpty(uri.Query))
+                {
+                    return url;
+                }
+
+                var query = uri.Query.TrimStart('?');
+                var pairs = query.Split('&', StringSplitOptions.RemoveEmptyEntries);
+                var keptPairs = new System.Collections.Generic.List<string>();
+
+                var trackingKeys = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "utm_id",
+                    "fbclid", "gclid", "gclsrc", "dclid", "msclkid",
+                    "mc_eid", "mc_cid",
+                    "igshid",
+                    "_hsenc", "_hsmi",
+                    "ref", "ref_src",
+                    "si", "feature"
+                };
+
+                foreach (var pair in pairs)
+                {
+                    int eqIndex = pair.IndexOf('=');
+                    string key = eqIndex >= 0 ? pair.Substring(0, eqIndex) : pair;
+                    if (!trackingKeys.Contains(key))
+                    {
+                        keptPairs.Add(pair);
+                    }
+                }
+
+                var builder = new UriBuilder(uri)
+                {
+                    Query = keptPairs.Count > 0 ? string.Join("&", keptPairs) : string.Empty
+                };
+
+                string result = builder.Uri.ToString();
+                if (uri.IsDefaultPort && result.Contains($":{uri.Port}"))
+                {
+                    result = result.Replace($":{uri.Port}", "");
+                }
+                return result;
+            }
+            catch
+            {
+                return url;
+            }
         }
     }
 }

@@ -42,6 +42,9 @@ namespace Browy.Services
 
         // Interactive Keyboard Shortcuts (#9)
         public System.Collections.Generic.Dictionary<string, string> CustomKeyBindings { get; set; } = new();
+
+        // Experimental Feature Flags (browy://flags)
+        public System.Collections.Generic.Dictionary<string, bool> FeatureFlags { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     }
 
     public static class BrowserSettings
@@ -167,6 +170,39 @@ namespace Browy.Services
             lock (_lock)
             {
                 _current.ThemeMode = mode;
+            }
+            Save();
+        }
+
+        public static bool IsFeatureEnabled(string flagKey, bool defaultValue = false)
+        {
+            if (string.IsNullOrWhiteSpace(flagKey)) return defaultValue;
+            lock (_lock)
+            {
+                if (_current.FeatureFlags != null && _current.FeatureFlags.TryGetValue(flagKey, out bool val))
+                {
+                    return val;
+                }
+            }
+            return defaultValue;
+        }
+
+        public static void SetFeatureFlag(string flagKey, bool enabled)
+        {
+            if (string.IsNullOrWhiteSpace(flagKey)) return;
+            lock (_lock)
+            {
+                _current.FeatureFlags ??= new(StringComparer.OrdinalIgnoreCase);
+                _current.FeatureFlags[flagKey] = enabled;
+            }
+            Save();
+        }
+
+        public static void ResetFeatureFlags()
+        {
+            lock (_lock)
+            {
+                _current.FeatureFlags?.Clear();
             }
             Save();
         }

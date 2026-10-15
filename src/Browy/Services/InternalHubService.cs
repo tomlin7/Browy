@@ -1044,5 +1044,389 @@ namespace Browy.Services
 </body>
 </html>";
         }
+
+        public static string GetFlagsHtml(IDictionary<string, bool>? featureFlags = null)
+        {
+            var flags = FeatureFlagsService.AllFlags;
+            var sb = new System.Text.StringBuilder();
+
+            foreach (var flag in flags)
+            {
+                bool explicitVal = false;
+                bool isExplicit = featureFlags != null && featureFlags.TryGetValue(flag.Key, out explicitVal);
+                bool effectiveVal = isExplicit ? explicitVal : flag.DefaultValue;
+                bool isModified = isExplicit && (explicitVal != flag.DefaultValue);
+
+                string selectedDefault = !isExplicit ? "selected" : "";
+                string selectedEnabled = (isExplicit && explicitVal) ? "selected" : "";
+                string selectedDisabled = (isExplicit && !explicitVal) ? "selected" : "";
+
+                string statusBadge = isModified
+                    ? "<span class='badge badge-modified'>Modified</span>"
+                    : "<span class='badge badge-default'>Default</span>";
+
+                sb.Append($@"
+        <div class='flag-card' data-key='{flag.Key}' data-category='{flag.Category}' data-search='{flag.Name.ToLowerInvariant()} {flag.Description.ToLowerInvariant()} {flag.Key.ToLowerInvariant()} {flag.Category.ToLowerInvariant()}'>
+          <div class='flag-info'>
+            <div class='flag-header'>
+              <span class='flag-name'>{WebUtility.HtmlEncode(flag.Name)}</span>
+              {statusBadge}
+              <span class='badge badge-cat'>{WebUtility.HtmlEncode(flag.Category)}</span>
+            </div>
+            <div class='flag-desc'>{WebUtility.HtmlEncode(flag.Description)}</div>
+            <div class='flag-anchor'>#{flag.Key}</div>
+          </div>
+          <div class='flag-action'>
+            <select class='flag-select' onchange=""onFlagChanged('{flag.Key}', this.value)"">
+              <option value='default' {selectedDefault}>Default ({(flag.DefaultValue ? "Enabled" : "Disabled")})</option>
+              <option value='enabled' {selectedEnabled}>Enabled</option>
+              <option value='disabled' {selectedDisabled}>Disabled</option>
+            </select>
+          </div>
+        </div>");
+            }
+
+            return $@"<!DOCTYPE html>
+<html lang='en'>
+<head>
+  <meta charset='utf-8'/>
+  <title>Experiments & Flags - Browy</title>
+  <style>
+    * {{ box-sizing: border-box; margin: 0; padding: 0; user-select: none; }}
+    body {{
+      background: #0B0F17;
+      color: #E2E8F0;
+      font-family: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
+      padding: 40px 24px 100px 24px;
+      display: flex;
+      justify-content: center;
+    }}
+    .container {{
+      max-width: 900px;
+      width: 100%;
+    }}
+    .header {{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }}
+    .title-row {{
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }}
+    .icon {{
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe Fluent Icons';
+      font-size: 22px;
+      color: #F59E0B;
+    }}
+    .title-text h1 {{
+      font-size: 24px;
+      font-weight: 600;
+      color: #F8FAFC;
+      letter-spacing: -0.3px;
+    }}
+    .title-text p {{
+      font-size: 13px;
+      color: #94A3B8;
+      margin-top: 2px;
+    }}
+    .warning-box {{
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      border-radius: 10px;
+      padding: 14px 18px;
+      font-size: 13px;
+      color: #FCD34D;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }}
+    .warning-box span.icon-warn {{
+      font-family: 'Segoe Fluent Icons';
+      font-size: 18px;
+    }}
+    .controls-row {{
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 20px;
+    }}
+    .search-input {{
+      flex: 1;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #F8FAFC;
+      font-size: 14px;
+      outline: none;
+      transition: all 0.15s ease;
+    }}
+    .search-input:focus {{
+      border-color: #3B82F6;
+      background: rgba(255, 255, 255, 0.08);
+    }}
+    .btn-reset {{
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #E2E8F0;
+      padding: 9px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s ease;
+    }}
+    .btn-reset:hover {{
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: #FCA5A5;
+    }}
+    .categories {{
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      margin-bottom: 24px;
+      padding-bottom: 4px;
+    }}
+    .cat-pill {{
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 5px 12px;
+      border-radius: 16px;
+      font-size: 12px;
+      color: #94A3B8;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }}
+    .cat-pill.active, .cat-pill:hover {{
+      background: rgba(59, 130, 246, 0.2);
+      border-color: rgba(59, 130, 246, 0.4);
+      color: #60A5FA;
+    }}
+    .flags-list {{
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }}
+    .flag-card {{
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }}
+    .flag-card:hover {{
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.12);
+    }}
+    .flag-info {{
+      flex: 1;
+    }}
+    .flag-header {{
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }}
+    .flag-name {{
+      font-size: 15px;
+      font-weight: 600;
+      color: #F8FAFC;
+    }}
+    .badge {{
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 10px;
+    }}
+    .badge-default {{
+      background: rgba(148, 163, 184, 0.15);
+      color: #94A3B8;
+    }}
+    .badge-modified {{
+      background: rgba(59, 130, 246, 0.2);
+      color: #93C5FD;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }}
+    .badge-cat {{
+      background: rgba(255, 255, 255, 0.05);
+      color: #94A3B8;
+    }}
+    .flag-desc {{
+      font-size: 13px;
+      color: #94A3B8;
+      line-height: 1.45;
+      margin-bottom: 6px;
+    }}
+    .flag-anchor {{
+      font-size: 11px;
+      font-family: Consolas, monospace;
+      color: #64748B;
+    }}
+    .flag-action {{
+      min-width: 160px;
+    }}
+    .flag-select {{
+      width: 100%;
+      background: #1E293B;
+      color: #F8FAFC;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 13px;
+      outline: none;
+      cursor: pointer;
+    }}
+    .flag-select:focus {{
+      border-color: #3B82F6;
+    }}
+    .relaunch-bar {{
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1E293B;
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      padding: 14px 24px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      z-index: 1000;
+    }}
+    .relaunch-text {{
+      font-size: 13px;
+      color: #F8FAFC;
+      font-weight: 500;
+    }}
+    .btn-relaunch {{
+      background: #3B82F6;
+      border: none;
+      color: #FFFFFF;
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }}
+    .btn-relaunch:hover {{
+      background: #2563EB;
+    }}
+  </style>
+</head>
+<body>
+  <div class='container'>
+    <div class='header'>
+      <div class='title-row'>
+        <div class='icon'>&#xE7C1;</div>
+        <div class='title-text'>
+          <h1>Experiments & Feature Flags</h1>
+          <p>Carefully test experimental runtime features, rendering behaviors, and power-user optimizations.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class='warning-box'>
+      <span class='icon-warn'>&#xE7BA;</span>
+      <div>
+        <strong>Warning: Experimental features ahead!</strong>
+        By enabling these features, you could experience subtle behavioral changes or experimental rendering features.
+      </div>
+    </div>
+
+    <div class='controls-row'>
+      <input type='text' class='search-input' id='flagSearch' placeholder='Search experimental flags (name, description, key)...' oninput='filterFlags()' />
+      <button class='btn-reset' onclick='resetAllFlags()'>Reset all to default</button>
+    </div>
+
+    <div class='categories'>
+      <div class='cat-pill active' onclick=""selectCategory('All', this)"">All</div>
+      <div class='cat-pill' onclick=""selectCategory('Privacy & Security', this)"">Privacy & Security</div>
+      <div class='cat-pill' onclick=""selectCategory('Performance', this)"">Performance</div>
+      <div class='cat-pill' onclick=""selectCategory('Productivity', this)"">Productivity</div>
+      <div class='cat-pill' onclick=""selectCategory('Browsing Experience', this)"">Browsing Experience</div>
+      <div class='cat-pill' onclick=""selectCategory('Media & Audio', this)"">Media & Audio</div>
+      <div class='cat-pill' onclick=""selectCategory('User Interface', this)"">User Interface</div>
+    </div>
+
+    <div class='flags-list' id='flagsList'>
+      {sb}
+    </div>
+  </div>
+
+  <div class='relaunch-bar' id='relaunchBar' style='display:none;'>
+    <div class='relaunch-text'>Your changes will take effect after restarting Browy.</div>
+    <button class='btn-relaunch' onclick='relaunchBrowser()'>Relaunch Now</button>
+  </div>
+
+  <script>
+    var currentCategory = 'All';
+
+    function selectCategory(cat, el) {{
+      currentCategory = cat;
+      document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('active'));
+      el.classList.add('active');
+      filterFlags();
+    }}
+
+    function filterFlags() {{
+      var q = (document.getElementById('flagSearch').value || '').toLowerCase().trim();
+      var cards = document.querySelectorAll('.flag-card');
+
+      cards.forEach(card => {{
+        var cat = card.getAttribute('data-category') || '';
+        var search = card.getAttribute('data-search') || '';
+
+        var matchCat = (currentCategory === 'All') || (cat === currentCategory);
+        var matchQuery = !q || search.includes(q);
+
+        card.style.display = (matchCat && matchQuery) ? 'flex' : 'none';
+      }});
+    }}
+
+    function onFlagChanged(key, value) {{
+      window.chrome.webview.postMessage(JSON.stringify({{
+        action: 'set_feature_flag',
+        key: key,
+        value: value
+      }}));
+      document.getElementById('relaunchBar').style.display = 'flex';
+    }}
+
+    function resetAllFlags() {{
+      window.chrome.webview.postMessage(JSON.stringify({{ action: 'reset_feature_flags' }}));
+      location.reload();
+    }}
+
+    function relaunchBrowser() {{
+      window.chrome.webview.postMessage(JSON.stringify({{ action: 'relaunch_browser' }}));
+    }}
+  </script>
+</body>
+</html>";
+        }
     }
 }

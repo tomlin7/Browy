@@ -3,26 +3,30 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-[background-color,border-color,color,transform,opacity] duration-150 ease-out focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400 disabled:pointer-events-none disabled:opacity-50 enabled:active:scale-[0.96]",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-blue-500/25",
+        default:
+          "bg-zinc-100 text-zinc-950 hover:bg-white shadow-[0_1px_2px_rgba(0,0,0,0.2)] border border-transparent",
         destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+          "bg-rose-950/40 text-rose-300 border border-rose-800/50 hover:bg-rose-900/40",
         outline:
-          "border border-input bg-background/50 hover:bg-accent/20 hover:text-accent-foreground backdrop-blur-sm",
+          "border border-zinc-800 bg-zinc-900/60 text-zinc-300 hover:bg-zinc-800/80 hover:text-zinc-100 hover:border-zinc-700",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
-        gradient: "bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white hover:opacity-95 shadow-xl shadow-indigo-500/30",
+          "bg-zinc-800 text-zinc-200 hover:bg-zinc-700/80 border border-zinc-750",
+        ghost:
+          "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200",
+        link:
+          "text-zinc-300 underline-offset-4 hover:underline hover:text-white",
+        tactile:
+          "bg-zinc-900 text-zinc-100 border border-zinc-750 shadow-[0_1px_0_0_rgba(255,255,255,0.06)_inset,0_2px_4px_rgba(0,0,0,0.4)] hover:bg-zinc-850 hover:border-zinc-700",
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-12 rounded-xl px-8 text-base",
-        icon: "h-10 w-10",
+        default: "h-9 px-3.5 py-1.5",
+        sm: "h-8 rounded px-2.5 text-xs",
+        lg: "h-11 rounded-md px-5 text-sm font-medium",
+        icon: "h-9 w-9",
       },
     },
     defaultVariants: {

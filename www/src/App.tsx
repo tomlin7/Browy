@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react"
 import {
   Download,
-  Star,
   Shield,
   Layers,
   Sparkles,
@@ -10,14 +9,21 @@ import {
   Columns4,
   ExternalLink,
   Laptop,
-  CheckCircle2,
-  Terminal,
+  Check,
   Volume2,
   Moon,
   Search,
-  BookOpen,
+  Terminal,
+  Activity,
+  Cpu,
+  Lock,
+  ArrowRight,
+  Maximize2,
+  FileCode,
+  Globe,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 
 function GithubIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (
@@ -35,32 +41,14 @@ function GithubIcon({ className = "h-4 w-4" }: { className?: string }) {
     </svg>
   )
 }
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import {
-  Accordion,
-  AccordionItem,
-  AccordionTrigger,
-  AccordionContent,
-} from "@/components/ui/accordion"
 
 export default function App() {
-  const [activeSpace, setActiveSpace] = useState<"work" | "dev" | "research" | "media">("work")
-  const [activeTabTitle, setActiveTabTitle] = useState("tomlin7/Browy: Modern Arc/Zen Browser")
-  const [copilotPrompt, setCopilotPrompt] = useState("translate to German")
-  const [chatMessages, setChatMessages] = useState<Array<{ role: "user" | "agent"; text: string; action?: string }>>([
-    {
-      role: "user",
-      text: "Analyze this page and find the latest autonomous browser action features.",
-    },
-    {
-      role: "agent",
-      text: "Examined tomlin7/Browy architecture snapshot: Autonomous DOM actions protocol (TRANSLATE, CLICK, FILL, ZOOM, READER_MODE), real-time viewport vision analysis, and local heuristic fallback.",
-      action: "Autonomous Action: Scrolled to top of page",
-    },
-  ])
-
+  const [activeSpace, setActiveSpace] = useState<"code" | "review" | "research" | "sound">("code")
+  const [activeTabTitle, setActiveTabTitle] = useState("tomlin7/Browy · Engine Architecture")
+  const [activeDirective, setActiveDirective] = useState("TRANSLATE_SELECTION")
   const [starCount, setStarCount] = useState("★ 1.2k")
+  const [copiedRelease, setCopiedRelease] = useState(false)
+  const [openFaq, setOpenFaq] = useState<number | null>(0)
 
   useEffect(() => {
     fetch("https://api.github.com/repos/tomlin7/Browy")
@@ -73,321 +61,297 @@ export default function App() {
       .catch(() => {})
   }, [])
 
-  const spaceThemes = {
-    work: { name: "Work Space", color: "text-blue-400", border: "border-blue-500/40", bg: "bg-blue-500/10" },
-    dev: { name: "Developer Space", color: "text-purple-400", border: "border-purple-500/40", bg: "bg-purple-500/10" },
-    research: { name: "Research Space", color: "text-emerald-400", border: "border-emerald-500/40", bg: "bg-emerald-500/10" },
-    media: { name: "Media Space", color: "text-pink-400", border: "border-pink-500/40", bg: "bg-pink-500/10" },
+  const spaces = {
+    code: { label: "DEV.01", name: "Core Engine", badge: "active" },
+    review: { label: "PR.35", name: "Code Review", badge: "clean" },
+    research: { label: "DOC.AI", name: "LLM Directives", badge: "parsed" },
+    sound: { label: "LFI.04", name: "Stream Audio", badge: "playing" },
   }
 
-  const handleChipClick = (prompt: string) => {
-    setCopilotPrompt(prompt)
-    const userMsg = { role: "user" as const, text: prompt }
-    let agentText = "Processing page context live via Browy AI Copilot..."
-    let actionDesc = "Executed browser command"
+  const directivesLog = [
+    { op: "NAVIGATE", target: "github.com/tomlin7/Browy", latency: "14ms", status: "OK" },
+    { op: "PARSE_DOM", target: "article.markdown-body", latency: "38ms", status: "OK" },
+    { op: "AI_INSPECT", target: "heuristic_tokenizer_local", latency: "42ms", status: "OFFLINE" },
+    { op: "STRIP_TRACKERS", target: "utm_*, gclid, fbclid (4 removed)", latency: "0.2ms", status: "SANITIZED" },
+  ]
 
-    if (prompt.includes("Summarize")) {
-      agentText = "Executive Summary: Browy delivers a clean, tab-isolated experience built on .NET 9 and Edge WebView2 with 40% memory reduction."
-      actionDesc = "Autonomous Action: Highlighted core concepts"
-    } else if (prompt.includes("Translate")) {
-      agentText = "Traduction en Français: Browy est le navigateur le plus moderne pour Windows 11 avec des espaces de travail fluides."
-      actionDesc = "Autonomous Action: Translated active page to French"
-    } else {
-      agentText = "DOM Technical Analysis: TLS 1.3 encrypted origin, 203 automated test suites verified, zero third-party trackers detected."
-      actionDesc = "Autonomous Action: Inspected DOM tree"
-    }
+  const faqs = [
+    {
+      q: "Is Browy completely free and open source?",
+      a: "Yes, 100%. Licensed under MIT. The entire codebase, WPF Direct3D compositing pipelines, and 203 automated test suites are public on GitHub.",
+    },
+    {
+      q: "How does the Autonomous AI Copilot work without compromising privacy?",
+      a: "Browy defaults to an offline heuristic synthesis engine that inspects DOM hierarchies locally on your machine with zero cloud roundtrips. When you configure BYOK (OpenAI, Anthropic Claude, or local Ollama), API requests originate straight from your machine using credentials encrypted in Windows DPAPI.",
+    },
+    {
+      q: "What makes it significantly lighter on memory than Google Chrome or Arc?",
+      a: "Chrome and Arc spawn independent 300MB+ helper sub-processes for every utility frame. Browy uses the shared Microsoft Edge WebView2 evergreen runtime and enforces automatic tab sleep on idle workspaces, cutting resident memory by over 40%.",
+    },
+    {
+      q: "What are the exact system requirements?",
+      a: "Windows 11 or Windows 10 (64-bit). Runs on Microsoft Edge WebView2 (present on 99% of Windows installations) and .NET 9. We also publish a standalone Portable single-file release with zero prerequisites.",
+    },
+  ]
 
-    setChatMessages((prev) => [
-      ...prev,
-      userMsg,
-      { role: "agent", text: agentText, action: actionDesc },
-    ])
+  const handleCopyInstall = () => {
+    navigator.clipboard?.writeText("git clone https://github.com/tomlin7/Browy.git")
+    setCopiedRelease(true)
+    setTimeout(() => setCopiedRelease(false), 2000)
   }
 
   return (
-    <div className="relative min-h-screen bg-[#07080D] text-slate-100 selection:bg-indigo-500 selection:text-white">
-      {/* Ambient background glow orbs */}
-      <div className="glow-orb orb-primary bg-indigo-600/30 w-[600px] h-[600px] top-[-150px] left-[20%]" />
-      <div className="glow-orb orb-secondary bg-blue-600/25 w-[500px] h-[500px] top-[400px] right-[-100px]" />
-      <div className="glow-orb orb-accent bg-purple-600/20 w-[700px] h-[700px] top-[1500px] left-[-200px]" />
-
-      {/* Navigation Bar */}
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#07080D]/75 backdrop-blur-2xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3.5">
-          <a href="#" className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 via-indigo-500 to-pink-500 shadow-lg shadow-indigo-500/25">
-              <span className="font-extrabold text-white text-base">B</span>
-            </div>
-            <span className="text-xl font-extrabold tracking-tight text-white">Browy</span>
-            <Badge variant="indigo" className="font-mono text-[11px] px-2">v0.3.0</Badge>
-          </a>
-
-          <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-slate-400">
-            <a href="#features" className="hover:text-white transition-colors">Features</a>
-            <a href="#copilot" className="hover:text-white transition-colors">AI Copilot</a>
-            <a href="#spaces" className="hover:text-white transition-colors">Spaces &amp; Tabs</a>
-            <a href="#shields" className="hover:text-white transition-colors">Shields</a>
-            <a href="#benchmarks" className="hover:text-white transition-colors">Benchmarks</a>
-            <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
-          </nav>
-
+    <div className="min-h-[100dvh] bg-[#0c0d0e] text-zinc-100 bg-tech-grid font-sans selection:bg-zinc-800 selection:text-white">
+      {/* Top Utility Status Bar */}
+      <div className="border-b border-zinc-800/80 bg-zinc-950/70 text-[11px] font-mono text-zinc-400 backdrop-blur-md">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-8 py-1.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+            <span className="text-zinc-300">SYSTEM.OK</span>
+            <span className="hidden sm:inline text-zinc-600">/</span>
+            <span className="hidden sm:inline text-zinc-400">BROWY v0.3.0 x64</span>
+            <span className="hidden md:inline text-zinc-600">/</span>
+            <span className="hidden md:inline text-zinc-500">203 UNIT TESTS PASSING</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="hidden sm:inline text-zinc-500 font-mono">MIT LICENSE</span>
             <a
               href="https://github.com/tomlin7/Browy"
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden sm:inline-flex"
+              className="text-zinc-300 hover:text-white transition-colors flex items-center gap-1.5"
             >
-              <Button variant="outline" size="sm" className="gap-2 border-white/15 bg-white/5 hover:bg-white/10">
-                <GithubIcon className="h-4 w-4" />
-                <span>Star</span>
-                <span className="rounded bg-white/10 px-1.5 py-0.5 text-[11px] text-slate-300 font-mono">
-                  {starCount}
-                </span>
-              </Button>
+              <GithubIcon className="h-3.5 w-3.5" />
+              <span>GITHUB</span>
+              <span className="text-zinc-500 font-mono">{starCount}</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Header */}
+      <header className="sticky top-0 z-40 border-b border-zinc-800/70 bg-[#0c0d0e]/85 backdrop-blur-md">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-8 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <a href="#" className="flex items-center gap-2.5">
+              <div className="h-6 w-6 rounded bg-zinc-100 flex items-center justify-center text-zinc-950 font-mono font-bold text-xs">
+                B
+              </div>
+              <span className="font-semibold text-sm tracking-tight text-white">Browy</span>
             </a>
 
+            <nav className="hidden lg:flex items-center gap-5 text-xs font-mono text-zinc-400">
+              <a href="#spaces" className="hover:text-zinc-200 transition-colors">SPACES</a>
+              <a href="#directives" className="hover:text-zinc-200 transition-colors">AUTONOMOUS.AI</a>
+              <a href="#specs" className="hover:text-zinc-200 transition-colors">BENCHMARKS</a>
+              <a href="#faq" className="hover:text-zinc-200 transition-colors">FAQ</a>
+            </nav>
+          </div>
+
+          <div className="flex items-center gap-2.5">
             <a href="#download">
-              <Button variant="gradient" size="sm" className="gap-2 font-semibold">
-                <Download className="h-4 w-4" />
-                <span>Download</span>
+              <Button variant="default" size="sm" className="font-mono text-xs gap-1.5 font-semibold">
+                <Download className="h-3.5 w-3.5" />
+                <span>DOWNLOAD x64</span>
               </Button>
             </a>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative z-10 pt-16 pb-24 text-center">
-        <div className="mx-auto max-w-5xl px-6">
-          <div className="mb-6 inline-flex items-center gap-2.5 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-xs text-slate-300 backdrop-blur-md">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399]" />
-            <span>v0.3.0 Release: Autonomous AI Directives &amp; Search Bangs Hub</span>
-            <a href="https://github.com/tomlin7/Browy/releases" target="_blank" className="font-semibold text-blue-400 hover:underline">
-              Changelog &rarr;
-            </a>
-          </div>
-
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.1] mb-6">
-            The Fluid, AI-Native Browser <br />
-            <span className="bg-gradient-to-r from-blue-400 via-indigo-400 to-pink-400 bg-clip-text text-transparent">
-              Built for Windows 11.
-            </span>
-          </h1>
-
-          <p className="mx-auto max-w-3xl text-lg sm:text-xl text-slate-400 leading-relaxed mb-10">
-            Say goodbye to browser bloat and tab clutter. Browy fuses Arc-inspired spaces,
-            autonomous AI agent directives, 4-way split views, and native Mica/Acrylic materials
-            into a lightweight, hyper-responsive power tool.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
-            <a href="#download">
-              <Button variant="gradient" size="lg" className="h-14 px-8 text-base gap-3.5 shadow-2xl shadow-indigo-600/40">
-                <Laptop className="h-5 w-5" />
-                <div className="text-left">
-                  <div className="text-[10px] uppercase font-bold tracking-wider opacity-85">Download for Windows</div>
-                  <div className="text-sm font-extrabold">Browy v0.3.0 (x64)</div>
-                </div>
-              </Button>
-            </a>
-
-            <a href="https://github.com/tomlin7/Browy" target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" size="lg" className="h-14 px-6 gap-2.5 border-white/15 bg-white/5 hover:bg-white/10">
-                <GithubIcon className="h-5 w-5" />
-                <span>Explore Source Code</span>
-                <ExternalLink className="h-3.5 w-3.5 opacity-60" />
-              </Button>
-            </a>
-          </div>
-
-          {/* Feature highlights pills */}
-          <div className="flex flex-wrap justify-center gap-2.5 text-xs text-slate-400 mb-14">
-            <span className="rounded-full border border-white/10 bg-white/[0.02] px-3.5 py-1">🛡️ 100% Free &amp; Open Source (MIT)</span>
-            <span className="rounded-full border border-white/10 bg-white/[0.02] px-3.5 py-1">⚡ Microsoft Edge WebView2</span>
-            <span className="rounded-full border border-white/10 bg-white/[0.02] px-3.5 py-1">🚀 .NET 9.0 Native Desktop</span>
-            <span className="rounded-full border border-white/10 bg-white/[0.02] px-3.5 py-1">🔒 Zero Telemetry &amp; Tracker Stripper</span>
-          </div>
-
-          {/* Interactive Browser Mockup */}
-          <div className="mx-auto max-w-5xl rounded-2xl border border-white/15 bg-[#0D1017] shadow-2xl shadow-black/80 overflow-hidden text-left">
-            {/* Titlebar */}
-            <div className="flex items-center justify-between border-b border-white/10 bg-[#121520] px-4 py-2.5">
-              <div className="flex items-center gap-2">
-                <span className="h-3 w-3 rounded-full bg-amber-400" />
-                <span className="h-3 w-3 rounded-full bg-emerald-400" />
-                <span className="h-3 w-3 rounded-full bg-rose-400" />
-              </div>
-              <div className="flex items-center gap-2 text-xs text-slate-300">
-                <span className={`px-2 py-0.5 rounded font-bold uppercase text-[10px] border ${spaceThemes[activeSpace].bg} ${spaceThemes[activeSpace].color} ${spaceThemes[activeSpace].border}`}>
-                  {spaceThemes[activeSpace].name}
+      {/* Hero Section: Industrial Asymmetric Layout */}
+      <section className="relative border-b border-zinc-800/80 pt-16 pb-20 overflow-hidden">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-start">
+            {/* Left 5 Cols: Sharp Technical Copy */}
+            <div className="lg:col-span-5 flex flex-col justify-center pt-2">
+              <div className="inline-flex items-center gap-2 mb-6">
+                <span className="px-2 py-0.5 rounded border border-zinc-700 bg-zinc-800/60 font-mono text-[11px] text-zinc-300">
+                  RELEASE v0.3.0
                 </span>
-                <span className="truncate max-w-sm font-medium">{activeTabTitle}</span>
+                <span className="text-zinc-500 font-mono text-xs">WINDOWS 11 NATIVE</span>
               </div>
-              <div className="flex items-center gap-2 text-slate-400 text-xs">
-                <Shield className="h-3.5 w-3.5 text-emerald-400" />
-                <Volume2 className="h-3.5 w-3.5 text-blue-400" />
-                <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+
+              <h1 className="text-3xl sm:text-5xl font-medium tracking-tight text-white leading-[1.08] mb-5">
+                The AI-Native browser built for focus, not bloat.
+              </h1>
+
+              <p className="text-sm sm:text-base text-zinc-400 leading-relaxed mb-8 max-w-[48ch]">
+                Tab overload and slow Chromium runtimes are productivity taxes. Browy provides Arc-style spaces,
+                offline autonomous AI copilot directives, 4-way split views, and zero telemetry—packaged in a lightweight .NET 9 WPF engine.
+              </p>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-8">
+                <a href="#download" className="flex-1 sm:flex-none">
+                  <Button variant="default" size="lg" className="w-full sm:w-auto font-mono text-xs gap-2">
+                    <Laptop className="h-4 w-4" />
+                    <span>GET BROWY FOR WINDOWS</span>
+                  </Button>
+                </a>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={handleCopyInstall}
+                  className="font-mono text-xs gap-2 border-zinc-800"
+                >
+                  {copiedRelease ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Terminal className="h-3.5 w-3.5 text-zinc-400" />}
+                  <span>{copiedRelease ? "CLONE COMMAND COPIED" : "git clone repo"}</span>
+                </Button>
+              </div>
+
+              {/* Technical Spec Matrix */}
+              <div className="grid grid-cols-3 border-t border-zinc-800/80 pt-6 gap-4 font-mono">
+                <div>
+                  <div className="text-[10px] text-zinc-500 uppercase">Engine</div>
+                  <div className="text-sm font-medium text-zinc-200 mt-0.5">WPF + WebView2</div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-zinc-500 uppercase">Cold Start</div>
+                  <div className="text-sm font-medium text-emerald-400 mt-0.5">240ms</div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-zinc-500 uppercase">Telemetry</div>
+                  <div className="text-sm font-medium text-zinc-200 mt-0.5">0.0% (Zero)</div>
+                </div>
               </div>
             </div>
 
-            {/* Browser Body */}
-            <div className="grid grid-cols-1 md:grid-cols-[200px_1fr_300px] h-[480px]">
-              {/* Left Sidebar */}
-              <div className="hidden md:flex flex-col border-r border-white/10 bg-[#0F121C] p-3 gap-3">
-                {/* Spaces switcher */}
-                <div className="flex gap-1.5 pb-2 border-b border-white/10">
-                  {(["work", "dev", "research", "media"] as const).map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => setActiveSpace(s)}
-                      className={`h-7 w-7 rounded-md font-bold text-xs uppercase transition-colors ${
-                        activeSpace === s ? "bg-blue-600 text-white" : "bg-white/5 text-slate-400 hover:bg-white/10"
-                      }`}
-                      title={spaceThemes[s].name}
-                    >
-                      {s[0]}
-                    </button>
-                  ))}
-                </div>
+            {/* Right 7 Cols: Authentic Windows 11 Chrome UI Workspace Preview */}
+            <div className="lg:col-span-7">
+              <div className="rounded-lg border border-zinc-800 bg-[#121316] shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] overflow-hidden">
+                {/* Browser Titlebar */}
+                <div className="h-10 border-b border-zinc-800/80 bg-zinc-950/80 px-3 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 rounded-full bg-zinc-700"></span>
+                    <span className="h-2.5 w-2.5 rounded-full bg-zinc-700"></span>
+                    <span className="h-2.5 w-2.5 rounded-full bg-zinc-700"></span>
+                  </div>
 
-                {/* Open tabs */}
-                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-1">Tabs (4)</div>
-                <div className="flex flex-col gap-1 text-xs">
-                  <div
-                    onClick={() => setActiveTabTitle("tomlin7/Browy: Modern Arc/Zen Browser")}
-                    className="flex items-center gap-2 rounded-lg bg-white/10 p-2 font-medium text-white cursor-pointer"
-                  >
-                    <span>🐙</span>
-                    <span className="truncate flex-1">tomlin7/Browy</span>
-                  </div>
-                  <div
-                    onClick={() => setActiveTabTitle("Microsoft Edge WebView2 Docs")}
-                    className="flex items-center gap-2 rounded-lg p-2 text-slate-400 hover:bg-white/5 cursor-pointer"
-                  >
-                    <span>📘</span>
-                    <span className="truncate flex-1">WebView2 Docs</span>
-                  </div>
-                  <div
-                    onClick={() => setActiveTabTitle("Lo-Fi Synthwave Stream")}
-                    className="flex items-center gap-2 rounded-lg p-2 text-slate-400 hover:bg-white/5 cursor-pointer"
-                  >
-                    <span>📺</span>
-                    <span className="truncate flex-1">Lo-Fi Stream</span>
-                    <Badge variant="emerald" className="text-[9px] px-1 py-0">AUDIO</Badge>
-                  </div>
-                  <div
-                    onClick={() => setActiveTabTitle("ArXiv: Autonomous Browser Agents")}
-                    className="flex items-center gap-2 rounded-lg p-2 text-slate-400 hover:bg-white/5 cursor-pointer opacity-60"
-                  >
-                    <span>💤</span>
-                    <span className="truncate flex-1">ArXiv: Agents</span>
-                    <Badge variant="secondary" className="text-[9px] px-1 py-0">ASLEEP</Badge>
-                  </div>
-                </div>
-              </div>
-
-              {/* Main Content Area */}
-              <div className="flex flex-col bg-[#080A10]">
-                {/* Omnibox Navbar */}
-                <div className="flex items-center gap-2 border-b border-white/10 bg-[#111420] px-3 py-2">
-                  <div className="flex-1 flex items-center gap-2 rounded-lg border border-white/10 bg-[#161B29] px-3 py-1.5 text-xs text-white">
-                    <span className="text-slate-400">🔒</span>
-                    <span className="font-mono text-slate-200 truncate flex-1">https://github.com/tomlin7/Browy</span>
-                    <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-400 border border-emerald-500/30">
-                      5 Trackers Blocked
-                    </span>
-                  </div>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400">◫</Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400">📖</Button>
-                </div>
-
-                {/* Mock Viewport */}
-                <div className="flex-1 p-6 overflow-y-auto">
-                  <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
-                    <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">
-                      <span className="rounded bg-white/10 px-2 py-0.5">Public</span>
-                      <span>tomlin7 / <strong>Browy</strong></span>
-                    </div>
-                    <h2 className="text-lg font-bold text-white mb-2">Modern Arc/Zen-inspired Windows 11 browser built with .NET 9 WPF &amp; Edge WebView2.</h2>
-                    <div className="grid grid-cols-3 gap-3 my-4">
-                      <div className="rounded-lg border border-white/10 bg-[#10131E] p-3 text-center">
-                        <div className="text-xl font-extrabold text-blue-400">203</div>
-                        <div className="text-[11px] text-slate-400">Unit Tests Passing</div>
-                      </div>
-                      <div className="rounded-lg border border-white/10 bg-[#10131E] p-3 text-center">
-                        <div className="text-xl font-extrabold text-emerald-400">60+ FPS</div>
-                        <div className="text-[11px] text-slate-400">Fluent Direct3D</div>
-                      </div>
-                      <div className="rounded-lg border border-white/10 bg-[#10131E] p-3 text-center">
-                        <div className="text-xl font-extrabold text-purple-400">-40%</div>
-                        <div className="text-[11px] text-slate-400">RAM with Tab Sleep</div>
-                      </div>
-                    </div>
-                    <div className="rounded-md border border-white/10 bg-black/50 p-2.5 font-mono text-xs text-slate-300">
-                      git clone https://github.com/tomlin7/Browy.git
+                  <div className="flex items-center gap-2 max-w-sm w-full mx-4">
+                    <div className="h-6 flex-1 rounded bg-zinc-900 border border-zinc-800/80 px-2.5 flex items-center gap-2 text-[11px] font-mono text-zinc-400 truncate">
+                      <Lock className="h-3 w-3 text-zinc-500 shrink-0" />
+                      <span className="text-zinc-200 truncate">github.com/tomlin7/Browy</span>
+                      <span className="ml-auto text-[9px] text-emerald-400 border border-emerald-900/50 bg-emerald-950/40 px-1 rounded">SHIELDED</span>
                     </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Right AI Copilot Pane */}
-              <div className="hidden md:flex flex-col border-l border-white/10 bg-[#10131E]">
-                <div className="flex items-center justify-between border-b border-white/10 p-3">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-white">
-                    <Sparkles className="h-4 w-4 text-indigo-400" />
-                    <span>AI Copilot</span>
+                  <div className="flex items-center gap-2 text-zinc-500">
+                    <Volume2 className="h-3.5 w-3.5 text-zinc-400" />
+                    <Sparkles className="h-3.5 w-3.5 text-zinc-400" />
                   </div>
-                  <Badge variant="indigo" className="text-[10px]">Deep Research</Badge>
                 </div>
 
-                <div className="flex-1 p-3 space-y-3 overflow-y-auto text-xs">
-                  {chatMessages.map((msg, idx) => (
-                    <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                      <div className={`rounded-xl p-2.5 max-w-[90%] ${
-                        msg.role === "user"
-                          ? "bg-blue-600 text-white"
-                          : "bg-[#181C2B] border border-white/10 text-slate-200"
-                      }`}>
-                        <p>{msg.text}</p>
-                        {msg.action && (
-                          <div className="mt-2 inline-flex items-center gap-1 rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-300 border border-emerald-500/30">
-                            <CheckCircle2 className="h-3 w-3" />
-                            <span>{msg.action}</span>
-                          </div>
-                        )}
-                      </div>
+                {/* Body: Left Space Rail + Center Document View + Right AI Directive Stream */}
+                <div className="grid grid-cols-1 md:grid-cols-[140px_1fr_200px] h-[380px] text-xs">
+                  {/* Space / Tab Column */}
+                  <div className="hidden md:flex flex-col border-r border-zinc-800/80 bg-zinc-950/40 p-2.5">
+                    <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider mb-2">Spaces</div>
+                    <div className="space-y-1 mb-4">
+                      {(Object.keys(spaces) as Array<keyof typeof spaces>).map((key) => {
+                        const s = spaces[key]
+                        const isActive = activeSpace === key
+                        return (
+                          <button
+                            key={key}
+                            onClick={() => setActiveSpace(key)}
+                            className={`w-full text-left px-2 py-1.5 rounded font-mono text-[11px] transition-[background-color,color] flex items-center justify-between ${
+                              isActive
+                                ? "bg-zinc-800 text-zinc-100 font-semibold"
+                                : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-300"
+                            }`}
+                          >
+                            <span>{s.label}</span>
+                            <span className="text-[9px] text-zinc-500">{s.badge}</span>
+                          </button>
+                        )
+                      })}
                     </div>
-                  ))}
-                </div>
 
-                <div className="p-3 border-t border-white/10">
-                  <div className="flex gap-1.5 mb-2 overflow-x-auto pb-1">
-                    {["Summarize", "Translate", "Code Analysis"].map((chip) => (
-                      <button
-                        key={chip}
-                        onClick={() => handleChipClick(chip)}
-                        className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[10px] text-slate-300 hover:bg-white/15 whitespace-nowrap transition-colors"
+                    <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider mb-2 pt-2 border-t border-zinc-800/60">Tabs (4)</div>
+                    <div className="space-y-1 font-mono text-[11px]">
+                      <div
+                        onClick={() => setActiveTabTitle("tomlin7/Browy · Engine Architecture")}
+                        className="px-2 py-1.5 rounded bg-zinc-900/90 text-zinc-200 border border-zinc-800/60 truncate cursor-pointer"
                       >
-                        {chip}
-                      </button>
-                    ))}
+                        Browy.sln
+                      </div>
+                      <div
+                        onClick={() => setActiveTabTitle("Edge WebView2 Evergreen Docs")}
+                        className="px-2 py-1.5 rounded text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/40 truncate cursor-pointer"
+                      >
+                        WebView2.md
+                      </div>
+                      <div
+                        onClick={() => setActiveTabTitle("Audio Engine · Ambient Synthesizer")}
+                        className="px-2 py-1.5 rounded text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/40 flex items-center justify-between cursor-pointer"
+                      >
+                        <span className="truncate">Ambient</span>
+                        <span className="text-[9px] text-emerald-400">AUD</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex gap-1.5">
-                    <input
-                      type="text"
-                      value={copilotPrompt}
-                      onChange={(e) => setCopilotPrompt(e.target.value)}
-                      placeholder="Ask copilot or run command..."
-                      className="flex-1 rounded-md border border-white/10 bg-[#161A28] px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500"
-                    />
-                    <Button
-                      size="sm"
-                      onClick={() => handleChipClick(copilotPrompt)}
-                      className="h-8 px-2.5 bg-indigo-600 hover:bg-indigo-500"
-                    >
-                      &rarr;
-                    </Button>
+
+                  {/* Active Document Canvas */}
+                  <div className="p-4 bg-[#0e0f11] overflow-y-auto font-mono text-xs">
+                    <div className="border border-zinc-800 rounded p-3 bg-zinc-950/60 mb-3">
+                      <div className="flex items-center justify-between text-[11px] text-zinc-400 mb-2">
+                        <span>REPOSITORY: tomlin7/Browy</span>
+                        <span className="text-emerald-400">BUILD: PASSING</span>
+                      </div>
+                      <div className="text-zinc-100 font-sans text-sm font-semibold mb-1">
+                        {activeTabTitle}
+                      </div>
+                      <p className="font-sans text-xs text-zinc-400 leading-relaxed">
+                        Hardware-accelerated Direct3D swapchain composition via Microsoft Edge WebView2, supporting dynamic 4-way split layouts and autonomous agent DOM interception.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div className="p-2 border border-zinc-800 rounded bg-zinc-950/40">
+                        <div className="text-zinc-500">MEMORY PROFILE</div>
+                        <div className="text-zinc-200 font-semibold mt-0.5">640 MB (20 tabs)</div>
+                      </div>
+                      <div className="p-2 border border-zinc-800 rounded bg-zinc-950/40">
+                        <div className="text-zinc-500">TAB ISOLATION</div>
+                        <div className="text-emerald-400 font-semibold mt-0.5">ACTIVE SLEEP</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* AI Autonomous Directive Stream */}
+                  <div className="hidden md:flex flex-col border-l border-zinc-800/80 bg-zinc-950/60 p-3">
+                    <div className="flex items-center justify-between text-[10px] font-mono text-zinc-400 uppercase pb-2 border-b border-zinc-800">
+                      <span>DOM DIRECTIVES</span>
+                      <span className="text-emerald-400 font-bold">ONLINE</span>
+                    </div>
+
+                    <div className="flex-1 py-2 space-y-2 font-mono text-[10px] overflow-y-auto">
+                      {directivesLog.map((log, i) => (
+                        <div key={i} className="p-1.5 rounded border border-zinc-850 bg-zinc-900/40">
+                          <div className="flex items-center justify-between text-zinc-300">
+                            <span className="font-semibold text-zinc-200">{log.op}</span>
+                            <span className="text-zinc-500">{log.latency}</span>
+                          </div>
+                          <div className="text-zinc-400 truncate mt-0.5">{log.target}</div>
+                          <div className="text-[9px] text-emerald-400/90 mt-1">{log.status}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="pt-2 border-t border-zinc-800">
+                      <div className="text-[10px] font-mono text-zinc-500 mb-1">DISPATCH ACTION:</div>
+                      <div className="flex gap-1">
+                        {["SCROLL", "CLICK", "EXTRACT"].map((btn) => (
+                          <button
+                            key={btn}
+                            onClick={() => setActiveDirective(btn)}
+                            className="flex-1 py-1 rounded border border-zinc-800 bg-zinc-900 text-[9px] font-mono text-zinc-300 hover:bg-zinc-800 transition-colors"
+                          >
+                            {btn}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -396,284 +360,279 @@ export default function App() {
         </div>
       </section>
 
-      {/* Feature Grid Section */}
-      <section id="features" className="relative z-10 py-24 border-t border-white/10 bg-[#0A0D15]/60 backdrop-blur-md">
-        <div className="mx-auto max-w-6xl px-6">
-          <div className="text-center mb-16">
-            <Badge variant="cyan" className="mb-3 uppercase tracking-widest text-[11px] font-bold">Engineered for Windows 11</Badge>
-            <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight mb-4 text-white">Everything modern browsing should be.</h2>
-            <p className="mx-auto max-w-2xl text-slate-400 text-base sm:text-lg">
-              Browy re-imagines daily web navigation from first principles: distraction-free focus,
-              instant speed, and total ownership of your AI &amp; browsing data.
-            </p>
+      {/* Industrial Spec & Feature Grid */}
+      <section id="spaces" className="py-20 border-b border-zinc-800/80">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
+          <div className="mb-12">
+            <div className="text-xs font-mono text-zinc-500 uppercase tracking-widest mb-1">01 / ARCHITECTURE</div>
+            <h2 className="text-2xl sm:text-3xl font-medium tracking-tight text-white">
+              Built from first principles for power users.
+            </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Card 1 */}
-            <Card className="md:col-span-2 border-indigo-500/30 bg-gradient-to-br from-[#12162A] to-[#0D101E]">
-              <CardHeader>
-                <div className="h-12 w-12 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center mb-3 border border-indigo-500/30">
-                  <Bot className="h-6 w-6" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="border border-zinc-800/80 bg-zinc-900/30 rounded p-5 flex flex-col justify-between">
+              <div>
+                <div className="h-7 w-7 rounded bg-zinc-800 border border-zinc-700/60 flex items-center justify-center text-zinc-300 mb-4">
+                  <Layers className="h-4 w-4" />
                 </div>
-                <CardTitle className="text-2xl">Autonomous AI Copilot &amp; Multimodal Vision</CardTitle>
-                <CardDescription className="text-base text-slate-300">
-                  Equipped with BYOK for OpenAI, Anthropic Claude, and local Ollama. The Copilot doesn't just chat—it can autonomously navigate, scroll, fill forms, translate pages, and analyze live viewport snapshots.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm text-slate-300">
-                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-400" /> Multimodal vision screenshot analysis streamed directly to LLM</div>
-                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-400" /> Autonomous DOM directives: CLICK, FILL, ZOOM, TRANSLATE, READER_MODE</div>
-                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-400" /> 4 Specialized Personas: Deep Research, Code Analyst, Explainer, Copilot</div>
-                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-400" /> Complete offline heuristic mode with zero telemetry</div>
-              </CardContent>
-            </Card>
+                <h3 className="text-sm font-semibold text-white mb-1.5">Contextual Spaces</h3>
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  Isolate work contexts completely: Dev, Review, Research, and Media. Pinned tabs, cookies, and window history remain cleanly partitioned.
+                </p>
+              </div>
+              <div className="mt-6 pt-3 border-t border-zinc-800/60 font-mono text-[11px] text-zinc-500">
+                MODULE: SpacesService.cs
+              </div>
+            </div>
 
-            {/* Card 2 */}
-            <Card>
-              <CardHeader>
-                <div className="h-12 w-12 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center mb-3 border border-purple-500/30">
-                  <Layers className="h-6 w-6" />
+            <div className="border border-zinc-800/80 bg-zinc-900/30 rounded p-5 flex flex-col justify-between">
+              <div>
+                <div className="h-7 w-7 rounded bg-zinc-800 border border-zinc-700/60 flex items-center justify-center text-zinc-300 mb-4">
+                  <Bot className="h-4 w-4" />
                 </div>
-                <CardTitle>Arc &amp; Zen-Inspired Spaces</CardTitle>
-                <CardDescription>
-                  Organize your mental state into distinct spaces: Work, Personal, Dev, Research, and Media. Each space maintains its own pinned tabs and isolated context.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm text-slate-300">
-                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-400" /> Instant cross-space tab migrations</div>
-                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-400" /> Auto-collapsing vertical sidebar</div>
-              </CardContent>
-            </Card>
+                <h3 className="text-sm font-semibold text-white mb-1.5">Autonomous AI Directives</h3>
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  Autonomous DOM directive protocol (TRANSLATE, CLICK, FILL, ZOOM, READER_MODE) with viewport vision inspection and zero mandatory telemetry.
+                </p>
+              </div>
+              <div className="mt-6 pt-3 border-t border-zinc-800/60 font-mono text-[11px] text-zinc-500">
+                MODULE: AiDirectivesCoordinator.cs
+              </div>
+            </div>
 
-            {/* Card 3 */}
-            <Card>
-              <CardHeader>
-                <div className="h-12 w-12 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center mb-3 border border-blue-500/30">
-                  <Columns4 className="h-6 w-6" />
+            <div className="border border-zinc-800/80 bg-zinc-900/30 rounded p-5 flex flex-col justify-between">
+              <div>
+                <div className="h-7 w-7 rounded bg-zinc-800 border border-zinc-700/60 flex items-center justify-center text-zinc-300 mb-4">
+                  <Columns4 className="h-4 w-4" />
                 </div>
-                <CardTitle>Up to 4-Way Split Screen</CardTitle>
-                <CardDescription>
-                  Forget messy window tiling. Multitask side-by-side with 2-way horizontal/vertical or 4-way grid layouts inside a single sleek browser window.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm text-slate-300">
-                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-400" /> Code &amp; documentation side-by-side</div>
-                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-400" /> Synchronized scrolling toggles</div>
-              </CardContent>
-            </Card>
+                <h3 className="text-sm font-semibold text-white mb-1.5">4-Way Grid Splitting</h3>
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  Side-by-side vertical, horizontal, or 4-quadrant layout grids inside a single window. Code and live documentation synchronized with no OS window clutter.
+                </p>
+              </div>
+              <div className="mt-6 pt-3 border-t border-zinc-800/60 font-mono text-[11px] text-zinc-500">
+                MODULE: SplitViewController.cs
+              </div>
+            </div>
 
-            {/* Card 4 */}
-            <Card>
-              <CardHeader>
-                <div className="h-12 w-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-3 border border-emerald-500/30">
-                  <Shield className="h-6 w-6" />
+            <div className="border border-zinc-800/80 bg-zinc-900/30 rounded p-5 flex flex-col justify-between">
+              <div>
+                <div className="h-7 w-7 rounded bg-zinc-800 border border-zinc-700/60 flex items-center justify-center text-zinc-300 mb-4">
+                  <Shield className="h-4 w-4" />
                 </div>
-                <CardTitle>Built-in Privacy Shields</CardTitle>
-                <CardDescription>
-                  Block intrusive ad networks, isolate third-party cookies, and automatically strip tracking parameters (utm_*, fbclid, gclid) from all URLs.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm text-slate-300">
-                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-400" /> Aggressive URL UTM tracker cleaner</div>
-                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-400" /> Automated InPrivate cache shredder</div>
-              </CardContent>
-            </Card>
-
-            {/* Card 5 */}
-            <Card>
-              <CardHeader>
-                <div className="h-12 w-12 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center mb-3 border border-amber-500/30">
-                  <Zap className="h-6 w-6" />
-                </div>
-                <CardTitle>Smart Bangs &amp; Omnibox Hub</CardTitle>
-                <CardDescription>
-                  Execute instant bang searches directly from the address bar (!gh, !yt, !w, !so) or solve mathematical formulas on the fly.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm text-slate-300">
-                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-400" /> Hub at browy://searchengines</div>
-                <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-400" /> Inline math calculator</div>
-              </CardContent>
-            </Card>
+                <h3 className="text-sm font-semibold text-white mb-1.5">Shields &amp; Tracker Stripper</h3>
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  Cleans UTM query parameters, fbclid, and telemetry tokens from URLs before requests ever resolve. Built-in InPrivate cache shredding on workspace close.
+                </p>
+              </div>
+              <div className="mt-6 pt-3 border-t border-zinc-800/60 font-mono text-[11px] text-zinc-500">
+                MODULE: ShieldManager.cs
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Benchmarks Section */}
-      <section id="benchmarks" className="relative z-10 py-24">
-        <div className="mx-auto max-w-6xl px-6">
-          <div className="text-center mb-16">
-            <Badge variant="emerald" className="mb-3 uppercase tracking-widest text-[11px] font-bold">Memory &amp; Efficiency</Badge>
-            <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight mb-4 text-white">Light on RAM. Heavy on Speed.</h2>
-            <p className="mx-auto max-w-2xl text-slate-400 text-base sm:text-lg">
-              Unlike monolithic Chromium browsers that spawn 50 background helper processes, Browy leverages
-              WebView2's shared runtime and proactive idle tab suspension to dramatically reduce system resource consumption.
-            </p>
+      {/* Hard Benchmarks Section */}
+      <section id="specs" className="py-20 border-b border-zinc-800/80">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
+          <div className="mb-12">
+            <div className="text-xs font-mono text-zinc-500 uppercase tracking-widest mb-1">02 / BENCHMARKS</div>
+            <h2 className="text-2xl sm:text-3xl font-medium tracking-tight text-white">
+              Light on memory. Heavy on speed.
+            </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-            <Card className="md:col-span-2 p-6">
-              <div className="text-lg font-bold text-white mb-6">RAM Usage (20 Tabs Open after 15 mins)</div>
-              <div className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            <div className="lg:col-span-8 border border-zinc-800/80 bg-zinc-900/20 rounded p-6">
+              <div className="flex items-center justify-between text-xs font-mono text-zinc-400 mb-6">
+                <span>RAM CONSUMPTION (20 TABS OPEN AFTER 15 MINS)</span>
+                <span className="text-zinc-500">LOWER IS BETTER</span>
+              </div>
+
+              <div className="space-y-5 font-mono text-xs">
                 <div>
-                  <div className="flex justify-between text-xs text-slate-300 mb-1.5">
-                    <span className="font-semibold text-emerald-400">Browy (with Idle Suspension)</span>
-                    <span className="font-bold">640 MB</span>
+                  <div className="flex justify-between mb-1.5">
+                    <span className="text-emerald-400 font-semibold">Browy (with Idle Suspension)</span>
+                    <span className="text-zinc-100 font-bold">640 MB</span>
                   </div>
-                  <div className="h-3 rounded-full bg-white/10 overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-blue-500 to-emerald-400 w-[30%]" />
+                  <div className="h-2 rounded-full bg-zinc-800 overflow-hidden">
+                    <div className="h-full bg-emerald-500 w-[29.7%]" />
                   </div>
                 </div>
 
                 <div>
-                  <div className="flex justify-between text-xs text-slate-400 mb-1.5">
+                  <div className="flex justify-between mb-1.5 text-zinc-400">
                     <span>Arc Browser for Windows</span>
                     <span>1,840 MB</span>
                   </div>
-                  <div className="h-3 rounded-full bg-white/10 overflow-hidden">
-                    <div className="h-full bg-slate-600 w-[80%]" />
+                  <div className="h-2 rounded-full bg-zinc-800 overflow-hidden">
+                    <div className="h-full bg-zinc-600 w-[85%]" />
                   </div>
                 </div>
 
                 <div>
-                  <div className="flex justify-between text-xs text-slate-400 mb-1.5">
+                  <div className="flex justify-between mb-1.5 text-zinc-400">
                     <span>Google Chrome</span>
                     <span>2,150 MB</span>
                   </div>
-                  <div className="h-3 rounded-full bg-white/10 overflow-hidden">
-                    <div className="h-full bg-slate-600 w-[94%]" />
+                  <div className="h-2 rounded-full bg-zinc-800 overflow-hidden">
+                    <div className="h-full bg-zinc-600 w-[100%]" />
                   </div>
                 </div>
               </div>
-              <div className="mt-6 text-xs text-slate-400">
-                Average RAM measured on Windows 11 23H2 (x64) with 20 mixed documentation &amp; media tabs after 15 minutes of idle suspension.
-              </div>
-            </Card>
 
-            <Card className="p-6 text-center">
-              <div className="text-sm font-semibold text-slate-400 mb-2">Cold Startup Time</div>
-              <div className="text-6xl font-extrabold text-emerald-400 tracking-tight my-2">240<span className="text-2xl text-emerald-300">ms</span></div>
-              <p className="text-xs text-slate-400 mb-4 leading-relaxed">
-                Powered by native .NET 9 desktop runtime and optimized Direct3D composition pipelines.
+              <div className="mt-8 pt-4 border-t border-zinc-800/60 flex items-center justify-between text-[11px] font-mono text-zinc-500">
+                <span>Measured on Windows 11 23H2 x64 (16GB RAM)</span>
+                <span className="text-emerald-400 font-medium">-65% vs Chrome</span>
+              </div>
+            </div>
+
+            <div className="lg:col-span-4 border border-zinc-800/80 bg-zinc-900/20 rounded p-6">
+              <div className="text-xs font-mono text-zinc-500 uppercase mb-2">Startup Latency</div>
+              <div className="text-5xl font-mono font-medium text-emerald-400 tracking-tight mb-2">
+                240<span className="text-lg text-emerald-300">ms</span>
+              </div>
+              <p className="text-xs text-zinc-400 leading-relaxed mb-6 font-sans">
+                Native Direct3D WPF presentation pipelines avoid heavy Electron / Chromium bootstrap layers.
               </p>
-              <div className="flex flex-wrap gap-2 justify-center text-xs">
-                <Badge variant="emerald">✓ Fast AOT</Badge>
-                <Badge variant="emerald">✓ Direct3D</Badge>
+              <div className="space-y-2 border-t border-zinc-800/60 pt-4 font-mono text-[11px] text-zinc-400">
+                <div className="flex items-center justify-between">
+                  <span>Binary Size</span>
+                  <span className="text-zinc-200">~12 MB</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Trackers Blocked</span>
+                  <span className="text-emerald-400">100%</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Test Coverage</span>
+                  <span className="text-zinc-200">203 Tests</span>
+                </div>
               </div>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ Section */}
-      <section id="faq" className="relative z-10 py-24 border-t border-white/10 bg-[#0A0D15]/60 backdrop-blur-md">
-        <div className="mx-auto max-w-4xl px-6">
-          <div className="text-center mb-16">
-            <Badge variant="indigo" className="mb-3 uppercase tracking-widest text-[11px] font-bold">Frequently Asked Questions</Badge>
-            <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight mb-4 text-white">Everything you need to know.</h2>
-          </div>
-
-          <Accordion defaultValue={["faq-1"]} className="space-y-4">
-            <AccordionItem value="faq-1">
-              <AccordionTrigger>Is Browy completely free and open source?</AccordionTrigger>
-              <AccordionContent>
-                Yes, 100%! Browy is licensed under the MIT License. The complete source code, 203 automated unit tests, and build definitions are available publicly on GitHub. You can inspect, fork, compile, and contribute without restrictions.
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="faq-2">
-              <AccordionTrigger>How does the AI Copilot work and is my data private?</AccordionTrigger>
-              <AccordionContent>
-                Browy puts privacy first. By default, Browy uses an offline heuristic synthesis engine that never sends any page data to the cloud. If you configure BYOK (OpenAI, Claude, or Ollama), requests are sent directly to your chosen API provider using your own API keys stored securely on your machine via Windows DPAPI.
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="faq-3">
-              <AccordionTrigger>What are the system requirements to run Browy?</AccordionTrigger>
-              <AccordionContent>
-                Browy requires a 64-bit Windows 11 or Windows 10 operating system, the Microsoft Edge WebView2 Evergreen Runtime (pre-installed on almost all modern Windows systems), and .NET 9.0. We also provide a Self-Contained Portable Edition that runs out of the box with zero dependencies.
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="faq-4">
-              <AccordionTrigger>How do I install or update Browy?</AccordionTrigger>
-              <AccordionContent>
-                Download the latest release ZIP from the Download section below or from GitHub Releases. Extract the ZIP anywhere on your system and launch Browy.exe. Browy is completely portable and requires no installer or administrator privileges.
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        </div>
-      </section>
-
-      {/* Download Section */}
-      <section id="download" className="relative z-10 py-24">
-        <div className="mx-auto max-w-5xl px-6">
-          <div className="rounded-3xl border border-indigo-500/30 bg-gradient-to-br from-[#12162B] to-[#0A0D18] p-10 sm:p-16 text-center shadow-2xl shadow-indigo-500/10">
-            <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-500 to-pink-500 shadow-xl mb-6">
-              <span className="font-extrabold text-white text-2xl">B</span>
             </div>
-            <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white mb-4">
-              Ready to elevate your browsing?
+          </div>
+        </div>
+      </section>
+
+      {/* Minimalist Collapsible FAQ */}
+      <section id="faq" className="py-20 border-b border-zinc-800/80">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
+          <div className="mb-12">
+            <div className="text-xs font-mono text-zinc-500 uppercase tracking-widest mb-1">03 / VERIFICATION</div>
+            <h2 className="text-2xl sm:text-3xl font-medium tracking-tight text-white">
+              Frequently asked questions.
             </h2>
-            <p className="mx-auto max-w-xl text-slate-400 text-base sm:text-lg mb-12">
-              Get Browy v0.3.0 for Windows 11 &amp; 10. Fast, lightweight, open-source, and free forever.
-            </p>
+          </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-3xl mx-auto mb-8 text-left">
-              <Card className="border-blue-500/50 bg-[#0F1322] p-6 flex flex-col justify-between">
-                <div>
-                  <Badge variant="cyan" className="mb-2">RECOMMENDED</Badge>
-                  <h3 className="text-xl font-bold text-white mb-1">Standard Release</h3>
-                  <p className="text-xs text-slate-400 mb-6 leading-relaxed">
-                    Optimized package using shared .NET 9 and WebView2 runtimes. Ultra-compact download size (~12 MB).
-                  </p>
+          <div className="divide-y divide-zinc-800/80 border-y border-zinc-800/80">
+            {faqs.map((faq, idx) => {
+              const isOpen = openFaq === idx
+              return (
+                <div key={idx} className="py-4">
+                  <button
+                    onClick={() => setOpenFaq(isOpen ? null : idx)}
+                    className="w-full flex items-center justify-between text-left text-sm font-medium text-zinc-200 hover:text-white transition-colors"
+                  >
+                    <span>{faq.q}</span>
+                    <span className="font-mono text-xs text-zinc-500 ml-4">{isOpen ? "—" : "+"}</span>
+                  </button>
+                  {isOpen && (
+                    <div className="mt-3 text-xs text-zinc-400 leading-relaxed max-w-[70ch]">
+                      {faq.a}
+                    </div>
+                  )}
                 </div>
-                <a href="https://github.com/tomlin7/Browy/releases/latest" target="_blank" rel="noopener noreferrer">
-                  <Button variant="default" className="w-full gap-2 font-semibold">
-                    <Download className="h-4 w-4" />
-                    <span>Download Browy-v0.3.0.zip</span>
-                  </Button>
-                </a>
-              </Card>
-
-              <Card className="border-white/10 bg-[#0F1322] p-6 flex flex-col justify-between">
-                <div>
-                  <Badge variant="secondary" className="mb-2">PORTABLE</Badge>
-                  <h3 className="text-xl font-bold text-white mb-1">Portable Edition</h3>
-                  <p className="text-xs text-slate-400 mb-6 leading-relaxed">
-                    Self-contained single executable. Zero runtime installation required. Unzip and run anywhere.
-                  </p>
-                </div>
-                <a href="https://github.com/tomlin7/Browy/releases/latest" target="_blank" rel="noopener noreferrer">
-                  <Button variant="outline" className="w-full gap-2 font-semibold border-white/15 hover:bg-white/10">
-                    <Download className="h-4 w-4" />
-                    <span>Download Portable Edition</span>
-                  </Button>
-                </a>
-              </Card>
-            </div>
-
-            <div className="text-xs text-slate-400">
-              🔒 All releases are built transparently via GitHub Actions with published SHA256 checksums.
-            </div>
+              )
+            })}
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-white/10 bg-[#05060A] py-12 text-xs text-slate-400">
-        <div className="mx-auto max-w-6xl px-6 flex flex-col sm:flex-row items-center justify-between gap-6">
+      {/* Download Section: Precise Industrial Cards */}
+      <section id="download" className="py-20">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
+          <div className="mb-12">
+            <div className="text-xs font-mono text-zinc-500 uppercase tracking-widest mb-1">04 / INSTALLATION</div>
+            <h2 className="text-2xl sm:text-3xl font-medium tracking-tight text-white">
+              Get Browy for Windows 11.
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
+            {/* Standard Release */}
+            <div className="border border-zinc-700 bg-zinc-900/40 rounded p-6 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="font-mono text-xs font-semibold text-zinc-200">STANDARD RELEASE</span>
+                  <Badge variant="emerald">RECOMMENDED</Badge>
+                </div>
+                <p className="text-xs text-zinc-400 leading-relaxed mb-6 font-sans">
+                  Lightweight (~12 MB) distribution utilizing system-shared .NET 9 and evergreen WebView2 runtimes.
+                </p>
+              </div>
+
+              <div>
+                <div className="font-mono text-[11px] text-zinc-500 mb-3">
+                  PACKAGE: Browy-v0.3.0-win-x64.zip
+                </div>
+                <a href="https://github.com/tomlin7/Browy/releases/latest" target="_blank" rel="noopener noreferrer">
+                  <Button variant="default" className="w-full font-mono text-xs gap-2">
+                    <Download className="h-3.5 w-3.5" />
+                    <span>DOWNLOAD STANDARD ZIP</span>
+                  </Button>
+                </a>
+              </div>
+            </div>
+
+            {/* Portable Edition */}
+            <div className="border border-zinc-800 bg-zinc-900/20 rounded p-6 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="font-mono text-xs font-semibold text-zinc-200">PORTABLE SINGLE-FILE</span>
+                  <Badge variant="secondary">ZERO INSTALL</Badge>
+                </div>
+                <p className="text-xs text-zinc-400 leading-relaxed mb-6 font-sans">
+                  Self-contained single executable containing all native dependencies. Unzip and execute anywhere.
+                </p>
+              </div>
+
+              <div>
+                <div className="font-mono text-[11px] text-zinc-500 mb-3">
+                  PACKAGE: Browy-v0.3.0-win-x64-portable.zip
+                </div>
+                <a href="https://github.com/tomlin7/Browy/releases/latest" target="_blank" rel="noopener noreferrer">
+                  <Button variant="outline" className="w-full font-mono text-xs gap-2 border-zinc-800">
+                    <Download className="h-3.5 w-3.5" />
+                    <span>DOWNLOAD PORTABLE ZIP</span>
+                  </Button>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 text-xs font-mono text-zinc-500 flex items-center gap-2">
+            <Lock className="h-3.5 w-3.5 text-zinc-400" />
+            <span>Built reproducibly via GitHub Actions with SHA256 checksum verification.</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Minimal Industrial Footer */}
+      <footer className="border-t border-zinc-800/80 bg-zinc-950 py-8 text-xs font-mono text-zinc-500">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="font-extrabold text-white text-base">Browy</span>
-            <Badge variant="outline" className="text-[10px]">MIT License</Badge>
-            <span>&copy; 2026 Browy Contributors.</span>
+            <span className="font-semibold text-zinc-300">BROWY</span>
+            <span>/</span>
+            <span>&copy; 2026 BROWY CONTRIBUTORS</span>
           </div>
 
           <div className="flex items-center gap-6">
-            <a href="https://github.com/tomlin7/Browy" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">GitHub</a>
-            <a href="https://github.com/tomlin7/Browy/releases" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Releases</a>
-            <a href="https://github.com/tomlin7/Browy/issues" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Issues</a>
-            <a href="https://github.com/tomlin7/Browy/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">License</a>
+            <a href="https://github.com/tomlin7/Browy" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-300 transition-colors">GITHUB</a>
+            <a href="https://github.com/tomlin7/Browy/releases" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-300 transition-colors">RELEASES</a>
+            <a href="https://github.com/tomlin7/Browy/issues" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-300 transition-colors">ISSUES</a>
+            <a href="https://github.com/tomlin7/Browy/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-300 transition-colors">LICENSE</a>
           </div>
         </div>
       </footer>

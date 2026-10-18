@@ -41,6 +41,7 @@ namespace Browy
         public BrowserSpace? ActiveSpace { get; private set; }
         public bool IsInPrivate { get; set; } = false;
         private CoreWebView2Environment? _inPrivateEnvironment;
+        private string? _inPrivateTempFolder;
         private bool _isSplitViewActive = false;
         public SplitViewMode SplitMode { get; private set; } = SplitViewMode.Single;
         private BrowserTab? _splitSecondaryTab = null;
@@ -477,9 +478,9 @@ namespace Browy
             {
                 try
                 {
-                    if (!string.IsNullOrEmpty(_userDataFolder) && Directory.Exists(_userDataFolder))
+                    if (!string.IsNullOrEmpty(_inPrivateTempFolder) && Directory.Exists(_inPrivateTempFolder))
                     {
-                        Directory.Delete(_userDataFolder, true);
+                        Directory.Delete(_inPrivateTempFolder, true);
                     }
                 }
                 catch { }
@@ -720,12 +721,12 @@ namespace Browy
             if (IsInPrivate)
             {
                 if (_inPrivateEnvironment != null) return _inPrivateEnvironment;
-                string tempFolder = Path.Combine(Path.GetTempPath(), $"Browy_InPrivate_{Environment.ProcessId}_{Guid.NewGuid():N}");
-                Directory.CreateDirectory(tempFolder);
+                _inPrivateTempFolder = Path.Combine(Path.GetTempPath(), $"Browy_InPrivate_{Environment.ProcessId}_{Guid.NewGuid():N}");
+                Directory.CreateDirectory(_inPrivateTempFolder);
                 var privOptions = new CoreWebView2EnvironmentOptions(
                     additionalBrowserArguments: "--disable-features=CalculateNativeWinOcclusion,SpareRendererForSitePerProcess --renderer-process-limit=6"
                 );
-                _inPrivateEnvironment = await CoreWebView2Environment.CreateAsync(null, tempFolder, privOptions);
+                _inPrivateEnvironment = await CoreWebView2Environment.CreateAsync(null, _inPrivateTempFolder, privOptions);
                 return _inPrivateEnvironment;
             }
 
@@ -1595,6 +1596,7 @@ namespace Browy
                         if (args.IsSuccess && !tab.IsReaderModeActive && !tab.Url.StartsWith("browy://", StringComparison.OrdinalIgnoreCase))
                         {
                             _ = DetectReaderModeAsync(tab);
+                            _ = PageEnhancementService.ApplyActiveEnhancementsAsync(tab.WebViewInstance.CoreWebView2, tab.Url);
                         }
 
                         // Record in History with fetched favicon if successful navigation
@@ -1771,6 +1773,12 @@ namespace Browy
         public void SwitchToTab(BrowserTab tab)
         {
             if (_activeTab == tab) return;
+
+            var previousTab = _activeTab;
+            if (BrowserSettings.IsFeatureEnabled("experimental_pip_auto", false))
+            {
+                TryTriggerAutoPiP(previousTab, tab);
+            }
 
             foreach (var t in Tabs)
             {
@@ -3652,6 +3660,42 @@ namespace Browy
             closeRight.Click += (s, args) => CloseTabsToRight(tab);
             cm.Items.Add(closeRight);
 
+            // Close Duplicate Tabs
+            var closeDups = new MenuItem
+            {
+                Header = "Close Duplicate Tabs",
+                Icon = new TextBlock { Style = (Style)FindResource("FluentIcon"), Text = "\uE74D", FontSize = 10, Foreground = Brushes.White }
+            };
+            closeDups.Click += (s, args) => CloseDuplicateTabs();
+            cm.Items.Add(closeDups);
+
+            // Move to Space (if multiple spaces exist)
+            if (Spaces.Count > 1)
+            {
+                var moveToSpaceItem = new MenuItem
+                {
+                    Header = "Move to Space",
+                    Icon = new TextBlock { Style = (Style)FindResource("FluentIcon"), Text = "\uE80F", FontSize = 11, Foreground = Brushes.White }
+                };
+
+                foreach (var space in Spaces)
+                {
+                    if (space == ActiveSpace) continue;
+                    var spaceItem = new MenuItem
+                    {
+                        Header = space.Name,
+                        Icon = new TextBlock { Style = (Style)FindResource("FluentIcon"), Text = space.IconGlyph, FontSize = 11, Foreground = Brushes.White }
+                    };
+                    spaceItem.Click += (s, args) => MoveTabToSpace(tab, space);
+                    moveToSpaceItem.Items.Add(spaceItem);
+                }
+
+                if (moveToSpaceItem.Items.Count > 0)
+                {
+                    cm.Items.Add(moveToSpaceItem);
+                }
+            }
+
             cm.PlacementTarget = target;
             cm.IsOpen = true;
         }
@@ -3708,6 +3752,101 @@ namespace Browy
                     t.IsMuted = true;
                 }
             }
+        }
+
+        public void UnmuteAllTabs()
+        {
+            foreach (var t in Tabs)
+            {
+                if (t.WebViewInstance?.CoreWebView2 != null)
+                {
+                    t.WebViewInstance.CoreWebView2.IsMuted = false;
+                    t.IsMuted = false;
+                }
+            }
+        }
+
+        public int CloseDuplicateTabs()
+        {
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var toRemove = new List<BrowserTab>();
+
+            foreach (var t in Tabs)
+            {
+                if (t.IsPinned) continue;
+                string norm = (t.Url ?? "").TrimEnd('/');
+                if (string.IsNullOrWhiteSpace(norm) || norm.Equals("browy://newtab", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (!seen.Add(norm))
+                {
+                    toRemove.Add(t);
+                }
+            }
+
+            int count = 0;
+            foreach (var t in toRemove)
+            {
+                if (t == _activeTab && Tabs.Count > 1)
+                {
+                    continue;
+                }
+                CloseTab(t);
+                count++;
+            }
+
+            if (count > 0)
+            {
+                NotificationService.ShowToast("Tab Cleaner", $"Closed {count} duplicate tab{(count > 1 ? "s" : "")}.");
+            }
+            else
+            {
+                NotificationService.ShowToast("Tab Cleaner", "No duplicate tabs found.");
+            }
+
+            return count;
+        }
+
+        public async void MoveTabToSpace(BrowserTab tab, BrowserSpace targetSpace)
+        {
+            if (tab == null || targetSpace == null || targetSpace == ActiveSpace) return;
+
+            if (tab == _activeTab)
+            {
+                int currentIdx = Tabs.IndexOf(tab);
+                if (Tabs.Count > 1)
+                {
+                    int nextIdx = (currentIdx + 1 < Tabs.Count) ? currentIdx + 1 : currentIdx - 1;
+                    SwitchToTab(Tabs[nextIdx]);
+                }
+                else
+                {
+                    await CreateNewTabAsync(BrowserSettings.Current.StartPageUrl, switchTo: true);
+                }
+            }
+
+            Tabs.Remove(tab);
+            ActiveSpace?.Tabs.Remove(tab);
+
+            if (tab.WebViewInstance != null && WebContentGrid.Children.Contains(tab.WebViewInstance))
+            {
+                WebContentGrid.Children.Remove(tab.WebViewInstance);
+            }
+
+            targetSpace.Tabs.Add(tab);
+            SessionService.SaveSpacesSession(Spaces, ActiveSpace, _activeTab);
+
+            NotificationService.ShowToast("Tab Moved", $"Moved \"{tab.Title}\" to {targetSpace.Name}.");
+        }
+
+        public void MoveActiveTabToNextSpace()
+        {
+            if (Spaces.Count <= 1 || _activeTab == null || ActiveSpace == null) return;
+            int currentSpaceIdx = Spaces.IndexOf(ActiveSpace);
+            int nextSpaceIdx = (currentSpaceIdx + 1) % Spaces.Count;
+            MoveTabToSpace(_activeTab, Spaces[nextSpaceIdx]);
         }
 
         public async void SnoozeTab(BrowserTab tab)
@@ -3795,6 +3934,42 @@ namespace Browy
                 }
             }
             catch { }
+        }
+
+        private async void TryTriggerAutoPiP(BrowserTab? previousTab, BrowserTab nextTab)
+        {
+            if (previousTab?.WebViewInstance?.CoreWebView2 != null && previousTab.IsPlayingAudio)
+            {
+                try
+                {
+                    string script = @"(() => {
+                        const video = document.querySelector('video');
+                        if (video && !video.paused && !document.pictureInPictureElement && document.pictureInPictureEnabled) {
+                            video.requestPictureInPicture();
+                            return true;
+                        }
+                        return false;
+                    })()";
+                    await previousTab.WebViewInstance.CoreWebView2.ExecuteScriptAsync(script);
+                }
+                catch { }
+            }
+
+            if (nextTab?.WebViewInstance?.CoreWebView2 != null)
+            {
+                try
+                {
+                    string script = @"(() => {
+                        if (document.pictureInPictureElement) {
+                            document.exitPictureInPicture();
+                            return true;
+                        }
+                        return false;
+                    })()";
+                    await nextTab.WebViewInstance.CoreWebView2.ExecuteScriptAsync(script);
+                }
+                catch { }
+            }
         }
 
         public async Task<string?> CaptureActiveTabScreenshotBase64Async()

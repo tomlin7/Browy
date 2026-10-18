@@ -45,6 +45,38 @@ namespace Browy.Services
 
         // Experimental Feature Flags (browy://flags)
         public System.Collections.Generic.Dictionary<string, bool> FeatureFlags { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+        // Custom Search Engines & Bangs (browy://searchengines)
+        public System.Collections.Generic.List<SearchEngineItem> SearchEngines { get; set; } = GetDefaultSearchEngines();
+
+        public static System.Collections.Generic.List<SearchEngineItem> GetDefaultSearchEngines()
+        {
+            return new System.Collections.Generic.List<SearchEngineItem>
+            {
+                new() { Name = "Google", Keyword = "!g", QueryUrl = "https://www.google.com/search?q=%s", IsDefault = true, IsBuiltIn = true, IconGlyph = "\uE721" },
+                new() { Name = "DuckDuckGo", Keyword = "!d", QueryUrl = "https://duckduckgo.com/?q=%s", IsDefault = false, IsBuiltIn = true, IconGlyph = "\uE721" },
+                new() { Name = "Bing", Keyword = "!b", QueryUrl = "https://www.bing.com/search?q=%s", IsDefault = false, IsBuiltIn = true, IconGlyph = "\uE721" },
+                new() { Name = "Brave Search", Keyword = "!brave", QueryUrl = "https://search.brave.com/search?q=%s", IsDefault = false, IsBuiltIn = true, IconGlyph = "\uE721" },
+                new() { Name = "Ecosia", Keyword = "!eco", QueryUrl = "https://www.ecosia.org/search?q=%s", IsDefault = false, IsBuiltIn = true, IconGlyph = "\uE721" },
+                new() { Name = "GitHub", Keyword = "!gh", QueryUrl = "https://github.com/search?q=%s", IsDefault = false, IsBuiltIn = true, IconGlyph = "\uE71D" },
+                new() { Name = "YouTube", Keyword = "!yt", QueryUrl = "https://www.youtube.com/results?search_query=%s", IsDefault = false, IsBuiltIn = true, IconGlyph = "\uE714" },
+                new() { Name = "Wikipedia", Keyword = "!w", QueryUrl = "https://en.wikipedia.org/wiki/Special:Search?search=%s", IsDefault = false, IsBuiltIn = true, IconGlyph = "\uE736" },
+                new() { Name = "Stack Overflow", Keyword = "!so", QueryUrl = "https://stackoverflow.com/search?q=%s", IsDefault = false, IsBuiltIn = true, IconGlyph = "\uE943" },
+                new() { Name = "Reddit", Keyword = "!r", QueryUrl = "https://www.reddit.com/search/?q=%s", IsDefault = false, IsBuiltIn = true, IconGlyph = "\uE8BD" },
+                new() { Name = "Kagi", Keyword = "!k", QueryUrl = "https://kagi.com/search?q=%s", IsDefault = false, IsBuiltIn = true, IconGlyph = "\uE721" }
+            };
+        }
+    }
+
+    public class SearchEngineItem
+    {
+        public string Id { get; set; } = Guid.NewGuid().ToString("N");
+        public string Name { get; set; } = string.Empty;
+        public string Keyword { get; set; } = string.Empty; // e.g. "!yt", "!gh", "!w"
+        public string QueryUrl { get; set; } = string.Empty; // e.g. "https://www.youtube.com/results?search_query=%s"
+        public bool IsDefault { get; set; }
+        public bool IsBuiltIn { get; set; }
+        public string IconGlyph { get; set; } = "\uE721";
     }
 
     public static class BrowserSettings

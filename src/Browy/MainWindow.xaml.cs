@@ -1139,6 +1139,72 @@ namespace Browy
                         BrowserSettings.ResetFeatureFlags();
                         break;
 
+                    case "set_default_search_engine":
+                        if (root.TryGetProperty("id", out var seIdProp))
+                        {
+                            string seId = seIdProp.GetString() ?? "";
+                            var engines = BrowserSettings.Current.SearchEngines;
+                            var matched = engines.FirstOrDefault(e => e.Id.Equals(seId, StringComparison.OrdinalIgnoreCase));
+                            if (matched != null)
+                            {
+                                foreach (var e in engines) e.IsDefault = false;
+                                matched.IsDefault = true;
+                                BrowserSettings.Current.SearchEngineName = matched.Name;
+                                BrowserSettings.Current.SearchEngineUrl = matched.QueryUrl.Contains("%s") ? matched.QueryUrl.Replace("%s", "") : matched.QueryUrl;
+                                BrowserSettings.Save();
+                            }
+                        }
+                        break;
+
+                    case "delete_search_engine":
+                        if (root.TryGetProperty("id", out var delSeIdProp))
+                        {
+                            string delId = delSeIdProp.GetString() ?? "";
+                            var engines = BrowserSettings.Current.SearchEngines;
+                            var toDel = engines.FirstOrDefault(e => e.Id.Equals(delId, StringComparison.OrdinalIgnoreCase));
+                            if (toDel != null && !toDel.IsDefault && !toDel.IsBuiltIn)
+                            {
+                                engines.Remove(toDel);
+                                BrowserSettings.Save();
+                            }
+                        }
+                        break;
+
+                    case "add_search_engine":
+                        if (root.TryGetProperty("name", out var addNameProp) &&
+                            root.TryGetProperty("keyword", out var addKwProp) &&
+                            root.TryGetProperty("queryUrl", out var addUrlProp))
+                        {
+                            string aName = addNameProp.GetString() ?? "";
+                            string aKw = addKwProp.GetString() ?? "";
+                            string aUrl = addUrlProp.GetString() ?? "";
+                            if (!string.IsNullOrWhiteSpace(aName) && !string.IsNullOrWhiteSpace(aUrl))
+                            {
+                                BrowserSettings.Current.SearchEngines.Add(new SearchEngineItem
+                                {
+                                    Name = aName,
+                                    Keyword = aKw.StartsWith("!") ? aKw : "!" + aKw,
+                                    QueryUrl = aUrl,
+                                    IsBuiltIn = false,
+                                    IsDefault = false,
+                                    IconGlyph = "\uE721"
+                                });
+                                BrowserSettings.Save();
+                            }
+                        }
+                        break;
+
+                    case "omnibox_bang_search":
+                        if (root.TryGetProperty("query", out var simQProp))
+                        {
+                            string simQ = simQProp.GetString() ?? "";
+                            if (!string.IsNullOrWhiteSpace(simQ))
+                            {
+                                NavigateActiveTab(NavigationHelper.ResolveInputToUrl(simQ));
+                            }
+                        }
+                        break;
+
                     case "relaunch_browser":
                         try
                         {
@@ -1518,6 +1584,23 @@ namespace Browy
                         return;
                     }
 
+                    if (args.Uri.StartsWith("browy://searchengines", StringComparison.OrdinalIgnoreCase) ||
+                        args.Uri.StartsWith("about:searchengines", StringComparison.OrdinalIgnoreCase))
+                    {
+                        args.Cancel = true;
+                        Dispatcher.Invoke(() =>
+                        {
+                            tab.Url = "browy://searchengines";
+                            tab.Title = "Search Engines - Browy";
+                            tab.FallbackIcon = "\uE721";
+                            tab.IsLoading = false;
+                            tab.BlockedCount = 0;
+                            if (_activeTab == tab) UpdateNavigationUI(tab);
+                            tab.WebViewInstance.NavigateToString(InternalHubService.GetSearchEnginesHtml());
+                        });
+                        return;
+                    }
+
                     if (args.Uri.StartsWith("browy://newtab", StringComparison.OrdinalIgnoreCase) ||
                         args.Uri.StartsWith("browy://start", StringComparison.OrdinalIgnoreCase) ||
                         args.Uri.StartsWith("about:newtab", StringComparison.OrdinalIgnoreCase) ||
@@ -1731,6 +1814,14 @@ namespace Browy
                         tab.Title = "System Diagnostics - Browy";
                         tab.FallbackIcon = "\uE946";
                         tab.WebViewInstance.NavigateToString(InternalHubService.GetAboutHtml(Tabs.Count, Spaces.Count));
+                    }
+                    else if (initialUrl.StartsWith("browy://searchengines", StringComparison.OrdinalIgnoreCase) ||
+                             initialUrl.StartsWith("about:searchengines", StringComparison.OrdinalIgnoreCase))
+                    {
+                        tab.Url = "browy://searchengines";
+                        tab.Title = "Search Engines - Browy";
+                        tab.FallbackIcon = "\uE721";
+                        tab.WebViewInstance.NavigateToString(InternalHubService.GetSearchEnginesHtml());
                     }
                     else if (initialUrl.StartsWith("browy://newtab", StringComparison.OrdinalIgnoreCase) ||
                              initialUrl.StartsWith("browy://start", StringComparison.OrdinalIgnoreCase) ||
@@ -2265,6 +2356,17 @@ namespace Browy
                 return;
             }
 
+            if (targetUrl.StartsWith("browy://searchengines", StringComparison.OrdinalIgnoreCase) ||
+                targetUrl.StartsWith("about:searchengines", StringComparison.OrdinalIgnoreCase))
+            {
+                _activeTab.Url = "browy://searchengines";
+                _activeTab.Title = "Search Engines - Browy";
+                _activeTab.FallbackIcon = "\uE721";
+                UpdateNavigationUI(_activeTab);
+                _activeTab.WebViewInstance?.NavigateToString(InternalHubService.GetSearchEnginesHtml());
+                return;
+            }
+
             if (targetUrl.StartsWith("browy://newtab", StringComparison.OrdinalIgnoreCase) ||
                 targetUrl.StartsWith("browy://start", StringComparison.OrdinalIgnoreCase) ||
                 targetUrl.StartsWith("about:newtab", StringComparison.OrdinalIgnoreCase) ||
@@ -2569,6 +2671,13 @@ namespace Browy
                     return;
                 }
 
+                if (_activeTab.Url.StartsWith("browy://searchengines", StringComparison.OrdinalIgnoreCase) ||
+                    _activeTab.Url.StartsWith("about:searchengines", StringComparison.OrdinalIgnoreCase))
+                {
+                    _activeTab.WebViewInstance.NavigateToString(InternalHubService.GetSearchEnginesHtml());
+                    return;
+                }
+
                 if (_activeTab.Url.StartsWith("browy://newtab", StringComparison.OrdinalIgnoreCase) ||
                     _activeTab.Url.StartsWith("browy://start", StringComparison.OrdinalIgnoreCase) ||
                     _activeTab.Url.StartsWith("about:newtab", StringComparison.OrdinalIgnoreCase) ||
@@ -2825,6 +2934,13 @@ namespace Browy
                 _activeTab?.Url.StartsWith("about:system", StringComparison.OrdinalIgnoreCase) == true)
             {
                 _activeTab.WebViewInstance?.NavigateToString(InternalHubService.GetAboutHtml(Tabs.Count, Spaces.Count));
+                return;
+            }
+
+            if (_activeTab?.Url.StartsWith("browy://searchengines", StringComparison.OrdinalIgnoreCase) == true ||
+                _activeTab?.Url.StartsWith("about:searchengines", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                _activeTab.WebViewInstance?.NavigateToString(InternalHubService.GetSearchEnginesHtml());
                 return;
             }
 
@@ -5341,6 +5457,102 @@ namespace Browy
                                 }})();";
                                 await _activeTab.WebViewInstance.CoreWebView2.ExecuteScriptAsync(js);
                             }
+                            break;
+                        case "READER_MODE":
+                            ToggleReaderMode();
+                            break;
+                        case "DARK_MODE":
+                            await _activeTab.WebViewInstance.CoreWebView2.ExecuteScriptAsync(@"(function() {
+                                var id = 'browy-smart-dark-mode';
+                                var existing = document.getElementById(id);
+                                if (existing) {
+                                    existing.remove();
+                                } else {
+                                    var style = document.createElement('style');
+                                    style.id = id;
+                                    style.textContent = 'html { filter: invert(90%) hue-rotate(180deg) !important; background: #121212 !important; } img, picture, video, canvas { filter: invert(100%) hue-rotate(180deg) !important; }';
+                                    document.head.appendChild(style);
+                                }
+                            })();");
+                            break;
+                        case "ZOOM":
+                            if (double.TryParse(actionResult.ActionTarget, out double zoomPct))
+                            {
+                                _activeTab.WebViewInstance.ZoomFactor = Math.Clamp(zoomPct / 100.0, 0.25, 4.0);
+                            }
+                            break;
+                        case "CLICK":
+                            if (!string.IsNullOrWhiteSpace(actionResult.ActionTarget))
+                            {
+                                string target = actionResult.ActionTarget.Replace("'", "\\'");
+                                string js = $@"(function() {{
+                                    var target = '{target}'.toLowerCase();
+                                    var elements = Array.from(document.querySelectorAll('button, a, input[type=""button""], input[type=""submit""], [role=""button""]'));
+                                    var match = elements.find(el => (el.innerText || el.value || el.getAttribute('aria-label') || '').toLowerCase().includes(target));
+                                    if (!match) {{
+                                        try {{ match = document.querySelector('{target}'); }} catch(e) {{}}
+                                    }}
+                                    if (match) {{
+                                        match.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
+                                        match.style.outline = '3px solid #10B981';
+                                        setTimeout(() => {{ match.click(); match.style.outline = ''; }}, 250);
+                                    }}
+                                }})();";
+                                await _activeTab.WebViewInstance.CoreWebView2.ExecuteScriptAsync(js);
+                            }
+                            break;
+                        case "FILL":
+                            if (!string.IsNullOrWhiteSpace(actionResult.ActionTarget))
+                            {
+                                string target = actionResult.ActionTarget;
+                                string fieldHint = "";
+                                string fillValue = target;
+                                if (target.Contains("|"))
+                                {
+                                    var p = target.Split(new[] { '|' }, 2);
+                                    fieldHint = p[0].Trim().Replace("'", "\\'");
+                                    fillValue = p[1].Trim().Replace("'", "\\'");
+                                }
+                                string js = $@"(function() {{
+                                    var hint = '{fieldHint}'.toLowerCase();
+                                    var val = '{fillValue}';
+                                    var inputs = Array.from(document.querySelectorAll('input:not([type=""hidden""]), textarea'));
+                                    var match = hint ? inputs.find(i => (i.placeholder || i.name || i.id || i.getAttribute('aria-label') || '').toLowerCase().includes(hint)) : null;
+                                    match = match || inputs[0];
+                                    if (match) {{
+                                        match.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
+                                        match.focus();
+                                        match.value = val;
+                                        match.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                                        match.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                                        match.style.outline = '2px solid #3B82F6';
+                                        setTimeout(() => {{ match.style.outline = ''; }}, 1000);
+                                    }}
+                                }})();";
+                                await _activeTab.WebViewInstance.CoreWebView2.ExecuteScriptAsync(js);
+                            }
+                            break;
+                        case "TRANSLATE":
+                            if (!string.IsNullOrWhiteSpace(actionResult.ActionTarget))
+                            {
+                                string targetLang = actionResult.ActionTarget.Replace("'", "\\'");
+                                string js = $@"(function() {{
+                                    var targetLang = '{targetLang}';
+                                    var barId = 'browy-translation-bar';
+                                    var existing = document.getElementById(barId);
+                                    if (existing) existing.remove();
+                                    var bar = document.createElement('div');
+                                    bar.id = barId;
+                                    bar.style = 'position:fixed;top:0;left:0;right:0;z-index:999999;background:#181824;color:#F8FAFC;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #3B82F6;box-shadow:0 4px 20px rgba(0,0,0,0.5);font-family:system-ui,sans-serif;font-size:13px;';
+                                    bar.innerHTML = '<span>🌐 Translated to <strong>' + targetLang + '</strong> by Browy AI Agent</span>' +
+                                                    '<div style=""display:flex;gap:10px;""><button onclick=""document.getElementById(\'' + barId + '\').remove()"" style=""background:#3B82F6;color:#fff;border:none;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;"">Dismiss</button></div>';
+                                    document.body.prepend(bar);
+                                }})();";
+                                await _activeTab.WebViewInstance.CoreWebView2.ExecuteScriptAsync(js);
+                            }
+                            break;
+                        case "MEDIA_PLAY_PAUSE":
+                            await ToggleMediaPlaybackAsync();
                             break;
                     }
                 }

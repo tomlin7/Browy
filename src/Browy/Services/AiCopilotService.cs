@@ -321,7 +321,13 @@ namespace Browy.Services
                    $"[BROWY_ACTION: SCROLL_UP]\n" +
                    $"[BROWY_ACTION: NAVIGATE <url>]\n" +
                    $"[BROWY_ACTION: NEWTAB <url>]\n" +
-                   $"[BROWY_ACTION: HIGHLIGHT <text>]\n\n" +
+                   $"[BROWY_ACTION: HIGHLIGHT <text>]\n" +
+                   $"[BROWY_ACTION: CLICK <selector_or_text>]\n" +
+                   $"[BROWY_ACTION: FILL <field_query> | <value>]\n" +
+                   $"[BROWY_ACTION: ZOOM <80|100|125|150>]\n" +
+                   $"[BROWY_ACTION: READER_MODE]\n" +
+                   $"[BROWY_ACTION: TRANSLATE <target_language>]\n" +
+                   $"[BROWY_ACTION: DARK_MODE]\n\n" +
                    $"Answer the user's questions clearly, concisely, and formatting with Markdown.";
         }
 
@@ -363,6 +369,87 @@ namespace Browy.Services
                 {
                     string targetUrl = urlWord.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? urlWord : "https://" + urlWord;
                     return $"Opening `{targetUrl}` in a new tab.\n\n[BROWY_ACTION: NEWTAB {targetUrl}]";
+                }
+            }
+            if (lowerPrompt.Contains("reader mode") || lowerPrompt.Contains("reading mode") || lowerPrompt.Contains("clean view") || lowerPrompt.Contains("distraction free"))
+            {
+                return "Toggled distraction-free Reader Mode.\n\n[BROWY_ACTION: READER_MODE]";
+            }
+            if (lowerPrompt.Contains("dark mode") || lowerPrompt.Contains("night mode") || lowerPrompt.Contains("toggle dark"))
+            {
+                return "Toggled page dark mode.\n\n[BROWY_ACTION: DARK_MODE]";
+            }
+            if (lowerPrompt.StartsWith("zoom in") || lowerPrompt.Contains("zoom 125"))
+            {
+                return "Zoomed in (125%).\n\n[BROWY_ACTION: ZOOM 125]";
+            }
+            if (lowerPrompt.StartsWith("zoom out") || lowerPrompt.Contains("zoom 80"))
+            {
+                return "Zoomed out (80%).\n\n[BROWY_ACTION: ZOOM 80]";
+            }
+            if (lowerPrompt.Contains("zoom reset") || lowerPrompt.Contains("zoom 100"))
+            {
+                return "Reset page zoom to 100%.\n\n[BROWY_ACTION: ZOOM 100]";
+            }
+            if (lowerPrompt.StartsWith("click ") || lowerPrompt.Contains("click on "))
+            {
+                string target = prompt.Replace("click on", "", StringComparison.OrdinalIgnoreCase)
+                                      .Replace("click", "", StringComparison.OrdinalIgnoreCase)
+                                      .Trim(' ', '\'', '"');
+                if (!string.IsNullOrWhiteSpace(target))
+                {
+                    return $"Attempting to click **\"{target}\"** on the page.\n\n[BROWY_ACTION: CLICK {target}]";
+                }
+            }
+            if (lowerPrompt.StartsWith("fill ") || lowerPrompt.StartsWith("type "))
+            {
+                string cleaned = prompt.Replace("fill", "", StringComparison.OrdinalIgnoreCase)
+                                       .Replace("type", "", StringComparison.OrdinalIgnoreCase)
+                                       .Trim();
+                string field = "input";
+                string val = cleaned;
+                if (cleaned.Contains(" with ", StringComparison.OrdinalIgnoreCase))
+                {
+                    var parts = cleaned.Split(new[] { " with " }, StringSplitOptions.RemoveEmptyEntries);
+                    field = parts[0].Trim();
+                    val = parts.Length > 1 ? parts[1].Trim() : "";
+                }
+                else if (cleaned.Contains(" in ", StringComparison.OrdinalIgnoreCase))
+                {
+                    var parts = cleaned.Split(new[] { " in " }, StringSplitOptions.RemoveEmptyEntries);
+                    val = parts[0].Trim();
+                    field = parts.Length > 1 ? parts[1].Trim() : "input";
+                }
+
+                if (!string.IsNullOrWhiteSpace(val))
+                {
+                    return $"Entering \"{val}\" into **{field}** on the page.\n\n[BROWY_ACTION: FILL {field} | {val}]";
+                }
+            }
+            if (lowerPrompt.StartsWith("translate ") || lowerPrompt.Contains("translate this page") || lowerPrompt.Contains("translate to ") || lowerPrompt.Contains("translate into "))
+            {
+                string targetLang = "Spanish";
+                var langMatch = System.Text.RegularExpressions.Regex.Match(prompt, @"(?i)(?:to|into)\s+([A-Za-z]+)");
+                if (langMatch.Success)
+                {
+                    targetLang = char.ToUpper(langMatch.Groups[1].Value[0]) + langMatch.Groups[1].Value.Substring(1).ToLower();
+                }
+
+                return $"### Page Translation ({targetLang})\n\n" +
+                       $"Initiating autonomous translation of **{pageTitle}** into **{targetLang}**.\n\n" +
+                       $"*(Translation processed live via Browy AI Engine)*\n\n" +
+                       $"[BROWY_ACTION: TRANSLATE {targetLang}]";
+            }
+            if (lowerPrompt.StartsWith("search web for ") || lowerPrompt.StartsWith("search for ") || lowerPrompt.StartsWith("google "))
+            {
+                string searchKeyword = prompt.Replace("search web for", "", StringComparison.OrdinalIgnoreCase)
+                                             .Replace("search for", "", StringComparison.OrdinalIgnoreCase)
+                                             .Replace("google", "", StringComparison.OrdinalIgnoreCase)
+                                             .Trim(' ', '\'', '"');
+                if (!string.IsNullOrWhiteSpace(searchKeyword))
+                {
+                    string searchUrl = $"https://www.google.com/search?q={Uri.EscapeDataString(searchKeyword)}";
+                    return $"Searching the web for **\"{searchKeyword}\"**.\n\n[BROWY_ACTION: NEWTAB {searchUrl}]";
                 }
             }
 
@@ -523,6 +610,12 @@ namespace Browy.Services
                     "NAVIGATE" => $"Navigated to {arg}",
                     "NEWTAB" => $"Opened {arg} in new tab",
                     "HIGHLIGHT" => $"Highlighted \"{arg}\" on page",
+                    "CLICK" => $"Clicked \"{arg}\"",
+                    "FILL" => $"Filled form input with \"{arg}\"",
+                    "ZOOM" => $"Set zoom to {arg}%",
+                    "READER_MODE" => "Toggled Reader Mode",
+                    "TRANSLATE" => $"Translated page to {arg}",
+                    "DARK_MODE" => "Toggled page dark mode",
                     _ => $"Executed browser action: {cmd}"
                 };
             }

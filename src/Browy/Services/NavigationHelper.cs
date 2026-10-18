@@ -96,6 +96,15 @@ namespace Browy.Services
                 return "browy://system";
             }
 
+            // Search Engines aliases
+            if (input.Equals("searchengines", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("search", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("browy://searchengines", StringComparison.OrdinalIgnoreCase) ||
+                input.Equals("about:searchengines", StringComparison.OrdinalIgnoreCase))
+            {
+                return "browy://searchengines";
+            }
+
             // New Tab / Start page aliases
             if (input.Equals("newtab", StringComparison.OrdinalIgnoreCase) ||
                 input.Equals("start", StringComparison.OrdinalIgnoreCase) ||
@@ -177,6 +186,34 @@ namespace Browy.Services
         public static string? GetBangSearchUrl(string bang, string query)
         {
             string encoded = Uri.EscapeDataString(query);
+            string cleanBang = bang.TrimStart('!').ToLowerInvariant();
+
+            // First check custom and built-in search engines configured in settings
+            try
+            {
+                var customEngines = BrowserSettings.Current.SearchEngines;
+                if (customEngines != null)
+                {
+                    foreach (var engine in customEngines)
+                    {
+                        if (string.IsNullOrWhiteSpace(engine.Keyword) || string.IsNullOrWhiteSpace(engine.QueryUrl))
+                            continue;
+
+                        string engineBang = engine.Keyword.TrimStart('!').ToLowerInvariant();
+                        if (engineBang.Equals(cleanBang, StringComparison.OrdinalIgnoreCase) ||
+                            engine.Name.Equals(cleanBang, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (engine.QueryUrl.Contains("%s"))
+                            {
+                                return engine.QueryUrl.Replace("%s", encoded);
+                            }
+                            return engine.QueryUrl + encoded;
+                        }
+                    }
+                }
+            }
+            catch { }
+
             return bang switch
             {
                 "g" or "google" => $"https://www.google.com/search?q={encoded}",

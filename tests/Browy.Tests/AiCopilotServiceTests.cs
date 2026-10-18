@@ -158,5 +158,56 @@ namespace Browy.Tests
 
             Assert.Contains("Visual Viewport Snapshot analyzed", result);
         }
+
+        [Theory]
+        [InlineData("translate to German", "TRANSLATE", "German")]
+        [InlineData("translate into Japanese", "TRANSLATE", "Japanese")]
+        [InlineData("zoom in", "ZOOM", "125")]
+        [InlineData("zoom out", "ZOOM", "80")]
+        [InlineData("zoom reset", "ZOOM", "100")]
+        [InlineData("enable reader mode", "READER_MODE", "")]
+        [InlineData("toggle dark mode", "DARK_MODE", "")]
+        [InlineData("click on Submit", "CLICK", "Submit")]
+        [InlineData("fill search with cats", "FILL", "search | cats")]
+        public void GenerateLocalSynthesis_ProducesAdvancedActionDirectives(string prompt, string expectedCommand, string expectedTargetSubstr)
+        {
+            string result = AiCopilotService.GenerateLocalSynthesis(
+                prompt,
+                "Sample page content with search and submit buttons.",
+                "Main • Subheading",
+                "Portal",
+                "https://example.com");
+
+            var action = AiCopilotService.ParseAgentDirectives(result);
+            Assert.True(action.HasAction);
+            Assert.Equal(expectedCommand, action.ActionCommand);
+            if (!string.IsNullOrEmpty(expectedTargetSubstr))
+            {
+                Assert.Contains(expectedTargetSubstr, action.ActionTarget);
+            }
+        }
+
+        [Fact]
+        public void ParseAgentDirectives_ParsesAllActionFeedbackTypes()
+        {
+            var actions = new[]
+            {
+                ("CLICK button", "Clicked \"button\""),
+                ("FILL user | alice", "Filled form input with \"user | alice\""),
+                ("ZOOM 125", "Set zoom to 125%"),
+                ("READER_MODE", "Toggled Reader Mode"),
+                ("TRANSLATE French", "Translated page to French"),
+                ("DARK_MODE", "Toggled page dark mode")
+            };
+
+            foreach (var (directive, expectedFeedback) in actions)
+            {
+                string raw = $"Running action.\n\n[BROWY_ACTION: {directive}]";
+                var parsed = AiCopilotService.ParseAgentDirectives(raw);
+                Assert.True(parsed.HasAction);
+                Assert.Equal(expectedFeedback, parsed.ActionFeedback);
+                Assert.Equal("Running action.", parsed.CleanText);
+            }
+        }
     }
 }

@@ -1428,5 +1428,505 @@ namespace Browy.Services
 </body>
 </html>";
         }
+
+        public static string GetSearchEnginesHtml(IEnumerable<SearchEngineItem>? engines = null)
+        {
+            var settings = BrowserSettings.Current;
+            string accent = settings.AccentColorHex;
+            var list = (engines ?? settings.SearchEngines ?? BrowserSettingsData.GetDefaultSearchEngines()).ToList();
+
+            var cardsSb = new System.Text.StringBuilder();
+            foreach (var item in list)
+            {
+                string id = WebUtility.HtmlEncode(item.Id);
+                string name = WebUtility.HtmlEncode(item.Name);
+                string keyword = WebUtility.HtmlEncode(item.Keyword);
+                string queryUrl = WebUtility.HtmlEncode(item.QueryUrl);
+                string glyph = string.IsNullOrWhiteSpace(item.IconGlyph) ? "&#xE721;" : WebUtility.HtmlEncode(item.IconGlyph);
+                string isDefaultBadge = item.IsDefault
+                    ? "<span class='badge badge-default-active'>Default</span>"
+                    : $"<button class='btn-action' onclick=\"setDefaultEngine('{id}')\">Set as default</button>";
+
+                string deleteBtn = (!item.IsDefault && !item.IsBuiltIn)
+                    ? $"<button class='btn-danger-sm' onclick=\"deleteEngine('{id}')\" title='Remove engine'>&#xE74D;</button>"
+                    : "";
+
+                string testUrl = item.QueryUrl.Contains("%s")
+                    ? item.QueryUrl.Replace("%s", "browy")
+                    : item.QueryUrl + "browy";
+
+                cardsSb.Append($@"
+                <div class='engine-card' data-search='{name.ToLowerInvariant()} {keyword.ToLowerInvariant()}'>
+                    <div class='engine-icon'>{glyph}</div>
+                    <div class='engine-info'>
+                        <div class='engine-name-row'>
+                            <span class='engine-name'>{name}</span>
+                            <span class='bang-pill'>{keyword}</span>
+                            {(item.IsBuiltIn ? "<span class='badge badge-builtin'>Built-in</span>" : "<span class='badge badge-custom'>Custom</span>")}
+                        </div>
+                        <div class='engine-url' title='{queryUrl}'>{queryUrl}</div>
+                    </div>
+                    <div class='engine-actions'>
+                        <button class='btn-action' onclick=""testEngine('{testUrl}')"" title='Test query with ""browy""'>Test</button>
+                        {isDefaultBadge}
+                        {deleteBtn}
+                    </div>
+                </div>");
+            }
+
+            return $@"<!DOCTYPE html>
+<html lang='en'>
+<head>
+  <meta charset='UTF-8'>
+  <title>Search Engines &amp; Bangs - Browy</title>
+  <style>
+    * {{ box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif; }}
+    body {{
+      background: #0D0D12;
+      color: #F8FAFC;
+      min-height: 100vh;
+      padding: 40px 24px 80px;
+      display: flex;
+      justify-content: center;
+    }}
+    .container {{
+      width: 100%;
+      max-width: 900px;
+    }}
+    .header {{
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }}
+    .title-row {{
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }}
+    .icon {{
+      font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+      font-size: 32px;
+      color: {accent};
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      width: 52px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 14px;
+    }}
+    h1 {{
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }}
+    p {{
+      font-size: 13.5px;
+      color: #94A3B8;
+      margin-top: 4px;
+    }}
+    .btn-primary {{
+      background: {accent};
+      color: #FFFFFF;
+      border: none;
+      padding: 9px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: opacity 0.15s ease;
+    }}
+    .btn-primary:hover {{
+      opacity: 0.9;
+    }}
+    .search-row {{
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+    }}
+    .search-input {{
+      flex: 1;
+      background: #14141E;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 10px 16px;
+      color: #F8FAFC;
+      font-size: 13.5px;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }}
+    .search-input:focus {{
+      border-color: {accent};
+      box-shadow: 0 0 0 2px {accent}33;
+    }}
+    .bang-simulator {{
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 24px;
+    }}
+    .sim-title {{
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #F8FAFC;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }}
+    .sim-desc {{
+      font-size: 12.5px;
+      color: #94A3B8;
+      margin-bottom: 12px;
+    }}
+    .sim-form {{
+      display: flex;
+      gap: 10px;
+    }}
+    .sim-input {{
+      flex: 1;
+      background: #181824;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      padding: 8px 14px;
+      color: #F8FAFC;
+      font-size: 13px;
+      font-family: Consolas, monospace;
+      outline: none;
+    }}
+    .sim-input:focus {{
+      border-color: {accent};
+    }}
+    .add-form {{
+      background: #14141E;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 24px;
+      display: none;
+      flex-direction: column;
+      gap: 14px;
+    }}
+    .add-form h2 {{
+      font-size: 16px;
+      font-weight: 600;
+    }}
+    .form-grid {{
+      display: grid;
+      grid-template-columns: 1fr 140px;
+      gap: 12px;
+    }}
+    .form-group {{
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }}
+    .form-group label {{
+      font-size: 12px;
+      color: #94A3B8;
+      font-weight: 500;
+    }}
+    .form-group input {{
+      background: #181824;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: #F8FAFC;
+      font-size: 13px;
+      outline: none;
+    }}
+    .form-group input:focus {{
+      border-color: {accent};
+    }}
+    .form-actions {{
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 6px;
+    }}
+    .btn-secondary {{
+      background: #1F1F2E;
+      color: #CBD5E1;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+    }}
+    .btn-secondary:hover {{
+      background: #28283C;
+      color: #FFFFFF;
+    }}
+    .engines-list {{
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }}
+    .engine-card {{
+      background: #14141E;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }}
+    .engine-card:hover {{
+      background: #181824;
+      border-color: rgba(255, 255, 255, 0.12);
+    }}
+    .engine-icon {{
+      font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+      font-size: 20px;
+      color: {accent};
+      width: 38px;
+      height: 38px;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }}
+    .engine-info {{
+      flex: 1;
+      overflow: hidden;
+    }}
+    .engine-name-row {{
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }}
+    .engine-name {{
+      font-size: 14.5px;
+      font-weight: 600;
+      color: #F8FAFC;
+    }}
+    .bang-pill {{
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 2px 7px;
+      border-radius: 6px;
+      font-family: Consolas, monospace;
+      font-size: 11.5px;
+      color: {accent};
+      font-weight: 600;
+    }}
+    .badge {{
+      font-size: 10.5px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }}
+    .badge-default-active {{
+      background: {accent}2A;
+      color: {accent};
+      border: 1px solid {accent}55;
+    }}
+    .badge-builtin {{
+      background: rgba(148, 163, 184, 0.12);
+      color: #94A3B8;
+    }}
+    .badge-custom {{
+      background: rgba(16, 185, 129, 0.15);
+      color: #34D399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }}
+    .engine-url {{
+      font-size: 12px;
+      color: #64748B;
+      font-family: Consolas, monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }}
+    .engine-actions {{
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }}
+    .btn-action {{
+      background: #1C1C28;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #CBD5E1;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }}
+    .btn-action:hover {{
+      background: #262638;
+      color: #FFFFFF;
+      border-color: rgba(255, 255, 255, 0.18);
+    }}
+    .btn-danger-sm {{
+      background: transparent;
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      color: #F87171;
+      font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }}
+    .btn-danger-sm:hover {{
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.4);
+    }}
+  </style>
+</head>
+<body>
+  <div class='container'>
+    <div class='header'>
+      <div class='title-row'>
+        <div class='icon'>&#xE721;</div>
+        <div>
+          <h1>Search Engines &amp; Bangs</h1>
+          <p>Configure default search providers and instant omnibox bang shortcuts (e.g. <code>!yt</code>, <code>!gh</code>, <code>!w</code>, <code>!ddg</code>)</p>
+        </div>
+      </div>
+      <button class='btn-primary' onclick='toggleAddForm()'>+ Add Search Engine</button>
+    </div>
+
+    <!-- Bang Simulator -->
+    <div class='bang-simulator'>
+      <div class='sim-title'><span style=""font-family: 'Segoe Fluent Icons';"">&#xE768;</span> Test Bang Omnibox Query</div>
+      <div class='sim-desc'>Type a shortcut followed by your search term (e.g., <code>!gh webview2</code> or <code>!yt synthwave</code>) to test instant bang routing:</div>
+      <div class='sim-form'>
+        <input type='text' id='simInput' class='sim-input' placeholder='!gh browy' onkeydown='if(event.key === ""Enter"") runSimSearch()' />
+        <button class='btn-primary' onclick='runSimSearch()'>Go</button>
+      </div>
+    </div>
+
+    <!-- Add Engine Form -->
+    <div class='add-form' id='addForm'>
+      <h2>Add Custom Search Engine</h2>
+      <div class='form-grid'>
+        <div class='form-group'>
+          <label>Engine Name</label>
+          <input type='text' id='engineName' placeholder='e.g. Stack Overflow' />
+        </div>
+        <div class='form-group'>
+          <label>Shortcut / Bang</label>
+          <input type='text' id='engineKeyword' placeholder='!so' />
+        </div>
+      </div>
+      <div class='form-group'>
+        <label>URL with %s in place of query</label>
+        <input type='text' id='engineUrl' placeholder='https://stackoverflow.com/search?q=%s' />
+      </div>
+      <div class='form-actions'>
+        <button class='btn-secondary' onclick='toggleAddForm()'>Cancel</button>
+        <button class='btn-primary' onclick='submitAddEngine()'>Save Engine</button>
+      </div>
+    </div>
+
+    <!-- Search / Filter -->
+    <div class='search-row'>
+      <input type='text' id='searchFilter' class='search-input' placeholder='Filter search engines and shortcuts...' oninput='filterEngines(this.value)' />
+    </div>
+
+    <!-- Engines List -->
+    <div class='engines-list' id='enginesList'>
+      {cardsSb}
+    </div>
+  </div>
+
+  <script>
+    function toggleAddForm() {{
+      var form = document.getElementById('addForm');
+      form.style.display = form.style.display === 'flex' ? 'none' : 'flex';
+      if (form.style.display === 'flex') {{
+        document.getElementById('engineName').focus();
+      }}
+    }}
+
+    function filterEngines(q) {{
+      q = (q || '').toLowerCase().trim();
+      var cards = document.querySelectorAll('.engine-card');
+      cards.forEach(c => {{
+        var text = c.getAttribute('data-search') || '';
+        c.style.display = (!q || text.includes(q)) ? 'flex' : 'none';
+      }});
+    }}
+
+    function setDefaultEngine(id) {{
+      window.chrome.webview.postMessage(JSON.stringify({{
+        action: 'set_default_search_engine',
+        id: id
+      }}));
+      location.reload();
+    }}
+
+    function deleteEngine(id) {{
+      window.chrome.webview.postMessage(JSON.stringify({{
+        action: 'delete_search_engine',
+        id: id
+      }}));
+      location.reload();
+    }}
+
+    function testEngine(url) {{
+      window.chrome.webview.postMessage(JSON.stringify({{
+        action: 'navigate',
+        url: url
+      }}));
+    }}
+
+    function runSimSearch() {{
+      var input = document.getElementById('simInput').value.trim();
+      if (!input) return;
+      window.chrome.webview.postMessage(JSON.stringify({{
+        action: 'omnibox_bang_search',
+        query: input
+      }}));
+    }}
+
+    function submitAddEngine() {{
+      var name = document.getElementById('engineName').value.trim();
+      var keyword = document.getElementById('engineKeyword').value.trim();
+      var url = document.getElementById('engineUrl').value.trim();
+
+      if (!name || !keyword || !url) {{
+        alert('Please fill out all fields.');
+        return;
+      }}
+      if (!keyword.startsWith('!')) {{
+        keyword = '!' + keyword;
+      }}
+
+      window.chrome.webview.postMessage(JSON.stringify({{
+        action: 'add_search_engine',
+        name: name,
+        keyword: keyword,
+        queryUrl: url
+      }}));
+
+      toggleAddForm();
+      location.reload();
+    }}
+  </script>
+</body>
+</html>";
+        }
     }
 }

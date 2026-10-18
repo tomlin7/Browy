@@ -71,5 +71,25 @@ namespace Browy.Tests
             Assert.Equal("https://duckduckgo.com", restored.Tabs[0].Url);
             Assert.Empty(restored.Spaces);
         }
+
+        [Fact]
+        public void SessionTabData_SerializesAndRestoresGroupInfo()
+        {
+            var tab = new SessionTabData
+            {
+                Url = "https://dotnet.microsoft.com",
+                Title = ".NET Documentation",
+                IsActive = true,
+                GroupName = "Dev",
+                GroupColorHex = "#10B981"
+            };
+
+            string json = JsonSerializer.Serialize(tab);
+            var restored = JsonSerializer.Deserialize<SessionTabData>(json);
+
+            Assert.NotNull(restored);
+            Assert.Equal("Dev", restored.GroupName);
+            Assert.Equal("#10B981", restored.GroupColorHex);
+        }
     }
 }

@@ -13,6 +13,8 @@ namespace Browy.Services
         public string Title { get; set; } = string.Empty;
         public bool IsPinned { get; set; } = false;
         public bool IsActive { get; set; } = false;
+        public string? GroupName { get; set; }
+        public string? GroupColorHex { get; set; }
     }
 
     public class SpaceSessionData
@@ -101,7 +103,9 @@ namespace Browy.Services
                                 Url = url,
                                 Title = string.IsNullOrWhiteSpace(tab.Title) ? "New Tab" : tab.Title,
                                 IsPinned = tab.IsPinned,
-                                IsActive = isTabActive
+                                IsActive = isTabActive,
+                                GroupName = tab.GroupName,
+                                GroupColorHex = tab.GroupColorHex
                             });
                         }
 

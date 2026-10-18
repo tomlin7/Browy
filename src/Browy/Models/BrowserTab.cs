@@ -274,6 +274,90 @@ namespace Browy.Models
             set => IsSleeping = value;
         }
 
+        private string? _groupName;
+        public string? GroupName
+        {
+            get => _groupName;
+            set
+            {
+                if (_groupName != value)
+                {
+                    _groupName = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(HasGroup));
+                    OnPropertyChanged(nameof(GroupBrush));
+                }
+            }
+        }
+
+        private string? _groupColorHex;
+        public string? GroupColorHex
+        {
+            get => _groupColorHex;
+            set
+            {
+                if (_groupColorHex != value)
+                {
+                    _groupColorHex = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(GroupBrush));
+                }
+            }
+        }
+
+        public bool HasGroup => !string.IsNullOrWhiteSpace(_groupName);
+
+        public Brush GroupBrush
+        {
+            get
+            {
+                if (!string.IsNullOrEmpty(_groupColorHex))
+                {
+                    try
+                    {
+                        var col = (Color)ColorConverter.ConvertFromString(_groupColorHex);
+                        return new SolidColorBrush(Color.FromArgb(0x40, col.R, col.G, col.B));
+                    }
+                    catch { }
+                }
+                return new SolidColorBrush(Color.FromArgb(0x30, 0x63, 0x66, 0xF1));
+            }
+        }
+
+        public Brush GroupBorderBrush
+        {
+            get
+            {
+                if (!string.IsNullOrEmpty(_groupColorHex))
+                {
+                    try
+                    {
+                        var col = (Color)ColorConverter.ConvertFromString(_groupColorHex);
+                        return new SolidColorBrush(Color.FromArgb(0x80, col.R, col.G, col.B));
+                    }
+                    catch { }
+                }
+                return new SolidColorBrush(Color.FromArgb(0x60, 0x63, 0x66, 0xF1));
+            }
+        }
+
+        public Brush GroupForegroundBrush
+        {
+            get
+            {
+                if (!string.IsNullOrEmpty(_groupColorHex))
+                {
+                    try
+                    {
+                        var col = (Color)ColorConverter.ConvertFromString(_groupColorHex);
+                        return new SolidColorBrush(col);
+                    }
+                    catch { }
+                }
+                return new SolidColorBrush(Color.FromRgb(0xA5, 0xB4, 0xFC));
+            }
+        }
+
         public WebView2? WebViewInstance { get; set; }
 
         public event PropertyChangedEventHandler? PropertyChanged;

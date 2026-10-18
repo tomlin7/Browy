@@ -17,7 +17,9 @@ namespace Browy.Services
             string query,
             IEnumerable<HistoryItem> history,
             IEnumerable<BookmarkItem> bookmarks,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            IEnumerable<BrowserTab>? openTabs = null,
+            IEnumerable<BrowserSpace>? allSpaces = null)
         {
             var results = new List<OmniboxSuggestion>();
             if (string.IsNullOrWhiteSpace(query))
@@ -35,7 +37,46 @@ namespace Browy.Services
             // 1. Add current search query as first item
             results.Add(new OmniboxSuggestion(cleanQuery, null, SuggestionType.Search));
 
-            // 2. Match local Bookmarks
+            // 2. Match Open Tabs (Switch to Tab)
+            if (allSpaces != null)
+            {
+                foreach (var space in allSpaces)
+                {
+                    foreach (var tab in space.Tabs)
+                    {
+                        if (tab.IsActive && space.IsActive) continue;
+                        if ((tab.Title?.Contains(cleanQuery, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                            (tab.Url?.Contains(cleanQuery, StringComparison.OrdinalIgnoreCase) ?? false))
+                        {
+                            results.Add(new OmniboxSuggestion(tab.Title ?? tab.Url ?? "Open Tab", tab.Url, SuggestionType.OpenTab)
+                            {
+                                AssociatedTab = tab,
+                                AssociatedSpace = space
+                            });
+                            if (results.Count(r => r.Type == SuggestionType.OpenTab) >= 2) break;
+                        }
+                    }
+                    if (results.Count(r => r.Type == SuggestionType.OpenTab) >= 2) break;
+                }
+            }
+            else if (openTabs != null)
+            {
+                var matchingTabs = openTabs
+                    .Where(t => !t.IsActive &&
+                               ((t.Title?.Contains(cleanQuery, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                                (t.Url?.Contains(cleanQuery, StringComparison.OrdinalIgnoreCase) ?? false)))
+                    .Take(2);
+
+                foreach (var t in matchingTabs)
+                {
+                    results.Add(new OmniboxSuggestion(t.Title ?? t.Url ?? "Open Tab", t.Url, SuggestionType.OpenTab)
+                    {
+                        AssociatedTab = t
+                    });
+                }
+            }
+
+            // 3. Match local Bookmarks
             var matchingBookmarks = bookmarks
                 .Where(b => (b.Title?.Contains(cleanQuery, StringComparison.OrdinalIgnoreCase) ?? false) ||
                             (b.Url?.Contains(cleanQuery, StringComparison.OrdinalIgnoreCase) ?? false))

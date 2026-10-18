@@ -179,16 +179,41 @@
                                                 </Image>
                                             </Grid>
 
-                                            <!-- Tab Title -->
-                                            <TextBlock x:Name="TabTitleText"
-                                                       Grid.Column="1"
-                                                       Text="{Binding Title}"
-                                                       FontSize="12"
-                                                       FontWeight="Normal"
-                                                       Foreground="#FFFFFF"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       VerticalAlignment="Center"
-                                                       Margin="6,0,4,0"/>
+                                            <!-- Tab Title and Group Tag -->
+                                            <DockPanel Grid.Column="1" VerticalAlignment="Center" Margin="6,0,4,0">
+                                                <Border DockPanel.Dock="Right"
+                                                        CornerRadius="4"
+                                                        Padding="4,1"
+                                                        Margin="4,0,0,0"
+                                                        VerticalAlignment="Center"
+                                                        Background="{Binding GroupBrush}"
+                                                        BorderBrush="{Binding GroupBorderBrush}"
+                                                        BorderThickness="1"
+                                                        ToolTip="{Binding GroupName}">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding HasGroup}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <TextBlock Text="{Binding GroupName}"
+                                                               FontSize="8.5"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{Binding GroupForegroundBrush}"/>
+                                                </Border>
+
+                                                <TextBlock x:Name="TabTitleText"
+                                                           Text="{Binding Title}"
+                                                           FontSize="12"
+                                                           FontWeight="Normal"
+                                                           Foreground="#FFFFFF"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           VerticalAlignment="Center"/>
+                                            </DockPanel>
 
                                             <!-- Pinned Indicator Icon -->
                                             <TextBlock Grid.Column="2"
@@ -580,18 +605,10 @@
                                                     </Image>
                                                 </Grid>
 
-                                                <!-- Tab Title -->
-                                                <TextBlock x:Name="HorizTitleText"
-                                                           Grid.Column="1"
-                                                           Text="{Binding Title}"
-                                                           FontSize="11.5"
-                                                           Foreground="#FFFFFF"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           MaxWidth="130"
-                                                           VerticalAlignment="Center"
-                                                           Margin="6,0,4,0">
-                                                    <TextBlock.Style>
-                                                        <Style TargetType="TextBlock">
+                                                <!-- Tab Title and Group Tag -->
+                                                <DockPanel Grid.Column="1" VerticalAlignment="Center" Margin="6,0,4,0" MaxWidth="140">
+                                                    <DockPanel.Style>
+                                                        <Style TargetType="DockPanel">
                                                             <Setter Property="Visibility" Value="Visible"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsPinned}" Value="True">
@@ -599,8 +616,39 @@
                                                                 </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
-                                                    </TextBlock.Style>
-                                                </TextBlock>
+                                                    </DockPanel.Style>
+                                                    <Border DockPanel.Dock="Right"
+                                                            CornerRadius="4"
+                                                            Padding="3,0"
+                                                            Margin="4,0,0,0"
+                                                            VerticalAlignment="Center"
+                                                            Background="{Binding GroupBrush}"
+                                                            BorderBrush="{Binding GroupBorderBrush}"
+                                                            BorderThickness="1"
+                                                            ToolTip="{Binding GroupName}">
+                                                        <Border.Style>
+                                                            <Style TargetType="Border">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding HasGroup}" Value="True">
+                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Border.Style>
+                                                        <TextBlock Text="{Binding GroupName}"
+                                                                   FontSize="8"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{Binding GroupForegroundBrush}"/>
+                                                    </Border>
+
+                                                    <TextBlock x:Name="HorizTitleText"
+                                                               Text="{Binding Title}"
+                                                               FontSize="11.5"
+                                                               Foreground="#FFFFFF"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               VerticalAlignment="Center"/>
+                                                </DockPanel>
 
                                                 <!-- Audio Playing / Mute Button -->
                                                 <Button Grid.Column="2"

@@ -437,6 +437,8 @@ namespace Browy
                                 var tab = await CreateNewTabAsync(tData.Url, switchTo: isTarget);
                                 tab.IsPinned = tData.IsPinned;
                                 if (!string.IsNullOrWhiteSpace(tData.Title)) tab.Title = tData.Title;
+                                tab.GroupName = tData.GroupName;
+                                tab.GroupColorHex = tData.GroupColorHex;
                             }
                         }
                         else
@@ -447,7 +449,9 @@ namespace Browy
                                 {
                                     Url = tData.Url,
                                     Title = string.IsNullOrWhiteSpace(tData.Title) ? "New Tab" : tData.Title,
-                                    IsPinned = tData.IsPinned
+                                    IsPinned = tData.IsPinned,
+                                    GroupName = tData.GroupName,
+                                    GroupColorHex = tData.GroupColorHex
                                 });
                             }
                         }
@@ -2325,7 +2329,7 @@ namespace Browy
             try
             {
                 await Task.Delay(120, token);
-                var suggestions = await SuggestionService.GetSuggestionsAsync(query, History, Bookmarks, token);
+                var suggestions = await SuggestionService.GetSuggestionsAsync(query, History, Bookmarks, token, openTabs: Tabs, allSpaces: Spaces);
                 if (token.IsCancellationRequested) return;
 
                 OmniboxSuggestions.Clear();
@@ -2395,12 +2399,20 @@ namespace Browy
             }
         }
 
-        private void ExecuteSelectedSuggestion()
+        private async void ExecuteSelectedSuggestion()
         {
             if (OmniboxSuggestionsListBox.SelectedItem is OmniboxSuggestion suggestion)
             {
                 OmniboxSuggestionsPopup.IsOpen = false;
-                if (!string.IsNullOrWhiteSpace(suggestion.Url))
+                if (suggestion.Type == SuggestionType.OpenTab && suggestion.AssociatedTab != null)
+                {
+                    if (suggestion.AssociatedSpace != null && suggestion.AssociatedSpace != ActiveSpace)
+                    {
+                        await SwitchToSpaceAsync(suggestion.AssociatedSpace);
+                    }
+                    SwitchToTab(suggestion.AssociatedTab);
+                }
+                else if (!string.IsNullOrWhiteSpace(suggestion.Url))
                 {
                     NavigateActiveTab(suggestion.Url);
                 }
@@ -2850,12 +2862,20 @@ namespace Browy
         {
             if (_activeTab != null && !string.IsNullOrEmpty(_activeTab.Url))
             {
-                string urlToCopy = _activeTab.Url;
+                string rawUrl = _activeTab.Url;
+                string urlToCopy = rawUrl;
+                bool wasCleaned = false;
                 if (BrowserSettings.IsFeatureEnabled("experimental_smart_copy_cleaner", true))
                 {
-                    urlToCopy = NavigationHelper.CleanTrackingParameters(urlToCopy);
+                    urlToCopy = NavigationHelper.CleanTrackingParameters(rawUrl);
+                    wasCleaned = !string.Equals(urlToCopy, rawUrl, StringComparison.Ordinal);
                 }
                 Clipboard.SetText(urlToCopy);
+
+                NotificationService.ShowToast(
+                    "URL Copied",
+                    wasCleaned ? "Copied clean URL (tracking parameters removed)" : "Link copied to clipboard",
+                    "Browy Clipboard");
             }
         }
 
@@ -3633,6 +3653,63 @@ namespace Browy
             };
             inspectItem.Click += (s, args) => tab.WebViewInstance?.CoreWebView2?.OpenDevToolsWindow();
             cm.Items.Add(inspectItem);
+
+            // Group Tab Tagging
+            var groupTabItem = new MenuItem
+            {
+                Header = "Group Tab",
+                Icon = new TextBlock { Style = (Style)FindResource("FluentIcon"), Text = "\uE8EC", FontSize = 11, Foreground = Brushes.White }
+            };
+
+            var presetGroups = new (string Name, string ColorHex)[]
+            {
+                ("Work", "#3B82F6"),
+                ("Dev", "#10B981"),
+                ("Research", "#8B5CF6"),
+                ("Media", "#F59E0B"),
+                ("Shopping", "#EC4899")
+            };
+
+            foreach (var (gName, gColor) in presetGroups)
+            {
+                var gItem = new MenuItem
+                {
+                    Header = gName,
+                    Icon = new Border
+                    {
+                        Width = 10,
+                        Height = 10,
+                        CornerRadius = new CornerRadius(5),
+                        Background = (Brush)new BrushConverter().ConvertFromString(gColor)!
+                    }
+                };
+                gItem.Click += (s, args) =>
+                {
+                    tab.GroupName = gName;
+                    tab.GroupColorHex = gColor;
+                    SessionService.SaveSpacesSession(Spaces, ActiveSpace, _activeTab);
+                };
+                groupTabItem.Items.Add(gItem);
+            }
+
+            if (!string.IsNullOrEmpty(tab.GroupName))
+            {
+                groupTabItem.Items.Add(new Separator { Background = new SolidColorBrush(Color.FromArgb(0x20, 0xFF, 0xFF, 0xFF)) });
+                var removeGroupItem = new MenuItem
+                {
+                    Header = "Remove from Group",
+                    Icon = new TextBlock { Style = (Style)FindResource("FluentIcon"), Text = "\uE711", FontSize = 10, Foreground = Brushes.White }
+                };
+                removeGroupItem.Click += (s, args) =>
+                {
+                    tab.GroupName = null;
+                    tab.GroupColorHex = null;
+                    SessionService.SaveSpacesSession(Spaces, ActiveSpace, _activeTab);
+                };
+                groupTabItem.Items.Add(removeGroupItem);
+            }
+
+            cm.Items.Add(groupTabItem);
 
             cm.Items.Add(new Separator { Background = new SolidColorBrush(Color.FromArgb(0x20, 0xFF, 0xFF, 0xFF)) });
 

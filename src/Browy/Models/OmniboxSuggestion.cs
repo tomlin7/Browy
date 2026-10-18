@@ -7,7 +7,8 @@ namespace Browy.Models
         Search,
         History,
         Bookmark,
-        Calculator
+        Calculator,
+        OpenTab
     }
 
     public class OmniboxSuggestion
@@ -15,6 +16,8 @@ namespace Browy.Models
         public string Title { get; set; } = string.Empty;
         public string? Url { get; set; }
         public SuggestionType Type { get; set; }
+        public BrowserTab? AssociatedTab { get; set; }
+        public BrowserSpace? AssociatedSpace { get; set; }
 
         public string IconGlyph => Type switch
         {
@@ -22,6 +25,7 @@ namespace Browy.Models
             SuggestionType.History => "\uE81C",
             SuggestionType.Bookmark => "\uE734",
             SuggestionType.Calculator => "\uE947",
+            SuggestionType.OpenTab => "\uE7C3",
             _ => "\uE721"
         };
 
@@ -31,6 +35,7 @@ namespace Browy.Models
             SuggestionType.History => "History",
             SuggestionType.Bookmark => "Bookmark",
             SuggestionType.Calculator => "Calculation",
+            SuggestionType.OpenTab => "Switch to Tab",
             _ => ""
         };
 

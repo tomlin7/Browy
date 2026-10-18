@@ -49,5 +49,28 @@ namespace Browy.Tests
             tab.IsMuted = false;
             Assert.False(tab.ShowsAudioButton);
         }
+
+        [Fact]
+        public void TabGrouping_UpdatesHasGroupAndBrushes()
+        {
+            var tab = new BrowserTab();
+            Assert.False(tab.HasGroup);
+            Assert.Null(tab.GroupName);
+            Assert.Null(tab.GroupColorHex);
+
+            tab.GroupName = "Research";
+            tab.GroupColorHex = "#8B5CF6";
+
+            Assert.True(tab.HasGroup);
+            Assert.Equal("Research", tab.GroupName);
+            Assert.Equal("#8B5CF6", tab.GroupColorHex);
+            Assert.NotNull(tab.GroupBrush);
+            Assert.NotNull(tab.GroupBorderBrush);
+            Assert.NotNull(tab.GroupForegroundBrush);
+
+            tab.GroupName = null;
+            tab.GroupColorHex = null;
+            Assert.False(tab.HasGroup);
+        }
     }
 }

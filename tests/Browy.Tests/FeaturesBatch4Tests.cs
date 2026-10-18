@@ -41,7 +41,7 @@ namespace Browy.Tests
             string html = InternalHubService.GetAboutHtml(tabsCount: 4, spacesCount: 2);
 
             Assert.Contains("About Browy", html);
-            Assert.Contains("v0.2.0", html);
+            Assert.Contains("v0.3.0", html);
             Assert.Contains("Operating System & Shell", html);
             Assert.Contains("Runtime & Web Engine", html);
             Assert.Contains("Memory & Performance", html);

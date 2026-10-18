@@ -762,7 +762,7 @@ namespace Browy.Services
         public static string GetAboutHtml(int tabsCount = 1, int spacesCount = 1)
         {
             var settings = BrowserSettings.Current;
-            string version = "0.2.0";
+            string version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.3.0";
             string osDesc = RuntimeInformation.OSDescription;
             string frameworkDesc = RuntimeInformation.FrameworkDescription;
             string arch = RuntimeInformation.ProcessArchitecture.ToString();

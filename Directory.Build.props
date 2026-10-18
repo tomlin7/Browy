@@ -1,0 +1,17 @@
+<Project>
+  <PropertyGroup>
+    <!-- Centralized Versioning -->
+    <VersionPrefix>0.3.0</VersionPrefix>
+    <VersionSuffix Condition="'$(Configuration)' == 'Debug'">preview</VersionSuffix>
+
+    <!-- Package & Assembly Metadata -->
+    <Authors>Tomlin &amp; Browy Contributors</Authors>
+    <Company>Browy</Company>
+    <Product>Browy Browser</Product>
+    <Description>Modern Arc/Zen-inspired Windows 11 browser built with .NET 9 and Microsoft Edge WebView2.</Description>
+    <Copyright>Copyright © 2026 Browy Contributors</Copyright>
+    <RepositoryUrl>https://github.com/tomlin7/Browy</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+</Project>

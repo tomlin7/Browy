@@ -62,23 +62,27 @@ namespace Browy.Tests
             string wwwDir = Path.Combine(repoRoot, "www");
             Assert.True(Directory.Exists(wwwDir), "www/ directory must exist at repo root.");
 
+            string packageJsonPath = Path.Combine(wwwDir, "package.json");
             string indexPath = Path.Combine(wwwDir, "index.html");
-            string stylePath = Path.Combine(wwwDir, "style.css");
-            string scriptPath = Path.Combine(wwwDir, "script.js");
+            string appTsxPath = Path.Combine(wwwDir, "src", "App.tsx");
 
+            Assert.True(File.Exists(packageJsonPath), "www/package.json must exist.");
             Assert.True(File.Exists(indexPath), "www/index.html must exist.");
-            Assert.True(File.Exists(stylePath), "www/style.css must exist.");
-            Assert.True(File.Exists(scriptPath), "www/script.js must exist.");
+            Assert.True(File.Exists(appTsxPath), "www/src/App.tsx must exist.");
 
-            string html = File.ReadAllText(indexPath);
-            Assert.Contains("Browy", html);
-            Assert.Contains("AI-Native", html);
-            Assert.Contains("Autonomous AI Copilot", html);
-            Assert.Contains("Spaces", html);
-            Assert.Contains("Download", html);
-            Assert.Contains("Benchmarks", html);
-            Assert.Contains("FAQ", html);
-            Assert.Contains("github.com/tomlin7/Browy", html);
+            string packageJson = File.ReadAllText(packageJsonPath);
+            Assert.Contains("tailwindcss", packageJson);
+            Assert.Contains("lucide-react", packageJson);
+
+            string appTsx = File.ReadAllText(appTsxPath);
+            Assert.Contains("Browy", appTsx);
+            Assert.Contains("AI-Native", appTsx);
+            Assert.Contains("Autonomous AI Copilot", appTsx);
+            Assert.Contains("Spaces", appTsx);
+            Assert.Contains("Download", appTsx);
+            Assert.Contains("Benchmarks", appTsx);
+            Assert.Contains("FAQ", appTsx);
+            Assert.Contains("github.com/tomlin7/Browy", appTsx);
         }
 
         [Fact]

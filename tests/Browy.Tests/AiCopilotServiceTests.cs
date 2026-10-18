@@ -71,5 +71,92 @@ namespace Browy.Tests
                 BrowserSettings.Current.OpenAiApiKey = originalKey;
             }
         }
+
+        [Fact]
+        public void ParseAgentDirectives_ParsesActionCommandsAndCleansText()
+        {
+            string raw = "I will scroll down for you.\n\n[BROWY_ACTION: SCROLL_DOWN]";
+            var action = AiCopilotService.ParseAgentDirectives(raw);
+
+            Assert.True(action.HasAction);
+            Assert.Equal("SCROLL_DOWN", action.ActionCommand);
+            Assert.Equal("Scrolled page down", action.ActionFeedback);
+            Assert.DoesNotContain("[BROWY_ACTION", action.CleanText);
+            Assert.Equal("I will scroll down for you.", action.CleanText);
+        }
+
+        [Fact]
+        public void ParseAgentDirectives_ParsesParameterizedHighlightAndNavigate()
+        {
+            string rawHighlight = "Found occurrences of performance.\n\n[BROWY_ACTION: HIGHLIGHT performance]";
+            var hlAction = AiCopilotService.ParseAgentDirectives(rawHighlight);
+            Assert.True(hlAction.HasAction);
+            Assert.Equal("HIGHLIGHT", hlAction.ActionCommand);
+            Assert.Equal("performance", hlAction.ActionTarget);
+            Assert.Equal("Highlighted \"performance\" on page", hlAction.ActionFeedback);
+
+            string rawNav = "Navigating to GitHub.\n\n[BROWY_ACTION: NAVIGATE https://github.com]";
+            var navAction = AiCopilotService.ParseAgentDirectives(rawNav);
+            Assert.True(navAction.HasAction);
+            Assert.Equal("NAVIGATE", navAction.ActionCommand);
+            Assert.Equal("https://github.com", navAction.ActionTarget);
+            Assert.Equal("Navigated to https://github.com", navAction.ActionFeedback);
+        }
+
+        [Fact]
+        public void GenerateLocalSynthesis_SpecializesForAgentPersonas()
+        {
+            // Code Analyst
+            string codeResult = AiCopilotService.GenerateLocalSynthesis(
+                "audit this page",
+                "body text with scripts",
+                "Header 1 • Header 2",
+                "Tech Blog",
+                "https://tech.io/article",
+                persona: "Code Analyst");
+
+            Assert.Contains("Code Analyst", codeResult);
+            Assert.Contains("Technical DOM Analysis", codeResult);
+            Assert.Contains("javascript", codeResult);
+
+            // Deep Research
+            string researchResult = AiCopilotService.GenerateLocalSynthesis(
+                "analyze research claims",
+                "Research paper text comparing algorithms.",
+                "Abstract • Methodology • Results",
+                "Paper Title",
+                "https://arxiv.org/abs/1234",
+                persona: "Deep Research");
+
+            Assert.Contains("Deep Research Synthesis", researchResult);
+            Assert.Contains("Source Authority", researchResult);
+
+            // Content Explainer
+            string explainerResult = AiCopilotService.GenerateLocalSynthesis(
+                "explain this simply",
+                "Complex quantum mechanics paper",
+                "Qubits • Entanglement",
+                "Quantum Computing",
+                "https://nature.com/articles/qc",
+                persona: "Content Explainer");
+
+            Assert.Contains("Plain English Explanation", explainerResult);
+            Assert.Contains("The Big Picture", explainerResult);
+        }
+
+        [Fact]
+        public void GenerateLocalSynthesis_IncludesScreenshotNotice_WhenSnapshotPresent()
+        {
+            string fakeBase64 = new string('A', 4096);
+            string result = AiCopilotService.GenerateLocalSynthesis(
+                "summarize page",
+                "Text content",
+                "Headings",
+                "Test Page",
+                "https://example.com",
+                screenshotBase64: fakeBase64);
+
+            Assert.Contains("Visual Viewport Snapshot analyzed", result);
+        }
     }
 }

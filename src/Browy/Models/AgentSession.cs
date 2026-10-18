@@ -62,12 +62,45 @@ namespace Browy.Models
             }
         }
 
-        public AgentSession(string name, string status, string icon, bool isActive = false)
+        private string? _systemInstruction;
+        public string? SystemInstruction
+        {
+            get => _systemInstruction;
+            set
+            {
+                if (_systemInstruction != value)
+                {
+                    _systemInstruction = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        private string[] _suggestedPrompts = System.Array.Empty<string>();
+        public string[] SuggestedPrompts
+        {
+            get => _suggestedPrompts;
+            set
+            {
+                if (_suggestedPrompts != value)
+                {
+                    _suggestedPrompts = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public AgentSession(string name, string status, string icon, bool isActive = false, string? systemInstruction = null, string[]? suggestedPrompts = null)
         {
             _name = name;
             _status = status;
             _icon = icon;
             _isActive = isActive;
+            _systemInstruction = systemInstruction;
+            if (suggestedPrompts != null)
+            {
+                _suggestedPrompts = suggestedPrompts;
+            }
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

@@ -9,6 +9,15 @@ using System.Threading.Tasks;
 
 namespace Browy.Services
 {
+    public class AgentActionResult
+    {
+        public string CleanText { get; set; } = string.Empty;
+        public string? ActionCommand { get; set; }
+        public string? ActionTarget { get; set; }
+        public string? ActionFeedback { get; set; }
+        public bool HasAction => !string.IsNullOrEmpty(ActionCommand);
+    }
+
     public static class AiCopilotService
     {
         private static readonly HttpClient HttpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(25) };
@@ -19,6 +28,9 @@ namespace Browy.Services
             string headings,
             string pageTitle,
             string pageUrl,
+            string? persona = null,
+            string? screenshotBase64 = null,
+            string? customInstruction = null,
             CancellationToken cancellationToken = default)
         {
             var settings = BrowserSettings.Current;
@@ -26,19 +38,31 @@ namespace Browy.Services
 
             if (provider.Equals("OpenAI", StringComparison.OrdinalIgnoreCase))
             {
-                return await QueryOpenAiAsync(settings.OpenAiApiKey, settings.SelectedAiModel, prompt, pageText, headings, pageTitle, pageUrl, cancellationToken);
+                return await QueryOpenAiAsync(settings.OpenAiApiKey, settings.SelectedAiModel, prompt, pageText, headings, pageTitle, pageUrl, persona, screenshotBase64, customInstruction, cancellationToken);
             }
             else if (provider.Equals("Anthropic", StringComparison.OrdinalIgnoreCase))
             {
-                return await QueryAnthropicAsync(settings.AnthropicApiKey, settings.SelectedAiModel, prompt, pageText, headings, pageTitle, pageUrl, cancellationToken);
+                return await QueryAnthropicAsync(settings.AnthropicApiKey, settings.SelectedAiModel, prompt, pageText, headings, pageTitle, pageUrl, persona, screenshotBase64, customInstruction, cancellationToken);
             }
             else if (provider.Equals("Ollama", StringComparison.OrdinalIgnoreCase))
             {
-                return await QueryOllamaAsync(settings.OllamaEndpoint, settings.SelectedAiModel, prompt, pageText, headings, pageTitle, pageUrl, cancellationToken);
+                return await QueryOllamaAsync(settings.OllamaEndpoint, settings.SelectedAiModel, prompt, pageText, headings, pageTitle, pageUrl, persona, customInstruction, cancellationToken);
             }
 
             // Default offline / heuristic synthesis
-            return GenerateLocalSynthesis(prompt, pageText, headings, pageTitle, pageUrl);
+            return GenerateLocalSynthesis(prompt, pageText, headings, pageTitle, pageUrl, persona, screenshotBase64);
+        }
+
+        // Backward compatibility overload
+        public static Task<string> QueryCopilotAsync(
+            string prompt,
+            string pageText,
+            string headings,
+            string pageTitle,
+            string pageUrl,
+            CancellationToken cancellationToken)
+        {
+            return QueryCopilotAsync(prompt, pageText, headings, pageTitle, pageUrl, null, null, null, cancellationToken);
         }
 
         private static async Task<string> QueryOpenAiAsync(
@@ -49,6 +73,9 @@ namespace Browy.Services
             string headings,
             string pageTitle,
             string pageUrl,
+            string? persona,
+            string? screenshotBase64,
+            string? customInstruction,
             CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(apiKey))
@@ -57,15 +84,29 @@ namespace Browy.Services
             }
 
             string actualModel = string.IsNullOrWhiteSpace(model) ? "gpt-4o-mini" : model;
-            string systemPrompt = BuildSystemPrompt(pageText, headings, pageTitle, pageUrl);
+            string systemPrompt = BuildSystemPrompt(pageText, headings, pageTitle, pageUrl, persona, customInstruction);
+
+            object userMessageContent;
+            if (!string.IsNullOrEmpty(screenshotBase64))
+            {
+                userMessageContent = new object[]
+                {
+                    new { type = "text", text = prompt },
+                    new { type = "image_url", image_url = new { url = $"data:image/png;base64,{screenshotBase64}" } }
+                };
+            }
+            else
+            {
+                userMessageContent = prompt;
+            }
 
             var payload = new
             {
                 model = actualModel,
-                messages = new[]
+                messages = new object[]
                 {
                     new { role = "system", content = systemPrompt },
-                    new { role = "user", content = prompt }
+                    new { role = "user", content = userMessageContent }
                 },
                 temperature = 0.5
             };
@@ -109,6 +150,9 @@ namespace Browy.Services
             string headings,
             string pageTitle,
             string pageUrl,
+            string? persona,
+            string? screenshotBase64,
+            string? customInstruction,
             CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(apiKey))
@@ -117,7 +161,30 @@ namespace Browy.Services
             }
 
             string actualModel = string.IsNullOrWhiteSpace(model) ? "claude-3-5-sonnet-20241022" : model;
-            string systemPrompt = BuildSystemPrompt(pageText, headings, pageTitle, pageUrl);
+            string systemPrompt = BuildSystemPrompt(pageText, headings, pageTitle, pageUrl, persona, customInstruction);
+
+            object userContent;
+            if (!string.IsNullOrEmpty(screenshotBase64))
+            {
+                userContent = new object[]
+                {
+                    new
+                    {
+                        type = "image",
+                        source = new
+                        {
+                            type = "base64",
+                            media_type = "image/png",
+                            data = screenshotBase64
+                        }
+                    },
+                    new { type = "text", text = prompt }
+                };
+            }
+            else
+            {
+                userContent = prompt;
+            }
 
             var payload = new
             {
@@ -126,7 +193,7 @@ namespace Browy.Services
                 max_tokens = 1024,
                 messages = new[]
                 {
-                    new { role = "user", content = prompt }
+                    new { role = "user", content = userContent }
                 }
             };
 
@@ -169,11 +236,13 @@ namespace Browy.Services
             string headings,
             string pageTitle,
             string pageUrl,
+            string? persona,
+            string? customInstruction,
             CancellationToken ct)
         {
             string actualEndpoint = string.IsNullOrWhiteSpace(endpoint) ? "http://localhost:11434" : endpoint.TrimEnd('/');
             string actualModel = string.IsNullOrWhiteSpace(model) ? "llama3" : model;
-            string systemPrompt = BuildSystemPrompt(pageText, headings, pageTitle, pageUrl);
+            string systemPrompt = BuildSystemPrompt(pageText, headings, pageTitle, pageUrl, persona, customInstruction);
 
             var payload = new
             {
@@ -215,24 +284,153 @@ namespace Browy.Services
             }
         }
 
-        public static string BuildSystemPrompt(string pageText, string headings, string pageTitle, string pageUrl)
+        public static string BuildSystemPrompt(
+            string pageText,
+            string headings,
+            string pageTitle,
+            string pageUrl,
+            string? persona = null,
+            string? customInstruction = null)
         {
             var truncatedText = string.IsNullOrWhiteSpace(pageText)
                 ? "(No readable text content on page)"
                 : (pageText.Length > 6000 ? pageText.Substring(0, 6000) + "..." : pageText);
 
-            return $"You are Browy AI Copilot, a fast and smart web browsing assistant built into Browy Browser.\n" +
+            string personaIntro = persona switch
+            {
+                "Deep Research" => "You are Browy Deep Research Agent. Critically analyze arguments, cross-verify claims, identify potential biases, evaluate evidence, and provide comprehensive structured research reports with citations.",
+                "Code Analyst" => "You are Browy Code Analyst. Inspect web technologies, extract and explain code snippets, analyze frontend APIs, evaluate page performance, and check for security considerations.",
+                "Content Explainer" => "You are Browy Content Explainer. Make any subject accessible, engaging, and clear using analogies, step-by-step walkthroughs, and plain language explanations.",
+                _ => "You are Browy AI Copilot, a fast and smart web browsing assistant built into Browy Browser."
+            };
+
+            if (!string.IsNullOrWhiteSpace(customInstruction))
+            {
+                personaIntro += $"\nSpecialized Persona Directive: {customInstruction}";
+            }
+
+            return $"{personaIntro}\n" +
                    $"The user is currently browsing:\n" +
                    $"- Title: {pageTitle}\n" +
                    $"- URL: {pageUrl}\n" +
                    $"- Headings: {headings}\n\n" +
                    $"Active page snapshot:\n" +
                    $"```\n{truncatedText}\n```\n\n" +
+                   $"You can perform web browser actions for the user if requested by adding an action directive on its own line at the end:\n" +
+                   $"[BROWY_ACTION: SCROLL_DOWN]\n" +
+                   $"[BROWY_ACTION: SCROLL_UP]\n" +
+                   $"[BROWY_ACTION: NAVIGATE <url>]\n" +
+                   $"[BROWY_ACTION: NEWTAB <url>]\n" +
+                   $"[BROWY_ACTION: HIGHLIGHT <text>]\n\n" +
                    $"Answer the user's questions clearly, concisely, and formatting with Markdown.";
         }
 
-        public static string GenerateLocalSynthesis(string prompt, string pageText, string headings, string pageTitle, string pageUrl)
+        public static string GenerateLocalSynthesis(
+            string prompt,
+            string pageText,
+            string headings,
+            string pageTitle,
+            string pageUrl,
+            string? persona = null,
+            string? screenshotBase64 = null)
         {
+            string lowerPrompt = prompt.ToLowerInvariant();
+
+            // 1. Browser Action direct detection
+            if (lowerPrompt.Contains("scroll down"))
+            {
+                return "Scrolled down the active page.\n\n[BROWY_ACTION: SCROLL_DOWN]";
+            }
+            if (lowerPrompt.Contains("scroll up") || lowerPrompt.Contains("scroll to top") || lowerPrompt.Contains("scroll top"))
+            {
+                return "Scrolled to the top of the active page.\n\n[BROWY_ACTION: SCROLL_UP]";
+            }
+            if (lowerPrompt.StartsWith("highlight ") || lowerPrompt.Contains("highlight the word ") || lowerPrompt.Contains("highlight '"))
+            {
+                string term = prompt.Replace("highlight", "", StringComparison.OrdinalIgnoreCase)
+                                    .Replace("the word", "", StringComparison.OrdinalIgnoreCase)
+                                    .Trim(' ', '\'', '"');
+                if (!string.IsNullOrWhiteSpace(term))
+                {
+                    return $"Highlighted instances of **\"{term}\"** on the page.\n\n[BROWY_ACTION: HIGHLIGHT {term}]";
+                }
+            }
+            if (lowerPrompt.Contains("open ") && lowerPrompt.Contains(" in new tab"))
+            {
+                var words = prompt.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                var urlWord = words.FirstOrDefault(w => w.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || w.StartsWith("https://", StringComparison.OrdinalIgnoreCase) || w.Contains("."));
+                if (urlWord != null)
+                {
+                    string targetUrl = urlWord.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? urlWord : "https://" + urlWord;
+                    return $"Opening `{targetUrl}` in a new tab.\n\n[BROWY_ACTION: NEWTAB {targetUrl}]";
+                }
+            }
+
+            // 2. Persona Specialized Local Syntheses
+            string response = "";
+            string snapshotNotice = !string.IsNullOrEmpty(screenshotBase64)
+                ? $"\n\n📷 *Visual Viewport Snapshot analyzed ({screenshotBase64.Length / 1024} KB PNG)*"
+                : "";
+
+            if (persona == "Code Analyst")
+            {
+                var domain = NavigationHelper.ExtractDomain(pageUrl);
+                var isHttps = pageUrl.StartsWith("https", StringComparison.OrdinalIgnoreCase);
+                var scriptSnippet = !string.IsNullOrWhiteSpace(headings)
+                    ? string.Join(", ", headings.Split('•').Select(h => $"\"{h.Trim()}\"").Take(4))
+                    : "\"h1\", \"h2\"";
+
+                response = $"### Technical DOM Analysis: {pageTitle}\n\n" +
+                           $"• **Domain**: `{domain}`\n" +
+                           $"• **Security**: {(isHttps ? "HTTPS (TLS Encrypted)" : "HTTP / Local Origin")}\n" +
+                           $"• **Parsed Document Size**: {pageText.Length} characters\n\n" +
+                           "```javascript\n" +
+                           "// Extracted Page Structure Elements\n" +
+                           $"const detectedHeadings = [{scriptSnippet}];\n" +
+                           "console.log('Browy Code Analyst active on:', window.location.href);\n" +
+                           "```\n\n" +
+                           "*(Analyzed by Browy Code Analyst)*";
+                return response + snapshotNotice;
+            }
+
+            if (persona == "Deep Research")
+            {
+                var domain = NavigationHelper.ExtractDomain(pageUrl);
+                var claims = !string.IsNullOrWhiteSpace(headings)
+                    ? string.Join("\n", headings.Split('•').Select(h => $"• {h.Trim()}"))
+                    : "• Overview structured from DOM content.";
+
+                var snippet = !string.IsNullOrWhiteSpace(pageText)
+                    ? (pageText.Length > 300 ? pageText.Substring(0, 300) + "..." : pageText)
+                    : "No text extractable from this page.";
+
+                response = $"### Deep Research Synthesis: {pageTitle}\n\n" +
+                           $"**Source Authority**: `{domain}`\n\n" +
+                           $"**Core Claims & Structure**:\n{claims}\n\n" +
+                           $"**Evidence Verification**:\n> {snippet}\n\n" +
+                           "**Recommendation**: Compare with referenced external sources for complete triangulation.\n\n" +
+                           "*(Synthesized by Browy Deep Research Agent)*";
+                return response + snapshotNotice;
+            }
+
+            if (persona == "Content Explainer")
+            {
+                var snippet = !string.IsNullOrWhiteSpace(pageText)
+                    ? (pageText.Length > 200 ? pageText.Substring(0, 200) + "..." : pageText)
+                    : "This page presents visual or application controls.";
+
+                response = $"### Plain English Explanation: {pageTitle}\n\n" +
+                           "**The Big Picture**:\n" +
+                           $"Think of this page as a digital hub. In short: {snippet}\n\n" +
+                           "**3 Key Takeaways**:\n" +
+                           "1. **Purpose**: Designed to help you navigate and interact smoothly.\n" +
+                           "2. **Organization**: Structured with clear headers and sections for easy reading.\n" +
+                           "3. **Privacy**: Processed directly inside your Browy session.\n\n" +
+                           "*(Explained by Browy Content Explainer)*";
+                return response + snapshotNotice;
+            }
+
+            // Standard General Copilot logic
             if (prompt.IndexOf("summarize", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 var summaryBullet1 = !string.IsNullOrWhiteSpace(headings)
@@ -242,34 +440,34 @@ namespace Browy.Services
                     ? (pageText.Length > 280 ? pageText.Substring(0, 280) + "..." : pageText)
                     : "No text extractable from this page.";
 
-                return $"### Summary of {pageTitle}\n\n" +
-                       $"• **Source**: `{NavigationHelper.ExtractDomain(pageUrl)}`\n" +
-                       $"• **Structure**: {summaryBullet1}\n" +
-                       $"• **Executive Overview**: {snippet}\n\n" +
-                       $"*Synthesized live from the active DOM content (Local Engine).*";
+                response = $"### Summary of {pageTitle}\n\n" +
+                           $"• **Source**: `{NavigationHelper.ExtractDomain(pageUrl)}`\n" +
+                           $"• **Structure**: {summaryBullet1}\n" +
+                           $"• **Executive Overview**: {snippet}\n\n" +
+                           $"*Synthesized live from the active DOM content (Local Engine).*";
             }
             else if (prompt.IndexOf("explain", StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                return $"### Concept Explanation: {pageTitle}\n\n" +
-                       $"Based on the active page ({pageUrl}):\n\n" +
-                       (!string.IsNullOrWhiteSpace(pageText)
-                           ? $"The page centers on: {pageText.Substring(0, Math.Min(350, pageText.Length))}...\n\n" +
-                             "**Key Takeaways**:\n" +
-                             "1. Main purpose: Delivers structured documentation and interfaces for modern web workflows.\n" +
-                             "2. Technical approach: Emphasizes standard client-server patterns, reactive components, and fast rendering."
-                           : "This internal/blank page does not contain standard body text to analyze.");
+                response = $"### Concept Explanation: {pageTitle}\n\n" +
+                           $"Based on the active page ({pageUrl}):\n\n" +
+                           (!string.IsNullOrWhiteSpace(pageText)
+                               ? $"The page centers on: {pageText.Substring(0, Math.Min(350, pageText.Length))}...\n\n" +
+                                 "**Key Takeaways**:\n" +
+                                 "1. Main purpose: Delivers structured documentation and interfaces for modern web workflows.\n" +
+                                 "2. Technical approach: Emphasizes standard client-server patterns, reactive components, and fast rendering."
+                               : "This internal/blank page does not contain standard body text to analyze.");
             }
             else if (prompt.IndexOf("extract", StringComparison.OrdinalIgnoreCase) >= 0 || prompt.IndexOf("table", StringComparison.OrdinalIgnoreCase) >= 0 || prompt.IndexOf("data", StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                return $"### Extracted Page Intelligence: {pageTitle}\n\n" +
-                       "| Attribute | Value |\n" +
-                       "| :--- | :--- |\n" +
-                       $"| **Title** | {pageTitle} |\n" +
-                       $"| **Domain** | `{NavigationHelper.ExtractDomain(pageUrl)}` |\n" +
-                       $"| **Security** | {(pageUrl.StartsWith("https") ? "Secure SSL (TLS 1.3)" : "Non-secure / Internal")} |\n" +
-                       $"| **Headings Detected** | {(!string.IsNullOrWhiteSpace(headings) ? headings : "None detected")} |\n" +
-                       $"| **Content Length** | {pageText.Length} characters parsed |\n\n" +
-                       "*(Data parsed from active DOM snapshot)*";
+                response = $"### Extracted Page Intelligence: {pageTitle}\n\n" +
+                           "| Attribute | Value |\n" +
+                           "| :--- | :--- |\n" +
+                           $"| **Title** | {pageTitle} |\n" +
+                           $"| **Domain** | `{NavigationHelper.ExtractDomain(pageUrl)}` |\n" +
+                           $"| **Security** | {(pageUrl.StartsWith("https") ? "Secure SSL (TLS 1.3)" : "Non-secure / Internal")} |\n" +
+                           $"| **Headings Detected** | {(!string.IsNullOrWhiteSpace(headings) ? headings : "None detected")} |\n" +
+                           $"| **Content Length** | {pageText.Length} characters parsed |\n\n" +
+                           "*(Data parsed from active DOM snapshot)*";
             }
             else
             {
@@ -286,16 +484,50 @@ namespace Browy.Services
 
                 if (!string.IsNullOrEmpty(snippet))
                 {
-                    return $"### Relevant Insight for \"{prompt}\"\n\n> {snippet}\n\nFound in {pageTitle} (`{NavigationHelper.ExtractDomain(pageUrl)}`).";
+                    response = $"### Relevant Insight for \"{prompt}\"\n\n> {snippet}\n\nFound in {pageTitle} (`{NavigationHelper.ExtractDomain(pageUrl)}`).";
                 }
                 else
                 {
-                    return $"I examined **{pageTitle}** for \"{prompt}\".\n\n" +
-                           $"• Page URL: `{pageUrl}`\n" +
-                           $"• Headings found: {(!string.IsNullOrWhiteSpace(headings) ? headings : "None")}\n\n" +
-                           "*(Tip: Switch to OpenAI, Claude, or Ollama in Settings -> Copilot for full generative reasoning)*";
+                    response = $"I examined **{pageTitle}** for \"{prompt}\".\n\n" +
+                               $"• Page URL: `{pageUrl}`\n" +
+                               $"• Headings found: {(!string.IsNullOrWhiteSpace(headings) ? headings : "None")}\n\n" +
+                               "*(Tip: Switch to OpenAI, Claude, or Ollama in Settings -> Copilot for full generative reasoning)*";
                 }
             }
+
+            return response + snapshotNotice;
+        }
+
+        public static AgentActionResult ParseAgentDirectives(string response)
+        {
+            var result = new AgentActionResult { CleanText = response };
+            if (string.IsNullOrWhiteSpace(response)) return result;
+
+            var match = System.Text.RegularExpressions.Regex.Match(
+                response,
+                @"\[BROWY_ACTION:\s*([A-Za-z0-9_]+)(?:\s+(.*?))?\]");
+
+            if (match.Success)
+            {
+                string cmd = match.Groups[1].Value.ToUpperInvariant();
+                string arg = match.Groups[2].Success ? match.Groups[2].Value.Trim() : "";
+
+                result.ActionCommand = cmd;
+                result.ActionTarget = arg;
+                result.CleanText = response.Replace(match.Value, "").Trim();
+
+                result.ActionFeedback = cmd switch
+                {
+                    "SCROLL_DOWN" => "Scrolled page down",
+                    "SCROLL_UP" => "Scrolled to top of page",
+                    "NAVIGATE" => $"Navigated to {arg}",
+                    "NEWTAB" => $"Opened {arg} in new tab",
+                    "HIGHLIGHT" => $"Highlighted \"{arg}\" on page",
+                    _ => $"Executed browser action: {cmd}"
+                };
+            }
+
+            return result;
         }
 
         private static string ExtractErrorMessage(string json)

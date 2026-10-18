@@ -4980,17 +4980,99 @@ namespace Browy
 
         #region Agents Panel Interactions
 
+        private string? _pendingScreenshotBase64;
+
         private void LoadInitialAgentSessions()
         {
             AgentSessions.Clear();
-            var defaultSession = new AgentSession("Page Copilot", "Active · Inspects page context", "\uF4A5", isActive: true);
+            var defaultSession = new AgentSession(
+                "Page Copilot",
+                "Active · Inspects page context",
+                "\uF4A5",
+                isActive: true,
+                systemInstruction: "You are Browy Page Copilot, a fast and smart web browsing assistant built into Browy Browser. Focus on summarizing, synthesizing, and extracting information from the current web page.",
+                suggestedPrompts: new[] { "Summarize page", "Explain this webpage", "Key takeaways", "Extract data table" });
+
             AgentSessions.Add(defaultSession);
-            AgentSessions.Add(new AgentSession("Deep Research", "Synthesizes web sources", "\uE721", isActive: false));
-            AgentSessions.Add(new AgentSession("Code Analyst", "Inspects DOM & APIs", "\uEC7A", isActive: false));
-            AgentSessions.Add(new AgentSession("Content Explainer", "Simplifies concepts", "\uE8BD", isActive: false));
+            AgentSessions.Add(new AgentSession(
+                "Deep Research",
+                "Synthesizes web sources & fact-checks",
+                "\uE721",
+                isActive: false,
+                systemInstruction: "You are Browy Deep Research Agent. Critically analyze arguments, cross-verify claims, identify potential biases, evaluate evidence, and provide comprehensive structured research reports with citations.",
+                suggestedPrompts: new[] { "Synthesize main claims", "Fact-check arguments", "Find counterarguments", "Extract citations" }));
+
+            AgentSessions.Add(new AgentSession(
+                "Code Analyst",
+                "Inspects DOM, APIs & scripts",
+                "\uEC7A",
+                isActive: false,
+                systemInstruction: "You are Browy Code Analyst. Inspect web technologies, extract and explain code snippets, analyze frontend APIs, evaluate page performance, and check for security considerations.",
+                suggestedPrompts: new[] { "Extract code blocks", "Audit page scripts", "Analyze DOM structure", "Check security headers" }));
+
+            AgentSessions.Add(new AgentSession(
+                "Content Explainer",
+                "Simplifies concepts & ELI5",
+                "\uE8BD",
+                isActive: false,
+                systemInstruction: "You are Browy Content Explainer. Make any subject accessible, engaging, and clear using analogies, step-by-step walkthroughs, and plain language explanations.",
+                suggestedPrompts: new[] { "Explain like I'm 5 (ELI5)", "Use real-world analogies", "Break down jargon", "Step-by-step walkthrough" }));
 
             if (SelectedAgentText != null) SelectedAgentText.Text = defaultSession.Name;
             if (SelectedAgentIcon != null) SelectedAgentIcon.Text = defaultSession.Icon;
+
+            UpdateAgentChips(defaultSession);
+        }
+
+        private void UpdateAgentChips(AgentSession session)
+        {
+            if (AgentChipsWrapPanel == null) return;
+            AgentChipsWrapPanel.Children.Clear();
+
+            var prompts = session.SuggestedPrompts != null && session.SuggestedPrompts.Length > 0
+                ? session.SuggestedPrompts
+                : new[] { "Summarize current page", "Explain this webpage", "Find key takeaways" };
+
+            foreach (var prompt in prompts)
+            {
+                var btn = new Button
+                {
+                    Style = (Style)FindResource("IconButton"),
+                    Tag = prompt,
+                    Margin = new Thickness(0, 0, 4, 4),
+                    Padding = new Thickness(0)
+                };
+                btn.Click += AgentChip_Click;
+
+                var border = new Border
+                {
+                    Background = (Brush)new BrushConverter().ConvertFromString("#10FFFFFF")!,
+                    BorderBrush = (Brush)new BrushConverter().ConvertFromString("#14FFFFFF")!,
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(5),
+                    Padding = new Thickness(7, 3, 7, 3)
+                };
+
+                var sp = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+                sp.Children.Add(new TextBlock
+                {
+                    Style = (Style)FindResource("FluentIcon"),
+                    Text = session.Icon,
+                    FontSize = 9.5,
+                    Foreground = Brushes.White,
+                    Margin = new Thickness(0, 0, 4, 0)
+                });
+                sp.Children.Add(new TextBlock
+                {
+                    Text = prompt,
+                    FontSize = 10,
+                    Foreground = (Brush)FindResource("TextPrimaryBrush")
+                });
+
+                border.Child = sp;
+                btn.Content = border;
+                AgentChipsWrapPanel.Children.Add(btn);
+            }
         }
 
         private void AgentPickerButton_Click(object sender, RoutedEventArgs e)
@@ -5010,7 +5092,12 @@ namespace Browy
                 if (SelectedAgentIcon != null) SelectedAgentIcon.Text = session.Icon;
                 AgentPickerPopup.IsOpen = false;
 
-                AgentMessages.Add(new AgentMessage("Agent", $"Switched to **{session.Name}**. Ready to assist with {session.Status.ToLower()}."));
+                UpdateAgentChips(session);
+
+                AgentMessages.Add(new AgentMessage("Agent", $"Switched to **{session.Name}**. Ready to assist with {session.Status.ToLower()}.")
+                {
+                    PersonaName = session.Name
+                });
                 AgentMessagesScrollViewer?.ScrollToEnd();
             }
         }
@@ -5018,12 +5105,76 @@ namespace Browy
         private void LoadInitialAgentWelcome()
         {
             AgentMessages.Clear();
-            AgentMessages.Add(new AgentMessage("Agent", "Hello! I'm your Browy AI Copilot. I can summarize active web pages, extract key insights, explain code, and assist your browsing workflow."));
+            AgentMessages.Add(new AgentMessage("Agent", "Hello! I'm your Browy AI Copilot. I can summarize active web pages, extract key insights, inspect code, attach snapshots, and perform autonomous browser actions for you."));
         }
 
         private void NewAgentChat_Click(object sender, RoutedEventArgs e)
         {
             LoadInitialAgentWelcome();
+        }
+
+        private void ClearAgentChat_Click(object sender, RoutedEventArgs e)
+        {
+            AgentMessages.Clear();
+            LoadInitialAgentWelcome();
+            NotificationService.ShowToast("Chat Cleared", "Agent conversation reset", "Browy Copilot");
+        }
+
+        private void ExportAgentChat_Click(object sender, RoutedEventArgs e)
+        {
+            if (AgentMessages.Count == 0) return;
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"# Browy AI Agent Conversation Export - {DateTime.Now:yyyy-MM-dd HH:mm}");
+            sb.AppendLine($"Page: {_activeTab?.Title ?? "Untitled"} ({_activeTab?.Url ?? ""})\n");
+            foreach (var msg in AgentMessages)
+            {
+                string persona = !string.IsNullOrEmpty(msg.PersonaName) ? $" ({msg.PersonaName})" : "";
+                sb.AppendLine($"### {msg.Sender}{persona} [{msg.FormattedTime}]:");
+                if (msg.HasAction)
+                {
+                    sb.AppendLine($"> Action: {msg.ActionDescription}");
+                }
+                sb.AppendLine(msg.Content);
+                sb.AppendLine();
+            }
+            Clipboard.SetText(sb.ToString());
+            NotificationService.ShowToast("Chat Exported", "Full conversation copied to clipboard as Markdown", "Browy Copilot");
+        }
+
+        private async void AgentSnapshotButton_Click(object sender, RoutedEventArgs e)
+        {
+            var screenshot = await CaptureActiveTabScreenshotBase64Async();
+            if (!string.IsNullOrEmpty(screenshot))
+            {
+                _pendingScreenshotBase64 = screenshot;
+                if (SnapshotAttachmentBadge != null)
+                {
+                    SnapshotAttachmentBadge.Visibility = Visibility.Visible;
+                }
+                NotificationService.ShowToast("Snapshot Attached", "Viewport snapshot attached to your prompt", "Browy Vision");
+            }
+            else
+            {
+                NotificationService.ShowToast("Snapshot Unavailable", "Could not capture active page viewport", "Browy Vision");
+            }
+        }
+
+        private void RemoveSnapshot_Click(object sender, RoutedEventArgs e)
+        {
+            _pendingScreenshotBase64 = null;
+            if (SnapshotAttachmentBadge != null)
+            {
+                SnapshotAttachmentBadge.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void CopyAgentMessage_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement elem && elem.Tag is string text && !string.IsNullOrEmpty(text))
+            {
+                Clipboard.SetText(text);
+                NotificationService.ShowToast("Copied to Clipboard", "Agent response copied to clipboard", "Browy Copilot");
+            }
         }
 
         private void AgentChip_Click(object sender, RoutedEventArgs e)
@@ -5065,7 +5216,26 @@ namespace Browy
         private async void ExecuteAgentPrompt(string prompt)
         {
             AgentInputTextBox.Text = "";
-            AgentMessages.Add(new AgentMessage("User", prompt));
+
+            string? screenshotToSend = _pendingScreenshotBase64;
+            _pendingScreenshotBase64 = null;
+            if (SnapshotAttachmentBadge != null)
+            {
+                SnapshotAttachmentBadge.Visibility = Visibility.Collapsed;
+            }
+
+            AgentMessages.Add(new AgentMessage("User", prompt)
+            {
+                HasSnapshot = !string.IsNullOrEmpty(screenshotToSend)
+            });
+
+            var activeSession = AgentSessions.FirstOrDefault(s => s.IsActive) ?? AgentSessions.FirstOrDefault();
+            var thinkingMsg = new AgentMessage("Agent", "✦ Analyzing page context & formulating response...")
+            {
+                IsThinking = true,
+                PersonaName = activeSession?.Name
+            };
+            AgentMessages.Add(thinkingMsg);
             AgentMessagesScrollViewer?.ScrollToEnd();
 
             string currentTitle = _activeTab?.Title ?? "Current Tab";
@@ -5099,9 +5269,83 @@ namespace Browy
                 catch { }
             }
 
-            string response = await AiCopilotService.QueryCopilotAsync(prompt, pageText, headings, currentTitle, currentUrl);
-            AgentMessages.Add(new AgentMessage("Agent", response));
+            string rawResponse = await AiCopilotService.QueryCopilotAsync(
+                prompt,
+                pageText,
+                headings,
+                currentTitle,
+                currentUrl,
+                persona: activeSession?.Name,
+                screenshotBase64: screenshotToSend,
+                customInstruction: activeSession?.SystemInstruction);
+
+            var actionResult = AiCopilotService.ParseAgentDirectives(rawResponse);
+
+            thinkingMsg.Content = actionResult.CleanText;
+            thinkingMsg.IsThinking = false;
+            thinkingMsg.PersonaName = activeSession?.Name;
+            thinkingMsg.Timestamp = DateTime.Now;
+            if (actionResult.HasAction)
+            {
+                thinkingMsg.ActionDescription = actionResult.ActionFeedback;
+            }
             AgentMessagesScrollViewer?.ScrollToEnd();
+
+            // Execute Autonomous Browser Action if commanded
+            if (actionResult.HasAction && _activeTab?.WebViewInstance?.CoreWebView2 != null)
+            {
+                try
+                {
+                    switch (actionResult.ActionCommand)
+                    {
+                        case "SCROLL_DOWN":
+                            await _activeTab.WebViewInstance.CoreWebView2.ExecuteScriptAsync("window.scrollBy({ top: window.innerHeight * 0.75, behavior: 'smooth' });");
+                            break;
+                        case "SCROLL_UP":
+                            await _activeTab.WebViewInstance.CoreWebView2.ExecuteScriptAsync("window.scrollBy({ top: -window.innerHeight * 0.75, behavior: 'smooth' });");
+                            break;
+                        case "NAVIGATE":
+                            if (!string.IsNullOrWhiteSpace(actionResult.ActionTarget))
+                            {
+                                NavigateActiveTab(actionResult.ActionTarget);
+                            }
+                            break;
+                        case "NEWTAB":
+                            if (!string.IsNullOrWhiteSpace(actionResult.ActionTarget))
+                            {
+                                _ = CreateNewTabAsync(actionResult.ActionTarget, switchTo: true);
+                            }
+                            break;
+                        case "HIGHLIGHT":
+                            if (!string.IsNullOrWhiteSpace(actionResult.ActionTarget))
+                            {
+                                string target = actionResult.ActionTarget.Replace("'", "\\'");
+                                string js = $@"(function() {{
+                                    var term = '{target}';
+                                    document.querySelectorAll('.browy-highlight').forEach(e => {{ e.outerHTML = e.innerHTML; }});
+                                    if (!term) return;
+                                    var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+                                    var nodes = [];
+                                    while (walker.nextNode()) {{
+                                        var p = walker.currentNode.parentElement;
+                                        if (p && p.tagName !== 'SCRIPT' && p.tagName !== 'STYLE' && walker.currentNode.nodeValue.toLowerCase().indexOf(term.toLowerCase()) >= 0) {{
+                                            nodes.push(walker.currentNode);
+                                        }}
+                                    }}
+                                    nodes.forEach(n => {{
+                                        var span = document.createElement('span');
+                                        var re = new RegExp('(' + term.replace(/[.*+?^${{}}()|[\]\\]/g, '\\$&') + ')', 'gi');
+                                        span.innerHTML = n.nodeValue.replace(re, '<mark class=""browy-highlight"" style=""background:#6366F1;color:#ffffff;padding:2px 4px;border-radius:3px;"">$1</mark>');
+                                        n.parentNode.replaceChild(span, n);
+                                    }});
+                                }})();";
+                                await _activeTab.WebViewInstance.CoreWebView2.ExecuteScriptAsync(js);
+                            }
+                            break;
+                    }
+                }
+                catch { }
+            }
         }
 
         #endregion

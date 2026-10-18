@@ -43,7 +43,7 @@ jobs:
       - name: Checkout Code (with full git history)
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       - name: Setup .NET 9 SDK
         uses: actions/setup-dotnet@v4
@@ -100,29 +100,44 @@ jobs:
               Write-Host "Manual dispatch with force_release=true"
               $shouldRelease = "true"
           } elseif ($env:GITHUB_EVENT_NAME -eq 'push' -and $env:GITHUB_REF -eq 'refs/heads/main') {
-              # Check if VERSION or Directory.Build.props changed in HEAD commit
-              $prevVersionFile = git show HEAD~1:VERSION 2>$null
-              if ($prevVersionFile -and $prevVersionFile.Trim() -ne $baseVer) {
-                  Write-Host "VERSION file changed from '$($prevVersionFile.Trim())' to '$baseVer'!"
-                  $shouldRelease = "true"
-              } else {
-                  $prevProps = git show HEAD~1:Directory.Build.props 2>$null
-                  if ($prevProps) {
-                      try {
-                          [xml]$pXml = $prevProps
-                          $prevPrefix = $pXml.Project.PropertyGroup.VersionPrefix
-                          if ($prevPrefix -and $prevPrefix.Trim() -ne $baseVer) {
-                              Write-Host "Directory.Build.props VersionPrefix changed from '$prevPrefix' to '$baseVer'!"
-                              $shouldRelease = "true"
+              $hasParent = $false
+              try {
+                  $parentHash = git rev-parse --verify --quiet "HEAD~1" 2>$null
+                  $hasParent = [bool]$parentHash
+              } catch { }
+              $global:LASTEXITCODE = 0
+
+              if ($hasParent) {
+                  try {
+                      $prevVersionFile = $(git show HEAD~1:VERSION 2>$null) | Out-String
+                      $global:LASTEXITCODE = 0
+                      if ($prevVersionFile -and $prevVersionFile.Trim() -ne "" -and $prevVersionFile.Trim() -ne $baseVer) {
+                          Write-Host "VERSION file changed from '$($prevVersionFile.Trim())' to '$baseVer'!"
+                          $shouldRelease = "true"
+                      } else {
+                          $prevProps = $(git show HEAD~1:Directory.Build.props 2>$null) | Out-String
+                          $global:LASTEXITCODE = 0
+                          if ($prevProps -and $prevProps.Trim() -ne "") {
+                              try {
+                                  [xml]$pXml = $prevProps
+                                  $prevPrefix = $pXml.Project.PropertyGroup.VersionPrefix
+                                  if ($prevPrefix -and $prevPrefix.Trim() -ne $baseVer) {
+                                      Write-Host "Directory.Build.props VersionPrefix changed from '$prevPrefix' to '$baseVer'!"
+                                      $shouldRelease = "true"
+                                  }
+                              } catch { }
                           }
-                      } catch { }
-                  }
+                      }
+                  } catch { }
+                  $global:LASTEXITCODE = 0
               }
           }
 
           Write-Host "Release required: $shouldRelease (Target Version: $baseVer)"
-          echo "version=$baseVer" >> $env:GITHUB_OUTPUT
-          echo "should_release=$shouldRelease" >> $env:GITHUB_OUTPUT
+          "version=$baseVer" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "should_release=$shouldRelease" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          $global:LASTEXITCODE = 0
+          exit 0
 
   # -------------------------------------------------------------
   # Job 2: Build, Package & Release (Only on Version Bump / Tag)

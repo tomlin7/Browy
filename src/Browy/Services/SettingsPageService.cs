@@ -18,20 +18,19 @@ namespace Browy.Services
 <title>Settings - Browy</title>
 <style>
   :root {
-    --bg-main: #0c0c10;
-    --bg-card: #16161d;
-    --bg-card-hover: #1e1e27;
+    --bg-main: #0c0d0e;
+    --bg-card: rgba(255, 255, 255, 0.025);
+    --bg-card-hover: rgba(255, 255, 255, 0.05);
     --border-color: rgba(255, 255, 255, 0.08);
-    --border-subtle: rgba(255, 255, 255, 0.04);
-    --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
-    --text-muted: #64748b;
-    --accent: #3b82f6;
-    --accent-hover: #2563eb;
-    --accent-glow: rgba(59, 130, 246, 0.25);
+    --border-subtle: rgba(255, 255, 255, 0.05);
+    --text-primary: #fafafa;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --accent: #fafafa;
+    --accent-hover: #ffffff;
     --danger: #ef4444;
     --danger-hover: #dc2626;
-    --font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   }
 
   * {
@@ -72,52 +71,59 @@ namespace Browy.Services
   }
 
   .brand-icon {
-    width: 26px;
-    height: 26px;
-    border-radius: 7px;
-    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    width: 24px;
+    height: 24px;
+    border-radius: 5px;
+    background: #fafafa;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 14px;
-    font-weight: bold;
-    color: white;
+    font-size: 13px;
+    font-family: 'Cascadia Code', Consolas, monospace;
+    font-weight: 700;
+    color: #09090b;
   }
 
   .brand-title {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
-    letter-spacing: -0.3px;
+    letter-spacing: -0.2px;
   }
 
   .nav-item {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 10px 14px;
-    border-radius: 8px;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 6px;
     color: var(--text-secondary);
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 400;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: background-color 0.15s ease, color 0.15s ease;
   }
 
   .nav-item:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.04);
     color: var(--text-primary);
   }
 
   .nav-item.active {
-    background: rgba(59, 130, 246, 0.15);
-    color: #60a5fa;
-    font-weight: 600;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+    font-weight: 500;
   }
 
   .nav-icon {
-    font-size: 15px;
-    width: 18px;
+    font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+    font-size: 14px;
+    width: 16px;
     text-align: center;
+    color: var(--text-muted);
+  }
+
+  .nav-item.active .nav-icon {
+    color: var(--text-primary);
   }
 
   /* Content Area */
@@ -242,22 +248,24 @@ namespace Browy.Services
   }
 
   .btn-primary {
-    background: var(--accent);
-    color: white;
+    background: #fafafa;
+    color: #09090b;
+    font-weight: 500;
   }
 
   .btn-primary:hover {
-    background: var(--accent-hover);
+    background: #ffffff;
   }
 
   .btn-secondary {
-    background: rgba(255, 255, 255, 0.08);
+    background: transparent;
     border-color: var(--border-color);
     color: var(--text-primary);
   }
 
   .btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.13);
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.15);
   }
 
   .btn-danger {
@@ -402,28 +410,28 @@ namespace Browy.Services
       <div class="brand-title">Settings</div>
     </div>
     <div class="nav-item active" onclick="switchSection('general', this)">
-      <span class="nav-icon">&#x2699;</span> General
+      <span class="nav-icon">&#xE713;</span> General
     </div>
     <div class="nav-item" onclick="switchSection('appearance', this)">
-      <span class="nav-icon">&#x1F3A8;</span> Appearance
+      <span class="nav-icon">&#xE790;</span> Appearance
     </div>
     <div class="nav-item" onclick="switchSection('privacy', this)">
-      <span class="nav-icon">&#x1F512;</span> Privacy & Security
+      <span class="nav-icon">&#xE72E;</span> Privacy & Security
     </div>
     <div class="nav-item" onclick="switchSection('downloads', this)">
-      <span class="nav-icon">&#x2B07;</span> Downloads
+      <span class="nav-icon">&#xE896;</span> Downloads
     </div>
     <div class="nav-item" onclick="switchSection('copilot', this)">
-      <span class="nav-icon">&#x1F916;</span> AI Copilot
+      <span class="nav-icon">&#xE99A;</span> AI Copilot
     </div>
     <div class="nav-item" onclick="switchSection('performance', this)">
-      <span class="nav-icon">&#x26A1;</span> Performance &amp; Gestures
+      <span class="nav-icon">&#xE950;</span> Performance &amp; Gestures
     </div>
     <div class="nav-item" onclick="switchSection('shortcuts', this)">
-      <span class="nav-icon">&#x2328;</span> Keyboard Shortcuts
+      <span class="nav-icon">&#xE765;</span> Keyboard Shortcuts
     </div>
     <div class="nav-item" onclick="switchSection('about', this)">
-      <span class="nav-icon">&#x2139;</span> About Browy
+      <span class="nav-icon">&#xE946;</span> About Browy
     </div>
   </div>
 

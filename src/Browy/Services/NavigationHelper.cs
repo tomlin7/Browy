@@ -169,6 +169,13 @@ namespace Browy.Services
             return url.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
         }
 
+        public static bool IsInternalUrl(string? url)
+        {
+            if (string.IsNullOrWhiteSpace(url)) return false;
+            return url.StartsWith("browy://", StringComparison.OrdinalIgnoreCase) ||
+                   url.StartsWith("about:", StringComparison.OrdinalIgnoreCase);
+        }
+
         public static string ExtractDomain(string url)
         {
             if (string.IsNullOrWhiteSpace(url)) return "";

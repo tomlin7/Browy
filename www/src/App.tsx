@@ -199,10 +199,6 @@ export default function App() {
                   <span className="size-1.5 rounded-full bg-zinc-400"></span>
                   4-Way Split Screen
                 </span>
-                <span className="flex items-center gap-1.5 hover:text-foreground transition-colors">
-                  <span className="size-1.5 rounded-full bg-amber-500"></span>
-                  203 Unit Tests Passing
-                </span>
               </div>
             </div>
           </section>
@@ -211,7 +207,7 @@ export default function App() {
           <section className="border-t">
             <div className="p-4 md:p-8 bg-muted/20">
               <div className="rounded-lg border bg-background shadow-2xl overflow-hidden">
-                {/* Windows 11 Chrome Window Header */}
+                {/* Windows 11 Window Titlebar */}
                 <div className="flex h-9 items-center justify-between border-b px-3 bg-muted/30 text-xs">
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1">
@@ -225,7 +221,7 @@ export default function App() {
                   <div className="flex max-w-sm flex-1 items-center justify-center mx-4">
                     <div className="flex h-6 w-full max-w-md items-center justify-between rounded border bg-background px-2 text-[11px] font-mono text-muted-foreground">
                       <span className="text-foreground truncate">https://github.com/tomlin7/Browy</span>
-                      <span className="text-[9px] text-emerald-500">SHIELDED</span>
+                      <span className="text-[9px] text-emerald-500 font-semibold">SHIELDED</span>
                     </div>
                   </div>
 
@@ -234,7 +230,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Interactive Inner Workspace */}
+                {/* Inner Browser Workspace */}
                 <div className="grid grid-cols-1 md:grid-cols-[180px_1fr] h-[400px]">
                   {/* Left Spaces & Tab Strip */}
                   <div className="hidden md:flex flex-col border-r bg-muted/10 p-3">
@@ -263,7 +259,7 @@ export default function App() {
                     <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-2 pt-2 border-t">
                       Open Tabs
                     </div>
-                    <div className="space-y-1 text-xs">
+                    <div className="space-y-1 text-xs font-mono">
                       <div
                         onClick={() => setActiveTabTitle("tomlin7/Browy · Modern Arc/Zen Browser")}
                         className="rounded px-2 py-1.5 bg-muted text-foreground truncate cursor-pointer font-medium"

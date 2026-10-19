@@ -15,6 +15,7 @@ import {
   ChevronUp,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import heroImg from "@/assets/hero.png"
 
 function GithubSvg({ className = "size-6" }: { className?: string }) {
   return (
@@ -199,10 +200,6 @@ export default function App() {
                   <span className="size-1.5 rounded-full bg-zinc-400"></span>
                   4-Way Split Screen
                 </span>
-                <span className="flex items-center gap-1.5 hover:text-foreground transition-colors">
-                  <span className="size-1.5 rounded-full bg-amber-500"></span>
-                  203 Unit Tests Passing
-                </span>
               </div>
             </div>
           </section>
@@ -211,111 +208,12 @@ export default function App() {
           <section className="border-t">
             <div className="p-4 md:p-8 bg-muted/20">
               <div className="rounded-lg border bg-background shadow-2xl overflow-hidden">
-                {/* Windows 11 Chrome Window Header */}
-                <div className="flex h-9 items-center justify-between border-b px-3 bg-muted/30 text-xs">
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1">
-                      <span className="size-2 rounded-full bg-muted-foreground/30"></span>
-                      <span className="size-2 rounded-full bg-muted-foreground/30"></span>
-                      <span className="size-2 rounded-full bg-muted-foreground/30"></span>
-                    </div>
-                    <span className="text-[11px] font-mono text-muted-foreground ml-2">Browy v0.3.0</span>
-                  </div>
-
-                  <div className="flex max-w-sm flex-1 items-center justify-center mx-4">
-                    <div className="flex h-6 w-full max-w-md items-center justify-between rounded border bg-background px-2 text-[11px] font-mono text-muted-foreground">
-                      <span className="text-foreground truncate">https://github.com/tomlin7/Browy</span>
-                      <span className="text-[9px] text-emerald-500">SHIELDED</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
-                    <span>640MB RAM</span>
-                  </div>
-                </div>
-
-                {/* Interactive Inner Workspace */}
-                <div className="grid grid-cols-1 md:grid-cols-[180px_1fr] h-[400px]">
-                  {/* Left Spaces & Tab Strip */}
-                  <div className="hidden md:flex flex-col border-r bg-muted/10 p-3">
-                    <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-2">
-                      Spaces
-                    </div>
-                    <div className="flex flex-col gap-1 mb-4">
-                      {(["dev", "work", "research"] as const).map((space) => (
-                        <button
-                          key={space}
-                          onClick={() => setActiveSpace(space)}
-                          className={`flex items-center justify-between rounded px-2 py-1.5 text-xs font-mono transition-colors text-left ${
-                            activeSpace === space
-                              ? "bg-foreground text-background font-medium"
-                              : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                          }`}
-                        >
-                          <span className="uppercase">{space}</span>
-                          <span className="text-[9px] opacity-70">
-                            {space === "dev" ? "4 TABS" : "2 TABS"}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-2 pt-2 border-t">
-                      Open Tabs
-                    </div>
-                    <div className="space-y-1 text-xs">
-                      <div
-                        onClick={() => setActiveTabTitle("tomlin7/Browy · Modern Arc/Zen Browser")}
-                        className="rounded px-2 py-1.5 bg-muted text-foreground truncate cursor-pointer font-medium"
-                      >
-                        tomlin7/Browy
-                      </div>
-                      <div
-                        onClick={() => setActiveTabTitle("Edge WebView2 Evergreen Documentation")}
-                        className="rounded px-2 py-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/50 truncate cursor-pointer"
-                      >
-                        WebView2 Docs
-                      </div>
-                      <div
-                        onClick={() => setActiveTabTitle("Direct3D WPF Presentation Pipeline")}
-                        className="rounded px-2 py-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/50 truncate cursor-pointer"
-                      >
-                        Direct3D Pipeline
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right Viewport Content */}
-                  <div className="p-6 overflow-y-auto flex flex-col justify-between bg-background">
-                    <div>
-                      <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground mb-3">
-                        <span className="rounded border px-1.5 py-0.5">PUBLIC REPO</span>
-                        <span>tomlin7 / Browy</span>
-                      </div>
-                      <h2 className="text-xl font-semibold tracking-tight text-foreground mb-2">
-                        {activeTabTitle}
-                      </h2>
-                      <p className="text-sm text-muted-foreground leading-relaxed max-w-xl">
-                        Modern Arc/Zen-inspired Windows 11 browser built with .NET 9 WPF and Microsoft Edge WebView2. Features autonomous DOM actions protocol, tab suspension, and 4-way split views.
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-3 border-t pt-4 font-mono text-xs mt-6">
-                      <div className="border rounded p-3">
-                        <div className="text-muted-foreground text-[10px] uppercase">Cold Start</div>
-                        <div className="text-base font-semibold text-foreground mt-0.5">240ms</div>
-                      </div>
-                      <div className="border rounded p-3">
-                        <div className="text-muted-foreground text-[10px] uppercase">Automated Tests</div>
-                        <div className="text-base font-semibold text-foreground mt-0.5">203 Passing</div>
-                      </div>
-                      <div className="border rounded p-3">
-                        <div className="text-muted-foreground text-[10px] uppercase">Telemetry</div>
-                        <div className="text-base font-semibold text-foreground mt-0.5">0% (Zero)</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <img
+                  src={heroImg}
+                  alt="Browy Windows 11 browser workspace"
+                  className="block h-auto w-full"
+                  loading="lazy"
+                />
               </div>
             </div>
           </section>

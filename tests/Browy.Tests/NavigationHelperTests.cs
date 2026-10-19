@@ -94,6 +94,20 @@ namespace Browy.Tests
         }
 
         [Theory]
+        [InlineData("browy://settings", true)]
+        [InlineData("browy://newtab", true)]
+        [InlineData("about:blank", true)]
+        [InlineData("https://github.com", false)]
+        [InlineData("http://example.com", false)]
+        [InlineData("", false)]
+        [InlineData(null, false)]
+        public void IsInternalUrl_IdentifiesInternalSchemesCorrectly(string? url, bool expected)
+        {
+            bool result = NavigationHelper.IsInternalUrl(url);
+            Assert.Equal(expected, result);
+        }
+
+        [Theory]
         [InlineData("https://www.github.com/torvalds/linux", "www.github.com")]
         [InlineData("http://sub.domain.com:8080/path?arg=1", "sub.domain.com")]
         [InlineData("", "")]

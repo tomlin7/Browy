@@ -494,6 +494,19 @@ namespace Browy
                 SyncActiveSpaceTabs();
                 SessionService.SaveSpacesSession(Spaces, ActiveSpace, _activeTab);
             }
+
+            try
+            {
+                foreach (var t in Tabs)
+                {
+                    try
+                    {
+                        t.WebViewInstance?.Dispose();
+                    }
+                    catch { }
+                }
+            }
+            catch { }
         }
 
         private void ExportVisualSnapshot(string fileName)
@@ -720,6 +733,48 @@ namespace Browy
 
         private readonly Dictionary<string, CoreWebView2Environment> _spaceEnvironments = new();
 
+        private static bool IsUserDataFolderLocked(string folder)
+        {
+            string lockFilePath = Path.Combine(folder, "EBWebView", "lockfile");
+            if (!File.Exists(lockFilePath)) return false;
+            try
+            {
+                using var fs = File.Open(lockFilePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+                return false;
+            }
+            catch
+            {
+                return true;
+            }
+        }
+
+        private static void CleanupOrphanedWebView2Processes()
+        {
+            try
+            {
+                var browyProcs = System.Diagnostics.Process.GetProcessesByName("Browy");
+                if (browyProcs.Length > 1) return; // Another Browy instance is genuinely running, do not kill
+
+                using var proc = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "powershell",
+                    Arguments = "-NoProfile -NonInteractive -Command \"Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*Browy\\WebView2Data*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }\"",
+                    CreateNoWindow = true,
+                    UseShellExecute = false,
+                    WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden
+                });
+                proc?.WaitForExit(3000);
+            }
+            catch { }
+        }
+
+        private static bool IsResourceInUseException(Exception ex)
+        {
+            if (ex is COMException comEx && ((uint)comEx.HResult == 0x800700AA || comEx.ErrorCode == unchecked((int)0x800700AA)))
+                return true;
+            return ex.Message.Contains("0x800700AA") || ex.Message.Contains("in use", StringComparison.OrdinalIgnoreCase);
+        }
+
         private async Task<CoreWebView2Environment> EnsureEnvironmentAsync(BrowserSpace? space = null)
         {
             if (IsInPrivate)
@@ -761,20 +816,37 @@ namespace Browy
                     additionalBrowserArguments: "--disable-features=CalculateNativeWinOcclusion,SpareRendererForSitePerProcess --renderer-process-limit=6 --enable-features=msResourceUsageReport"
                 );
 
+                if (IsUserDataFolderLocked(_userDataFolder))
+                {
+                    CleanupOrphanedWebView2Processes();
+                }
+
+                string targetFolder = _userDataFolder;
+                if (IsUserDataFolderLocked(_userDataFolder))
+                {
+                    try
+                    {
+                        File.AppendAllText(@"E:\browy\crash.log", $"[{DateTime.Now:O}] Notice: Primary folder locked by concurrent instance, using session folder\n");
+                    }
+                    catch { }
+
+                    targetFolder = Path.Combine(Path.GetTempPath(), $"Browy_WebView2_{Environment.ProcessId}_{Guid.NewGuid():N}");
+                }
+
                 try
                 {
-                    Directory.CreateDirectory(_userDataFolder);
-                    _sharedEnvironment = await CoreWebView2Environment.CreateAsync(null, _userDataFolder, options);
+                    Directory.CreateDirectory(targetFolder);
+                    _sharedEnvironment = await CoreWebView2Environment.CreateAsync(null, targetFolder, options);
                 }
                 catch (Exception ex)
                 {
                     try
                     {
-                        File.AppendAllText(@"E:\browy\crash.log", $"[{DateTime.Now:O}] Warning: Primary WebView2Data folder busy or locked ({ex.Message}), using session profile\n");
+                        File.AppendAllText(@"E:\browy\crash.log", $"[{DateTime.Now:O}] Warning: Failed to create environment in {targetFolder} ({ex.Message}), using fallback session folder\n");
                     }
                     catch { }
 
-                    string fallbackFolder = Path.Combine(Path.GetTempPath(), $"Browy_WebView2_{Environment.ProcessId}");
+                    string fallbackFolder = Path.Combine(Path.GetTempPath(), $"Browy_WebView2_{Environment.ProcessId}_{Guid.NewGuid():N}");
                     Directory.CreateDirectory(fallbackFolder);
                     _sharedEnvironment = await CoreWebView2Environment.CreateAsync(null, fallbackFolder, options);
                 }
@@ -1229,10 +1301,36 @@ namespace Browy
         {
             if (tab.WebViewInstance == null) return;
 
+            if (!Dispatcher.CheckAccess())
+            {
+                await Dispatcher.InvokeAsync(async () => await InitializeWebViewAsync(tab, initialUrl));
+                return;
+            }
+
             try
             {
                 var env = await EnsureEnvironmentAsync(ActiveSpace);
-                await tab.WebViewInstance.EnsureCoreWebView2Async(env);
+                try
+                {
+                    await tab.WebViewInstance.EnsureCoreWebView2Async(env);
+                }
+                catch (Exception ex) when (IsResourceInUseException(ex))
+                {
+                    try
+                    {
+                        File.AppendAllText(@"E:\browy\crash.log", $"[{DateTime.Now:O}] Warning: Primary environment resource in use on EnsureCoreWebView2Async ({ex.Message}), creating fallback environment\n");
+                    }
+                    catch { }
+
+                    string fallbackFolder = Path.Combine(Path.GetTempPath(), $"Browy_WebView2_{Environment.ProcessId}_{Guid.NewGuid():N}");
+                    Directory.CreateDirectory(fallbackFolder);
+                    var fallbackOptions = new CoreWebView2EnvironmentOptions(
+                        additionalBrowserArguments: "--disable-features=CalculateNativeWinOcclusion,SpareRendererForSitePerProcess --renderer-process-limit=6 --enable-features=msResourceUsageReport"
+                    );
+                    var fallbackEnv = await CoreWebView2Environment.CreateAsync(null, fallbackFolder, fallbackOptions);
+                    _sharedEnvironment = fallbackEnv;
+                    await tab.WebViewInstance.EnsureCoreWebView2Async(fallbackEnv);
+                }
 
                 var core = tab.WebViewInstance.CoreWebView2;
                 if (core != null)
@@ -1823,7 +1921,12 @@ namespace Browy
                         tab.FallbackIcon = "\uE721";
                         tab.WebViewInstance.NavigateToString(InternalHubService.GetSearchEnginesHtml());
                     }
-                    else if (initialUrl.StartsWith("browy://newtab", StringComparison.OrdinalIgnoreCase) ||
+                    if (tab.Title == "Navigation error")
+                    {
+                        tab.Title = "Loading...";
+                    }
+
+                    if (initialUrl.StartsWith("browy://newtab", StringComparison.OrdinalIgnoreCase) ||
                              initialUrl.StartsWith("browy://start", StringComparison.OrdinalIgnoreCase) ||
                              initialUrl.StartsWith("about:newtab", StringComparison.OrdinalIgnoreCase) ||
                              initialUrl.Equals("about:blank", StringComparison.OrdinalIgnoreCase))
@@ -1833,13 +1936,9 @@ namespace Browy
                         tab.FallbackIcon = "\uE72B";
                         tab.WebViewInstance.NavigateToString(NewTabPageService.GetNewTabHtml());
                     }
-                    else if (tab.WebViewInstance.CoreWebView2 != null)
-                    {
-                        tab.WebViewInstance.CoreWebView2.Navigate(initialUrl);
-                    }
                     else
                     {
-                        tab.WebViewInstance.Source = new Uri(initialUrl);
+                        core?.Navigate(initialUrl);
                     }
                 }
 
@@ -1969,11 +2068,20 @@ namespace Browy
         private void UpdateNavigationUI(BrowserTab tab)
         {
             UrlTextBox.Text = tab.Url;
+            bool isInternal = NavigationHelper.IsInternalUrl(tab.Url);
             bool isSecure = NavigationHelper.IsSecure(tab.Url);
-            SecurityIconText.Text = isSecure ? "\uE72E" : "\uE7BA";
-            SecurityIconText.Foreground = isSecure
-                ? new SolidColorBrush(Color.FromRgb(0x10, 0xB9, 0x81))
-                : new SolidColorBrush(Color.FromRgb(0xEF, 0x44, 0x44));
+            if (isInternal)
+            {
+                SecurityIconText.Text = "\uE72B";
+                SecurityIconText.Foreground = new SolidColorBrush(Color.FromRgb(0x94, 0xA3, 0xB8));
+            }
+            else
+            {
+                SecurityIconText.Text = isSecure ? "\uE72E" : "\uE7BA";
+                SecurityIconText.Foreground = isSecure
+                    ? new SolidColorBrush(Color.FromRgb(0x10, 0xB9, 0x81))
+                    : new SolidColorBrush(Color.FromRgb(0xEF, 0x44, 0x44));
+            }
 
             BackButton.IsEnabled = tab.CanGoBack;
             ForwardButton.IsEnabled = tab.CanGoForward;
@@ -2376,7 +2484,14 @@ namespace Browy
                 _activeTab.Title = "New Tab";
                 _activeTab.FallbackIcon = "\uE72B";
                 UpdateNavigationUI(_activeTab);
-                _activeTab.WebViewInstance?.NavigateToString(NewTabPageService.GetNewTabHtml());
+                if (_activeTab.WebViewInstance?.CoreWebView2 != null)
+                {
+                    _activeTab.WebViewInstance.NavigateToString(NewTabPageService.GetNewTabHtml());
+                }
+                else if (_activeTab.WebViewInstance != null)
+                {
+                    _ = InitializeWebViewAsync(_activeTab, "browy://newtab");
+                }
                 return;
             }
 
@@ -2386,10 +2501,7 @@ namespace Browy
             }
             else if (_activeTab.WebViewInstance != null)
             {
-                _ = Task.Run(async () =>
-                {
-                    await InitializeWebViewAsync(_activeTab, targetUrl);
-                });
+                _ = InitializeWebViewAsync(_activeTab, targetUrl);
             }
         }
 

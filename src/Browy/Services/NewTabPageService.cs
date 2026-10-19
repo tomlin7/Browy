@@ -20,18 +20,17 @@ namespace Browy.Services
 <title>New Tab - Browy</title>
 <style>
   :root {
-    --bg-main: #0c0c10;
-    --text-primary: #F8FAFC;
-    --text-secondary: #94A3B8;
-    --text-muted: #64748B;
-    --card-bg: rgba(255, 255, 255, 0.04);
-    --card-hover: rgba(255, 255, 255, 0.08);
+    --bg-main: #0c0d0e;
+    --text-primary: #fafafa;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --card-bg: rgba(255, 255, 255, 0.025);
+    --card-hover: rgba(255, 255, 255, 0.05);
     --border-color: rgba(255, 255, 255, 0.08);
-    --border-hover: rgba(59, 130, 246, 0.5);
+    --border-hover: rgba(255, 255, 255, 0.16);
     --accent: {{accent}};
-    --accent-hover: {{accent}};
-    --accent-glow: rgba(59, 130, 246, 0.25);
-    --font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'Cascadia Code', 'Consolas', monospace;
   }
 
   * {
@@ -42,23 +41,22 @@ namespace Browy.Services
   }
 
   body {
-    background: radial-gradient(circle at 50% 20%, rgba(30, 41, 59, 0.4) 0%, var(--bg-main) 70%);
     background-color: var(--bg-main);
     color: var(--text-primary);
-    font-family: var(--font-family);
+    font-family: var(--font-sans);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: space-between;
-    padding: 40px 24px 24px 24px;
+    padding: 32px 24px 24px 24px;
     overflow-x: hidden;
   }
 
   /* Top Right Status */
   .top-bar {
     width: 100%;
-    max-width: 960px;
+    max-width: 900px;
     display: flex;
     justify-content: flex-end;
     align-items: center;
@@ -69,26 +67,35 @@ namespace Browy.Services
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 6px 14px;
-    background: var(--card-bg);
+    padding: 5px 12px;
+    background: transparent;
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 6px;
     color: var(--text-secondary);
-    font-size: 12.5px;
+    font-size: 12px;
+    font-family: var(--font-mono);
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
   }
 
   .top-btn:hover {
     background: var(--card-hover);
     color: var(--text-primary);
-    border-color: rgba(255, 255, 255, 0.15);
+    border-color: var(--border-hover);
+  }
+
+  .top-btn svg {
+    width: 13px;
+    height: 13px;
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
   }
 
   /* Center Container */
   .center-container {
     width: 100%;
-    max-width: 760px;
+    max-width: 680px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -98,54 +105,62 @@ namespace Browy.Services
 
   /* Clock & Greeting */
   .clock {
-    font-size: 64px;
-    font-weight: 300;
+    font-size: 56px;
+    font-weight: 400;
+    font-family: var(--font-mono);
     letter-spacing: -1.5px;
-    color: #FFFFFF;
-    margin-bottom: 4px;
-    text-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    color: var(--text-primary);
+    margin-bottom: 2px;
   }
 
   .greeting {
-    font-size: 18px;
-    color: var(--text-secondary);
-    font-weight: 400;
-    margin-bottom: 28px;
+    font-size: 13px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 32px;
   }
 
   /* Search Box */
   .search-form {
     width: 100%;
-    max-width: 620px;
+    max-width: 580px;
     position: relative;
-    margin-bottom: 36px;
+    margin-bottom: 40px;
   }
 
   .search-box-wrap {
     display: flex;
     align-items: center;
-    background: rgba(26, 26, 36, 0.75);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    background: rgba(255, 255, 255, 0.02);
     border: 1px solid var(--border-color);
-    border-radius: 14px;
-    padding: 0 16px;
-    height: 52px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    border-radius: 8px;
+    padding: 0 14px;
+    height: 44px;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
   }
 
   .search-box-wrap:hover,
   .search-box-wrap:focus-within {
-    border-color: var(--accent);
-    box-shadow: 0 8px 36px var(--accent-glow), 0 0 0 1px var(--accent);
-    background: rgba(30, 30, 42, 0.9);
+    border-color: var(--border-hover);
+    background: rgba(255, 255, 255, 0.035);
   }
 
   .search-icon {
-    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: var(--text-muted);
-    margin-right: 12px;
+    margin-right: 10px;
+  }
+
+  .search-icon svg {
+    width: 15px;
+    height: 15px;
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
   }
 
   .search-input {
@@ -153,7 +168,7 @@ namespace Browy.Services
     background: transparent;
     border: none;
     color: var(--text-primary);
-    font-size: 15px;
+    font-size: 14px;
     font-family: inherit;
     outline: none;
     user-select: text;
@@ -161,30 +176,37 @@ namespace Browy.Services
 
   .search-input::placeholder {
     color: var(--text-muted);
+    font-size: 13px;
   }
 
   .engine-select {
-    background: rgba(255, 255, 255, 0.06);
+    background: transparent;
     border: 1px solid var(--border-color);
-    border-radius: 6px;
+    border-radius: 4px;
     color: var(--text-secondary);
-    font-size: 11.5px;
-    padding: 4px 8px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    padding: 3px 6px;
     cursor: pointer;
     outline: none;
-    transition: all 0.15s ease;
+    transition: border-color 0.15s ease, color 0.15s ease;
   }
 
   .engine-select:hover {
-    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--border-hover);
     color: var(--text-primary);
+  }
+
+  .engine-select option {
+    background: #18181b;
+    color: #fafafa;
   }
 
   /* Speed Dial Grid */
   .speed-dial-grid {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 14px;
+    gap: 10px;
     width: 100%;
     margin-bottom: 24px;
   }
@@ -203,41 +225,42 @@ namespace Browy.Services
     justify-content: center;
     background: var(--card-bg);
     border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 16px 10px 12px 10px;
+    border-radius: 8px;
+    padding: 14px 8px 10px 8px;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: background-color 0.15s ease, border-color 0.15s ease;
     text-decoration: none;
   }
 
   .speed-tile:hover {
     background: var(--card-hover);
-    border-color: rgba(255, 255, 255, 0.2);
-    transform: translateY(-3px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    border-color: var(--border-hover);
   }
 
   .tile-icon {
-    width: 44px;
-    height: 44px;
-    border-radius: 10px;
+    width: 34px;
+    height: 34px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
-    font-weight: 700;
+    font-size: 13px;
+    font-family: var(--font-mono);
+    font-weight: 600;
     margin-bottom: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-primary);
   }
 
   .tile-title {
-    font-size: 12px;
-    font-weight: 500;
+    font-size: 11px;
+    font-family: var(--font-mono);
     color: var(--text-secondary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 90px;
+    max-width: 80px;
   }
 
   .speed-tile:hover .tile-title {
@@ -248,55 +271,55 @@ namespace Browy.Services
     position: absolute;
     top: 4px;
     right: 4px;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: rgba(0, 0, 0, 0.5);
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    background: transparent;
     border: none;
     color: var(--text-muted);
     font-size: 11px;
-    line-height: 18px;
-    text-align: center;
     cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
   }
 
   .speed-tile:hover .tile-remove {
-    opacity: 1;
+    display: flex;
   }
 
   .tile-remove:hover {
-    background: #EF4444;
-    color: #FFFFFF;
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
   }
 
-  /* Add Tile Button */
   .add-tile {
     border-style: dashed;
-    border-color: rgba(255, 255, 255, 0.12);
-  }
-
-  .add-tile:hover {
-    border-color: var(--accent);
+    background: transparent;
   }
 
   .add-tile .tile-icon {
-    background: rgba(255, 255, 255, 0.05);
+    border: 1px dashed var(--border-color);
+    background: transparent;
     color: var(--text-muted);
+    font-size: 15px;
+    font-weight: 300;
   }
 
   .add-tile:hover .tile-icon {
-    color: var(--accent);
-    background: rgba(59, 130, 246, 0.1);
+    color: var(--text-primary);
+    border-color: var(--border-hover);
   }
 
-  /* Bottom Hints */
+  /* Footer Keyboard Hints */
   .footer-hints {
     display: flex;
-    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: 16px;
-    font-size: 11.5px;
+    font-family: var(--font-mono);
+    font-size: 11px;
     color: var(--text-muted);
   }
 
@@ -307,69 +330,62 @@ namespace Browy.Services
   }
 
   .kbd {
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    display: inline-block;
+    padding: 1.5px 5px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
     border-radius: 4px;
-    padding: 2px 6px;
-    font-size: 10.5px;
-    font-family: monospace;
+    font-size: 10px;
     color: var(--text-secondary);
   }
 
-  /* Modal Dialog for Adding Shortcut */
+  /* Modal */
   .modal-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(8px);
-    display: flex;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: none;
     align-items: center;
     justify-content: center;
     z-index: 1000;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease;
   }
 
   .modal-overlay.active {
-    opacity: 1;
-    pointer-events: auto;
+    display: flex;
   }
 
   .modal-box {
-    width: 360px;
-    background: #161622;
+    background: #141517;
     border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+    border-radius: 8px;
+    padding: 24px;
+    width: 90%;
+    max-width: 380px;
   }
 
   .modal-title {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
-    margin-bottom: 14px;
+    margin-bottom: 16px;
+    color: var(--text-primary);
   }
 
   .modal-input {
     width: 100%;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.04);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 6px;
     padding: 8px 12px;
     color: var(--text-primary);
     font-size: 13px;
-    margin-bottom: 12px;
-    outline: none;
     font-family: inherit;
-    user-select: text;
+    outline: none;
+    margin-bottom: 12px;
   }
 
   .modal-input:focus {
-    border-color: var(--accent);
+    border-color: var(--border-hover);
   }
 
   .modal-actions {
@@ -380,16 +396,19 @@ namespace Browy.Services
   }
 
   .btn {
-    padding: 6px 14px;
+    padding: 6px 12px;
     border-radius: 6px;
-    font-size: 12.5px;
+    font-size: 12px;
+    font-family: var(--font-mono);
     cursor: pointer;
     border: 1px solid transparent;
+    transition: background-color 0.15s ease;
   }
 
   .btn-ghost {
     background: transparent;
     color: var(--text-secondary);
+    border-color: var(--border-color);
   }
 
   .btn-ghost:hover {
@@ -398,12 +417,13 @@ namespace Browy.Services
   }
 
   .btn-primary {
-    background: var(--accent);
-    color: #FFFFFF;
+    background: #fafafa;
+    color: #09090b;
+    font-weight: 500;
   }
 
   .btn-primary:hover {
-    background: var(--accent-hover);
+    background: #ffffff;
   }
 </style>
 </head>
@@ -412,23 +432,26 @@ namespace Browy.Services
   <!-- Top Right Bar -->
   <div class="top-bar">
     <button class="top-btn" onclick="navigate('browy://settings')">
-      <span>&#x2699;</span> Settings
+      <svg viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+      <span>SETTINGS</span>
     </button>
   </div>
 
   <!-- Center Hero -->
   <div class="center-container">
     <div class="clock" id="clock">12:00</div>
-    <div class="greeting" id="greeting">Good day</div>
+    <div class="greeting" id="greeting">BROWY</div>
 
     <!-- Search Box Form -->
     <form class="search-form" id="search-form" onsubmit="handleSearch(event)">
       <div class="search-box-wrap">
-        <span class="search-icon">&#x1F50D;</span>
+        <span class="search-icon">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </span>
         <input type="text"
                class="search-input"
                id="search-input"
-               placeholder="Search the web or type a URL..."
+               placeholder="Search or enter web address..."
                autocomplete="off"
                autofocus>
         <select class="engine-select" id="engine-select" onchange="saveEnginePreference()">
@@ -449,10 +472,10 @@ namespace Browy.Services
 
   <!-- Footer Keyboard Hints -->
   <div class="footer-hints">
-    <div class="hint-pill"><span class="kbd">Ctrl+K</span> Command Palette</div>
+    <div class="hint-pill"><span class="kbd">Ctrl+K</span> Palette</div>
     <div class="hint-pill"><span class="kbd">Ctrl+T</span> New Tab</div>
-    <div class="hint-pill"><span class="kbd">Ctrl+Shift+R</span> Reader Mode</div>
-    <div class="hint-pill"><span class="kbd">Ctrl+S</span> Toggle Tabs</div>
+    <div class="hint-pill"><span class="kbd">Ctrl+Shift+R</span> Reader</div>
+    <div class="hint-pill"><span class="kbd">Ctrl+S</span> Sidebar</div>
   </div>
 
   <!-- Add Shortcut Modal -->
@@ -480,19 +503,13 @@ namespace Browy.Services
   // Live Clock & Greeting
   function updateTime() {
     const now = new Date();
-    const hours = now.getHours();
+    const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
     document.getElementById('clock').textContent = `${hours}:${minutes}`;
 
-    let greet = 'Good evening';
-    if (hours >= 5 && hours < 12) greet = 'Good morning';
-    else if (hours >= 12 && hours < 17) greet = 'Good afternoon';
-    else if (hours >= 17 && hours < 22) greet = 'Good evening';
-    else greet = 'Good night';
-
-    const options = { weekday: 'long', month: 'short', day: 'numeric' };
+    const options = { weekday: 'short', month: 'short', day: 'numeric' };
     const dateStr = now.toLocaleDateString(undefined, options);
-    document.getElementById('greeting').textContent = `${greet} • ${dateStr}`;
+    document.getElementById('greeting').textContent = `${dateStr}`;
   }
   updateTime();
   setInterval(updateTime, 1000);
@@ -523,7 +540,6 @@ namespace Browy.Services
     const query = document.getElementById('search-input').value.trim();
     if (!query) return;
 
-    // Direct URL check
     if (query.startsWith('http://') || query.startsWith('https://') || query.startsWith('browy://') || query.startsWith('file://')) {
       navigate(query);
       return;
@@ -539,17 +555,17 @@ namespace Browy.Services
     navigate(base + encodeURIComponent(query));
   }
 
-  // Speed Dial Management
+  // Speed Dial Management (Clean monochrome text glyphs, zero emojis)
   const defaultShortcuts = [
-    { name: 'Google', url: 'https://www.google.com', bg: '#4285F4', color: '#FFF', icon: 'G' },
-    { name: 'YouTube', url: 'https://www.youtube.com', bg: '#EF4444', color: '#FFF', icon: '▶' },
-    { name: 'GitHub', url: 'https://github.com', bg: '#24292F', color: '#FFF', icon: '⌥' },
-    { name: 'Reddit', url: 'https://www.reddit.com', bg: '#FF4500', color: '#FFF', icon: '●' },
-    { name: 'ChatGPT', url: 'https://chatgpt.com', bg: '#10A37F', color: '#FFF', icon: 'AI' },
-    { name: 'Wikipedia', url: 'https://www.wikipedia.org', bg: '#334155', color: '#FFF', icon: 'W' },
-    { name: 'X / Twitter', url: 'https://x.com', bg: '#000000', color: '#FFF', icon: '𝕏' },
-    { name: 'Hacker News', url: 'https://news.ycombinator.com', bg: '#FF6600', color: '#FFF', icon: 'Y' },
-    { name: 'Settings', url: 'browy://settings', bg: '#3B82F6', color: '#FFF', icon: '⚙' }
+    { name: 'Google', url: 'https://www.google.com', icon: 'G' },
+    { name: 'YouTube', url: 'https://www.youtube.com', icon: 'YT' },
+    { name: 'GitHub', url: 'https://github.com', icon: 'GH' },
+    { name: 'Reddit', url: 'https://www.reddit.com', icon: 'RD' },
+    { name: 'ChatGPT', url: 'https://chatgpt.com', icon: 'AI' },
+    { name: 'Wikipedia', url: 'https://www.wikipedia.org', icon: 'W' },
+    { name: 'X', url: 'https://x.com', icon: 'X' },
+    { name: 'Hacker News', url: 'https://news.ycombinator.com', icon: 'HN' },
+    { name: 'Settings', url: 'browy://settings', icon: 'SET' }
   ];
 
   function getShortcuts() {
@@ -578,8 +594,10 @@ namespace Browy.Services
         navigate(s.url);
       };
 
+      const displayIcon = s.icon || s.name.substring(0, 2).toUpperCase();
+
       tile.innerHTML = `
-        <div class="tile-icon" style="background:${s.bg || '#334155'}; color:${s.color || '#FFF'}">${s.icon || s.name[0]}</div>
+        <div class="tile-icon">${displayIcon}</div>
         <div class="tile-title" title="${s.name}">${s.name}</div>
         <button class="tile-remove" onclick="removeShortcut(${idx})" title="Remove shortcut">&times;</button>
       `;
@@ -592,7 +610,7 @@ namespace Browy.Services
     addTile.onclick = openAddModal;
     addTile.innerHTML = `
       <div class="tile-icon">+</div>
-      <div class="tile-title">Add Shortcut</div>
+      <div class="tile-title">Add</div>
     `;
     grid.appendChild(addTile);
   }
@@ -624,14 +642,9 @@ namespace Browy.Services
     }
 
     const list = getShortcuts();
-    const bgColors = ['#3B82F6', '#8B5CF6', '#EC4899', '#10B981', '#F59E0B', '#6366F1'];
-    const randomBg = bgColors[Math.floor(Math.random() * bgColors.length)];
-
     list.push({
       name: name,
       url: url,
-      bg: randomBg,
-      color: '#FFFFFF',
       icon: name.substring(0, 2).toUpperCase()
     });
 

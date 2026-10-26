@@ -360,6 +360,8 @@ namespace Browy.Models
 
         public WebView2? WebViewInstance { get; set; }
 
+        public System.Threading.Tasks.TaskCompletionSource<bool>? InitializationTaskSource { get; set; }
+
         public event PropertyChangedEventHandler? PropertyChanged;
 
         protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)

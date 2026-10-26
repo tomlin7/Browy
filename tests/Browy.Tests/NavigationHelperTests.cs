@@ -96,10 +96,19 @@ namespace Browy.Tests
         [Theory]
         [InlineData("browy://settings", true)]
         [InlineData("browy://newtab", true)]
+        [InlineData("browy://history", true)]
+        [InlineData("browy://bookmarks", true)]
+        [InlineData("browy://downloads", true)]
+        [InlineData("browy://flags", true)]
+        [InlineData("browy://searchengines", true)]
         [InlineData("about:blank", true)]
+        [InlineData("about:newtab", true)]
+        [InlineData("about:settings", true)]
         [InlineData("https://github.com", false)]
         [InlineData("http://example.com", false)]
+        [InlineData("ftp://example.com", false)]
         [InlineData("", false)]
+        [InlineData("   ", false)]
         [InlineData(null, false)]
         public void IsInternalUrl_IdentifiesInternalSchemesCorrectly(string? url, bool expected)
         {
@@ -110,12 +119,38 @@ namespace Browy.Tests
         [Theory]
         [InlineData("https://www.github.com/torvalds/linux", "www.github.com")]
         [InlineData("http://sub.domain.com:8080/path?arg=1", "sub.domain.com")]
+        [InlineData("https://localhost:5001/app", "localhost")]
+        [InlineData("https://127.0.0.1:8080", "127.0.0.1")]
+        [InlineData("about:blank", "about:blank")]
         [InlineData("", "")]
+        [InlineData(null, "")]
         [InlineData("not a valid url", "not a valid url")]
-        public void ExtractDomain_ExtractsHostName(string url, string expected)
+        public void ExtractDomain_ExtractsHostName(string? url, string expected)
         {
-            string result = NavigationHelper.ExtractDomain(url);
+            string result = NavigationHelper.ExtractDomain(url ?? "");
             Assert.Equal(expected, result);
+        }
+
+        [Theory]
+        [InlineData("browy://settings", "Settings - Browy")]
+        [InlineData("about:settings", "Settings - Browy")]
+        [InlineData("browy://history", "History - Browy")]
+        [InlineData("browy://bookmarks", "Bookmarks - Browy")]
+        [InlineData("browy://downloads", "Downloads - Browy")]
+        [InlineData("browy://extensions", "Extensions - Browy")]
+        [InlineData("browy://version", "About - Browy")]
+        [InlineData("browy://about", "About - Browy")]
+        [InlineData("browy://shortcuts", "Shortcuts - Browy")]
+        [InlineData("browy://flags", "Experiments - Browy")]
+        [InlineData("browy://system", "System Diagnostics - Browy")]
+        [InlineData("browy://searchengines", "Search Engines - Browy")]
+        [InlineData("browy://newtab", "New Tab")]
+        [InlineData("about:blank", "New Tab")]
+        [InlineData("unknown", "New Tab")]
+        [InlineData(null, "New Tab")]
+        public void GetInternalPageTitle_ReturnsCorrectTitles(string? url, string expected)
+        {
+            Assert.Equal(expected, NavigationHelper.GetInternalPageTitle(url));
         }
     }
 }

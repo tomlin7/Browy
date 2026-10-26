@@ -49,7 +49,11 @@ namespace Browy.Services
 
         private static readonly object _lock = new();
 
-        public static void SaveSpacesSession(IEnumerable<BrowserSpace> spaces, BrowserSpace? activeSpace, BrowserTab? activeTab)
+        public static void SaveSpacesSession(
+            IEnumerable<BrowserSpace> spaces,
+            BrowserSpace? activeSpace,
+            BrowserTab? activeTab,
+            IEnumerable<BrowserTab>? activeTabs = null)
         {
             lock (_lock)
             {
@@ -82,7 +86,7 @@ namespace Browy.Services
                             ActiveTabIndex = space.ActiveTabIndex
                         };
 
-                        var tabList = space.Tabs.ToList();
+                        var tabList = (isSpaceActive && activeTabs != null) ? activeTabs.ToList() : space.Tabs.ToList();
                         for (int t = 0; t < tabList.Count; t++)
                         {
                             var tab = tabList[t];
@@ -95,13 +99,22 @@ namespace Browy.Services
                                 url = "browy://newtab";
                             }
 
+                            string title = tab.Title;
+                            if (string.IsNullOrWhiteSpace(title) || title == "Navigation error" || title == "Loading...")
+                            {
+                                title = NavigationHelper.IsInternalUrl(url) 
+                                    ? NavigationHelper.GetInternalPageTitle(url) 
+                                    : NavigationHelper.ExtractDomain(url);
+                                if (string.IsNullOrWhiteSpace(title)) title = "New Tab";
+                            }
+
                             bool isTabActive = (tab == activeTab) || tab.IsActive;
                             if (isTabActive) spaceData.ActiveTabIndex = t;
 
                             spaceData.Tabs.Add(new SessionTabData
                             {
                                 Url = url,
-                                Title = string.IsNullOrWhiteSpace(tab.Title) ? "New Tab" : tab.Title,
+                                Title = title,
                                 IsPinned = tab.IsPinned,
                                 IsActive = isTabActive,
                                 GroupName = tab.GroupName,
@@ -134,7 +147,9 @@ namespace Browy.Services
                     string dir = Path.GetDirectoryName(SessionFilePath)!;
                     Directory.CreateDirectory(dir);
                     string json = JsonSerializer.Serialize(session, new JsonSerializerOptions { WriteIndented = true });
-                    File.WriteAllText(SessionFilePath, json);
+                    string tempFile = $"{SessionFilePath}.tmp";
+                    File.WriteAllText(tempFile, json);
+                    File.Move(tempFile, SessionFilePath, overwrite: true);
                 }
                 catch (Exception ex)
                 {
@@ -189,6 +204,19 @@ namespace Browy.Services
 
                         if (session.Spaces != null && session.Spaces.Count > 0)
                         {
+                            for (int i = 0; i < session.Spaces.Count; i++)
+                            {
+                                var space = session.Spaces[i];
+                                if (space.Tabs == null || space.Tabs.Count == 0)
+                                {
+                                    space.Tabs = new List<SessionTabData>
+                                    {
+                                        new SessionTabData { Url = "browy://newtab", Title = "New Tab", IsActive = true }
+                                    };
+                                }
+                                space.ActiveTabIndex = Math.Clamp(space.ActiveTabIndex, 0, space.Tabs.Count - 1);
+                            }
+                            session.ActiveSpaceIndex = Math.Clamp(session.ActiveSpaceIndex, 0, session.Spaces.Count - 1);
                             return session;
                         }
                     }

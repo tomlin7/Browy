@@ -176,13 +176,50 @@ namespace Browy.Services
                    url.StartsWith("about:", StringComparison.OrdinalIgnoreCase);
         }
 
+        public static string GetInternalPageTitle(string? url)
+        {
+            if (string.IsNullOrWhiteSpace(url)) return "New Tab";
+            if (url.StartsWith("browy://settings", StringComparison.OrdinalIgnoreCase) ||
+                url.StartsWith("about:settings", StringComparison.OrdinalIgnoreCase))
+                return "Settings - Browy";
+            if (url.StartsWith("browy://history", StringComparison.OrdinalIgnoreCase) ||
+                url.StartsWith("about:history", StringComparison.OrdinalIgnoreCase))
+                return "History - Browy";
+            if (url.StartsWith("browy://bookmarks", StringComparison.OrdinalIgnoreCase) ||
+                url.StartsWith("about:bookmarks", StringComparison.OrdinalIgnoreCase))
+                return "Bookmarks - Browy";
+            if (url.StartsWith("browy://downloads", StringComparison.OrdinalIgnoreCase) ||
+                url.StartsWith("about:downloads", StringComparison.OrdinalIgnoreCase))
+                return "Downloads - Browy";
+            if (url.StartsWith("browy://extensions", StringComparison.OrdinalIgnoreCase) ||
+                url.StartsWith("about:extensions", StringComparison.OrdinalIgnoreCase))
+                return "Extensions - Browy";
+            if (url.StartsWith("browy://version", StringComparison.OrdinalIgnoreCase) ||
+                url.StartsWith("browy://about", StringComparison.OrdinalIgnoreCase) ||
+                url.StartsWith("about:version", StringComparison.OrdinalIgnoreCase))
+                return "About - Browy";
+            if (url.StartsWith("browy://shortcuts", StringComparison.OrdinalIgnoreCase) ||
+                url.StartsWith("about:shortcuts", StringComparison.OrdinalIgnoreCase))
+                return "Shortcuts - Browy";
+            if (url.StartsWith("browy://flags", StringComparison.OrdinalIgnoreCase) ||
+                url.StartsWith("about:flags", StringComparison.OrdinalIgnoreCase))
+                return "Experiments - Browy";
+            if (url.StartsWith("browy://system", StringComparison.OrdinalIgnoreCase) ||
+                url.StartsWith("about:system", StringComparison.OrdinalIgnoreCase))
+                return "System Diagnostics - Browy";
+            if (url.StartsWith("browy://searchengines", StringComparison.OrdinalIgnoreCase) ||
+                url.StartsWith("about:searchengines", StringComparison.OrdinalIgnoreCase))
+                return "Search Engines - Browy";
+            return "New Tab";
+        }
+
         public static string ExtractDomain(string url)
         {
             if (string.IsNullOrWhiteSpace(url)) return "";
             try
             {
                 var uri = new Uri(url);
-                return uri.Host;
+                return !string.IsNullOrWhiteSpace(uri.Host) ? uri.Host : url;
             }
             catch
             {

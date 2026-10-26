@@ -80,7 +80,7 @@ namespace Browy.Services
         {
             if (string.IsNullOrWhiteSpace(apiKey))
             {
-                return "⚠️ **OpenAI API Key Missing**: Please configure your OpenAI API key in Browy Settings (`browy://settings`) to enable live BYOK completions.";
+                return "**OpenAI API Key Missing**: Please configure your OpenAI API key in Browy Settings (`browy://settings`) to enable live BYOK completions.";
             }
 
             string actualModel = string.IsNullOrWhiteSpace(model) ? "gpt-4o-mini" : model;
@@ -124,7 +124,7 @@ namespace Browy.Services
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    return $"⚠️ **OpenAI Error ({response.StatusCode})**: {ExtractErrorMessage(responseBody)}";
+                    return $"**OpenAI Error ({response.StatusCode})**: {ExtractErrorMessage(responseBody)}";
                 }
 
                 using var doc = JsonDocument.Parse(responseBody);
@@ -138,7 +138,7 @@ namespace Browy.Services
             }
             catch (Exception ex)
             {
-                return $"⚠️ **OpenAI Request Failed**: {ex.Message}";
+                return $"**OpenAI Request Failed**: {ex.Message}";
             }
         }
 
@@ -157,7 +157,7 @@ namespace Browy.Services
         {
             if (string.IsNullOrWhiteSpace(apiKey))
             {
-                return "⚠️ **Claude API Key Missing**: Please configure your Anthropic Claude API key in Browy Settings (`browy://settings`) to enable live BYOK completions.";
+                return "**Claude API Key Missing**: Please configure your Anthropic Claude API key in Browy Settings (`browy://settings`) to enable live BYOK completions.";
             }
 
             string actualModel = string.IsNullOrWhiteSpace(model) ? "claude-3-5-sonnet-20241022" : model;
@@ -211,7 +211,7 @@ namespace Browy.Services
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    return $"⚠️ **Anthropic Error ({response.StatusCode})**: {ExtractErrorMessage(responseBody)}";
+                    return $"**Anthropic Error ({response.StatusCode})**: {ExtractErrorMessage(responseBody)}";
                 }
 
                 using var doc = JsonDocument.Parse(responseBody);
@@ -224,7 +224,7 @@ namespace Browy.Services
             }
             catch (Exception ex)
             {
-                return $"⚠️ **Claude Request Failed**: {ex.Message}";
+                return $"**Claude Request Failed**: {ex.Message}";
             }
         }
 
@@ -267,7 +267,7 @@ namespace Browy.Services
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    return $"⚠️ **Ollama Error ({response.StatusCode})**: Make sure Ollama is running at `{actualEndpoint}` and model `{actualModel}` is pulled.";
+                    return $"**Ollama Error ({response.StatusCode})**: Make sure Ollama is running at `{actualEndpoint}` and model `{actualModel}` is pulled.";
                 }
 
                 using var doc = JsonDocument.Parse(responseBody);
@@ -280,7 +280,7 @@ namespace Browy.Services
             }
             catch (Exception ex)
             {
-                return $"⚠️ **Ollama Request Failed**: Could not connect to Ollama at `{actualEndpoint}`. Details: {ex.Message}";
+                return $"**Ollama Request Failed**: Could not connect to Ollama at `{actualEndpoint}`. Details: {ex.Message}";
             }
         }
 

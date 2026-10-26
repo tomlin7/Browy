@@ -56,12 +56,63 @@ namespace Browy.Services
     overflow-x: hidden;
   }
 
-  /* Top Right Status */
+  /* Top Bar */
   .top-bar {
     width: 100%;
-    max-width: 900px;
+    max-width: 960px;
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .top-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    opacity: 0.7;
+    transition-property: opacity, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .top-brand:not(:disabled):active {
+    transform: scale(0.96);
+  }
+
+  @media (hover: hover) {
+    .top-brand:hover {
+      opacity: 1;
+    }
+  }
+
+  .brand-icon {
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-primary);
+  }
+
+  .brand-icon svg {
+    width: 15px;
+    height: 15px;
+    fill: currentColor;
+  }
+
+  .brand-name {
+    font-size: 11px;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    color: var(--text-primary);
+  }
+
+  .top-actions {
+    display: inline-flex;
     align-items: center;
     gap: 8px;
   }
@@ -311,10 +362,6 @@ namespace Browy.Services
     transition-duration: 120ms;
   }
 
-  .speed-tile:hover .tile-title {
-    color: var(--text-primary);
-  }
-
   .tile-remove {
     position: absolute;
     top: 4px;
@@ -342,13 +389,19 @@ namespace Browy.Services
     fill: none;
   }
 
-  .speed-tile:hover .tile-remove {
-    display: flex;
-  }
+  @media (hover: hover) {
+    .speed-tile:hover .tile-title {
+      color: var(--text-primary);
+    }
 
-  .tile-remove:hover {
-    color: #ef4444;
-    background: rgba(239, 68, 68, 0.12);
+    .speed-tile:hover .tile-remove {
+      display: flex;
+    }
+
+    .tile-remove:hover {
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.12);
+    }
   }
 
   .add-tile {
@@ -529,25 +582,33 @@ namespace Browy.Services
 </head>
 <body>
 
-  <!-- Top Right Bar -->
+  <!-- Top Bar -->
   <div class="top-bar">
-    <button class="top-btn" onclick="navigate('browy://history')" title="Browsing History (Ctrl+H)">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-      <span>HISTORY</span>
-    </button>
-    <button class="top-btn" onclick="navigate('browy://bookmarks')" title="Bookmarks (Ctrl+Shift+O)">
-      <svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
-      <span>BOOKMARKS</span>
-    </button>
-    <button class="top-btn" onclick="navigate('browy://settings')" title="Settings (Ctrl+,)">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-      <span>SETTINGS</span>
-    </button>
+    <div class="top-brand" onclick="navigate('browy://newtab')" title="Browy New Tab">
+      <span class="brand-icon">
+        <svg viewBox="0 0 24 24"><path d="M4 4h9a5 5 0 0 1 5 5 5 5 0 0 1-5 5H4V4zm0 10h10a5 5 0 0 1 5 5 5 5 0 0 1-5 5H4v-10z"></path></svg>
+      </span>
+      <span class="brand-name">BROWY</span>
+    </div>
+    <div class="top-actions">
+      <button class="top-btn" onclick="navigate('browy://history')" title="Browsing History (Ctrl+H)">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        <span>HISTORY</span>
+      </button>
+      <button class="top-btn" onclick="navigate('browy://bookmarks')" title="Bookmarks (Ctrl+Shift+O)">
+        <svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+        <span>BOOKMARKS</span>
+      </button>
+      <button class="top-btn" onclick="navigate('browy://settings')" title="Settings (Ctrl+,)">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        <span>SETTINGS</span>
+      </button>
+    </div>
   </div>
 
   <!-- Center Hero -->
   <div class="center-container">
-    <div class="greeting" id="greeting">BROWY</div>
+    <div class="greeting" id="greeting">&nbsp;</div>
     <div class="clock" id="clock">12:00</div>
 
     <!-- Search Box Form -->
@@ -587,11 +648,11 @@ namespace Browy.Services
   </div>
 
   <!-- Add Shortcut Modal -->
-  <div class="modal-overlay" id="add-modal">
+  <div class="modal-overlay" id="add-modal" onclick="if (event.target === this) closeAddModal()">
     <div class="modal-box">
       <div class="modal-title">Add Shortcut</div>
-      <input type="text" class="modal-input" id="shortcut-name" placeholder="Name (e.g. GitHub)">
-      <input type="text" class="modal-input" id="shortcut-url" placeholder="URL (e.g. https://github.com)">
+      <input type="text" class="modal-input" id="shortcut-name" placeholder="Name (e.g. GitHub)" onkeydown="if (event.key === 'Enter') confirmAddShortcut()">
+      <input type="text" class="modal-input" id="shortcut-url" placeholder="URL (e.g. https://github.com)" onkeydown="if (event.key === 'Enter') confirmAddShortcut()">
       <div class="modal-actions">
         <button class="btn btn-ghost" onclick="closeAddModal()">Cancel</button>
         <button class="btn btn-primary" onclick="confirmAddShortcut()">Add</button>
@@ -707,7 +768,7 @@ namespace Browy.Services
       tile.innerHTML = `
         <div class="tile-icon">${displayIcon}</div>
         <div class="tile-title" title="${s.name}">${s.name}</div>
-        <button class="tile-remove" onclick="removeShortcut(${idx})" title="Remove shortcut">
+        <button class="tile-remove" onclick="removeShortcut(event, ${idx})" title="Remove shortcut">
           <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
       `;
@@ -727,7 +788,11 @@ namespace Browy.Services
     grid.appendChild(addTile);
   }
 
-  function removeShortcut(idx) {
+  function removeShortcut(e, idx) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     const list = getShortcuts();
     list.splice(idx, 1);
     saveShortcuts(list);

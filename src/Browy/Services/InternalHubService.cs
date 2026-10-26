@@ -12,6 +12,7 @@ namespace Browy.Services
     {
         public static string GetHistoryHtml(IEnumerable<HistoryItem> history)
         {
+            string accent = BrowserSettings.Current.AccentColorHex;
             var items = history.ToList();
             if (items.Count == 0)
             {
@@ -118,54 +119,239 @@ namespace Browy.Services
 <meta charset='UTF-8'>
 <title>History - Browy</title>
 <style>
-  * {{ box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif; }}
-  body {{ background: #0D0D12; color: #F1F5F9; min-height: 100vh; padding: 40px 24px; display: flex; justify-content: center; }}
+
+  :root {{
+    --bg-main: #0b0c0e;
+    --bg-card: #141619;
+    --bg-card-hover: #181b20;
+    --border-color: rgba(255, 255, 255, 0.07);
+    --border-subtle: rgba(255, 255, 255, 0.05);
+    --border-hover: rgba(255, 255, 255, 0.16);
+    --text-primary: #f4f4f5;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --accent: {accent};
+    --accent-hover: {accent};
+    --danger-subtle: rgba(239, 68, 68, 0.12);
+    --danger-border: rgba(239, 68, 68, 0.28);
+    --font-sans: 'Segoe UI Variable Text', 'Segoe UI Variable Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'Cascadia Code', Consolas, 'SF Mono', monospace;
+  }}
+  * {{ box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }}
+
+  body {{ background-color: var(--bg-main); color: var(--text-primary); font-family: var(--font-sans); min-height: 100vh; padding: 36px 24px; display: flex; justify-content: center; }}
   .container {{ width: 100%; max-width: 860px; }}
   .header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }}
   .title-area {{ display: flex; align-items: center; gap: 14px; }}
-  .header-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 28px; color: #6366F1; }}
-  h1 {{ font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }}
-  .header-actions {{ display: flex; align-items: center; gap: 10px; }}
-  .btn-danger {{ background: #EF44441F; color: #F87171; border: 1px solid #EF44443F; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.15s ease; display: flex; align-items: center; gap: 6px; }}
-  .btn-danger:hover {{ background: #EF44443F; color: #FFFFFF; }}
-  .btn-danger-sm {{ background: #EF44441F; color: #F87171; border: 1px solid #EF44443F; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 11.5px; font-weight: 500; }}
-  .btn-danger-sm:hover {{ background: #EF44443F; color: #FFFFFF; }}
-  .tabs {{ display: flex; gap: 8px; margin-bottom: 18px; border-bottom: 1px solid #202030; padding-bottom: 8px; }}
-  .tab-btn {{ background: transparent; border: none; color: #94A3B8; font-size: 13.5px; font-weight: 500; padding: 8px 14px; border-radius: 6px; cursor: pointer; transition: all 0.15s ease; }}
-  .tab-btn.active {{ background: #1E1E2E; color: #FFFFFF; font-weight: 600; }}
+  .header-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 26px; color: var(--accent); }}
+  h1 {{ font-size: 22px; font-weight: 600; letter-spacing: -0.02em; color: var(--text-primary); }}
+  .header-actions {{ display: flex; align-items: center; gap: 8px; }}
+
+  .btn-primary {{
+    background: #f4f4f5;
+    color: #0b0c0e;
+    border: 1px solid transparent;
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, color, transform, box-shadow;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-primary:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-primary:hover {{ background: #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }}
+  }}
+
+  .btn-secondary {{
+    background: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, border-color, color, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-secondary:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-secondary:hover {{ background: rgba(255, 255, 255, 0.05); border-color: var(--border-hover); }}
+  }}
+
+  .btn-danger {{
+    background: var(--danger-subtle);
+    color: #fca5a5;
+    border: 1px solid var(--danger-border);
+    padding: 7px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12.5px;
+    font-weight: 500;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, border-color, color, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-danger:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-danger:hover {{ background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4); color: #ffffff; }}
+  }}
+
+  .btn-danger-sm {{
+    background: var(--danger-subtle);
+    color: #fca5a5;
+    border: 1px solid var(--danger-border);
+    padding: 3px 9px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 11.5px;
+    font-weight: 500;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, border-color, color, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-danger-sm:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-danger-sm:hover {{ background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4); color: #ffffff; }}
+  }}
+
+  .tabs {{ display: flex; gap: 6px; margin-bottom: 18px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px; }}
+  .tab-btn {{
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-secondary);
+    font-size: 12.5px;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, color, border-color, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .tab-btn:not(:disabled):active {{ transform: scale(0.98); }}
+  @media (hover: hover) {{
+    .tab-btn:hover {{ background: rgba(255, 255, 255, 0.04); color: var(--text-primary); }}
+  }}
+  .tab-btn.active {{ background: rgba(255, 255, 255, 0.08); color: var(--text-primary); font-weight: 600; border-color: var(--border-color); }}
+
   .toolbar {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; gap: 12px; }}
-  .search-bar {{ flex: 1; background: #181822; border: 1px solid #282838; border-radius: 10px; padding: 11px 16px; color: #FFFFFF; font-size: 13.5px; outline: none; transition: border-color 0.15s ease; }}
-  .search-bar:focus {{ border-color: #6366F1; box-shadow: 0 0 0 2px #6366F13F; }}
-  .batch-actions {{ display: flex; align-items: center; gap: 12px; }}
+  .search-bar {{
+    flex: 1;
+    background: #101215;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 8px 14px;
+    color: var(--text-primary);
+    font-size: 13px;
+    outline: none;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: border-color, box-shadow;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .search-bar:focus {{ border-color: rgba(255, 255, 255, 0.28); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15); }}
+  .batch-actions {{ display: flex; align-items: center; gap: 10px; }}
+
   .bucket-section {{ margin-bottom: 24px; }}
-  .bucket-title {{ font-size: 14px; font-weight: 600; color: #CBD5E1; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }}
-  .bucket-badge {{ background: #202030; color: #94A3B8; font-size: 11px; padding: 2px 7px; border-radius: 10px; font-weight: normal; }}
-  .bucket-list {{ display: flex; flex-direction: column; gap: 8px; }}
-  .history-card {{ display: flex; align-items: center; background: #14141E; border: 1px solid #202030; border-radius: 10px; padding: 12px 16px; gap: 14px; transition: all 0.12s ease; }}
-  .history-card:hover {{ background: #1A1A28; border-color: #303048; transform: translateY(-1px); }}
-  .hist-check {{ width: 16px; height: 16px; cursor: pointer; accent-color: #6366F1; }}
-  .card-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 16px; color: #94A3B8; width: 20px; text-align: center; }}
+  .bucket-title {{ font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; letter-spacing: -0.01em; }}
+  .bucket-badge {{ background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); color: var(--text-muted); font-size: 11px; font-family: var(--font-mono); padding: 1px 6px; border-radius: 4px; font-weight: 500; }}
+  .bucket-list {{ display: flex; flex-direction: column; gap: 6px; }}
+
+  .history-card {{
+    display: flex;
+    align-items: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 10px 14px;
+    gap: 12px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+    transition-property: background-color, border-color, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  @media (hover: hover) {{
+    .history-card:hover {{ background: var(--bg-card-hover); border-color: var(--border-hover); }}
+  }}
+  .hist-check {{ width: 15px; height: 15px; cursor: pointer; accent-color: var(--accent); }}
+  .card-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 15px; color: var(--text-muted); width: 18px; text-align: center; }}
   .card-info {{ flex: 1; min-width: 0; cursor: pointer; }}
-  .card-title {{ font-size: 13.5px; font-weight: 500; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
-  .card-url {{ font-size: 12px; color: #64748B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }}
-  .card-time {{ font-size: 12px; color: #64748B; margin-right: 6px; }}
-  .card-delete {{ background: transparent; border: none; font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 13px; color: #64748B; width: 28px; height: 28px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; }}
-  .card-delete:hover {{ background: #EF444420; color: #F87171; }}
-  .domain-card {{ background: #14141E; border: 1px solid #202030; border-radius: 10px; margin-bottom: 10px; overflow: hidden; }}
-  .domain-header {{ padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: #161622; }}
-  .domain-header:hover {{ background: #1C1C2C; }}
-  .domain-info {{ display: flex; align-items: center; gap: 12px; }}
-  .domain-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 16px; color: #818CF8; }}
-  .domain-name {{ font-size: 14px; font-weight: 600; color: #F8FAFC; }}
-  .domain-actions {{ display: flex; align-items: center; gap: 12px; }}
-  .chevron {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 12px; color: #94A3B8; transition: transform 0.2s; }}
-  .domain-items {{ padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; background: #0E0E16; }}
-  .modal {{ display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 100; }}
-  .modal-content {{ background: #181822; border: 1px solid #282838; border-radius: 12px; padding: 24px; width: 380px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }}
-  .modal-title {{ font-size: 18px; font-weight: 600; margin-bottom: 14px; }}
-  .timeframe-select {{ width: 100%; background: #202030; border: 1px solid #303048; color: white; padding: 10px; border-radius: 8px; margin-bottom: 20px; outline: none; }}
-  .modal-buttons {{ display: flex; justify-content: flex-end; gap: 10px; }}
-  .btn-secondary {{ background: #202030; color: #CBD5E1; border: 1px solid #303048; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; }}
+  .card-title {{ font-size: 13px; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
+  .card-url {{ font-size: 11.5px; font-family: var(--font-mono); color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }}
+  .card-time {{ font-size: 11.5px; font-family: var(--font-mono); color: var(--text-muted); margin-right: 6px; }}
+  .card-delete {{
+    background: transparent;
+    border: none;
+    font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+    font-size: 13px;
+    color: var(--text-muted);
+    width: 26px;
+    height: 26px;
+    border-radius: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, color;
+    transition-duration: 120ms;
+  }}
+  @media (hover: hover) {{
+    .card-delete:hover {{ background: var(--danger-subtle); color: #fca5a5; }}
+  }}
+
+  .domain-card {{ background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 8px; overflow: hidden; }}
+  .domain-header {{ padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: var(--bg-card); transition-property: background-color; transition-duration: 120ms; }}
+  @media (hover: hover) {{
+    .domain-header:hover {{ background: var(--bg-card-hover); }}
+  }}
+  .domain-info {{ display: flex; align-items: center; gap: 10px; }}
+  .domain-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 15px; color: var(--accent); }}
+  .domain-name {{ font-size: 13px; font-weight: 600; color: var(--text-primary); }}
+  .domain-actions {{ display: flex; align-items: center; gap: 10px; }}
+  .chevron {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 11px; color: var(--text-muted); transition-property: transform; transition-duration: 140ms; }}
+  .domain-items {{ padding: 8px 12px; display: flex; flex-direction: column; gap: 5px; background: #0e1013; border-top: 1px solid var(--border-subtle); }}
+
+  .modal {{ display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.65); backdrop-filter: blur(8px); align-items: center; justify-content: center; z-index: 100; overscroll-behavior: contain; }}
+  .modal-content {{ background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 22px 24px; width: 380px; box-shadow: 0 24px 48px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.03); }}
+  .modal-title {{ font-size: 16px; font-weight: 600; margin-bottom: 14px; color: var(--text-primary); letter-spacing: -0.01em; }}
+  .timeframe-select {{ width: 100%; background: #101215; border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px 12px; border-radius: 6px; margin-bottom: 18px; outline: none; font-family: inherit; font-size: 12.5px; }}
+  .modal-buttons {{ display: flex; justify-content: flex-end; gap: 8px; }}
+
+  @media (prefers-reduced-motion: reduce) {{
+    *, *::before, *::after {{
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      transform: none !important;
+    }}
+  }}
+
 </style>
 </head>
 <body>
@@ -321,18 +507,48 @@ namespace Browy.Services
 
         private static string GetEmptyHistoryHtml()
         {
-            return @"<!DOCTYPE html>
+            string accent = BrowserSettings.Current.AccentColorHex;
+            return $@"<!DOCTYPE html>
 <html lang='en'>
 <head>
 <meta charset='UTF-8'>
 <title>History - Browy</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif; }
-  body { background: #0D0D12; color: #F1F5F9; min-height: 100vh; padding: 60px 24px; display: flex; justify-content: center; }
-  .empty-state { text-align: center; color: #64748B; margin-top: 40px; }
-  .empty-icon { font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 48px; margin-bottom: 12px; opacity: 0.5; color: #6366F1; }
-  .empty-title { font-size: 20px; font-weight: 600; color: #CBD5E1; margin-bottom: 6px; }
-  .empty-sub { font-size: 13px; }
+
+  :root {{
+    --bg-main: #0b0c0e;
+    --bg-card: #141619;
+    --bg-card-hover: #181b20;
+    --border-color: rgba(255, 255, 255, 0.07);
+    --border-subtle: rgba(255, 255, 255, 0.05);
+    --border-hover: rgba(255, 255, 255, 0.16);
+    --text-primary: #f4f4f5;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --accent: {accent};
+    --accent-hover: {accent};
+    --danger-subtle: rgba(239, 68, 68, 0.12);
+    --danger-border: rgba(239, 68, 68, 0.28);
+    --font-sans: 'Segoe UI Variable Text', 'Segoe UI Variable Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'Cascadia Code', Consolas, 'SF Mono', monospace;
+  }}
+  * {{ box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }}
+
+  body {{ background-color: var(--bg-main); color: var(--text-primary); font-family: var(--font-sans); min-height: 100vh; padding: 60px 24px; display: flex; justify-content: center; }}
+  .empty-state {{ text-align: center; color: var(--text-muted); margin-top: 40px; }}
+  .empty-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 44px; margin-bottom: 14px; color: var(--accent); opacity: 0.8; }}
+  .empty-title {{ font-size: 18px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; letter-spacing: -0.01em; }}
+  .empty-sub {{ font-size: 13px; color: var(--text-secondary); }}
+
+  @media (prefers-reduced-motion: reduce) {{
+    *, *::before, *::after {{
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      transform: none !important;
+    }}
+  }}
+
 </style>
 </head>
 <body>
@@ -347,6 +563,7 @@ namespace Browy.Services
 
         public static string GetBookmarksHtml(IEnumerable<BookmarkItem> bookmarks)
         {
+            string accent = BrowserSettings.Current.AccentColorHex;
             var items = bookmarks.ToList();
             var itemsHtml = string.Empty;
 
@@ -387,31 +604,197 @@ namespace Browy.Services
 <meta charset='UTF-8'>
 <title>Bookmarks - Browy</title>
 <style>
-  * {{ box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif; }}
-  body {{ background: #0D0D12; color: #F1F5F9; min-height: 100vh; padding: 48px 24px; display: flex; justify-content: center; }}
-  .container {{ width: 100%; max-width: 840px; }}
-  .header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }}
+
+  :root {{
+    --bg-main: #0b0c0e;
+    --bg-card: #141619;
+    --bg-card-hover: #181b20;
+    --border-color: rgba(255, 255, 255, 0.07);
+    --border-subtle: rgba(255, 255, 255, 0.05);
+    --border-hover: rgba(255, 255, 255, 0.16);
+    --text-primary: #f4f4f5;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --accent: {accent};
+    --accent-hover: {accent};
+    --danger-subtle: rgba(239, 68, 68, 0.12);
+    --danger-border: rgba(239, 68, 68, 0.28);
+    --font-sans: 'Segoe UI Variable Text', 'Segoe UI Variable Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'Cascadia Code', Consolas, 'SF Mono', monospace;
+  }}
+  * {{ box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }}
+
+  body {{ background-color: var(--bg-main); color: var(--text-primary); font-family: var(--font-sans); min-height: 100vh; padding: 36px 24px; display: flex; justify-content: center; }}
+  .container {{ width: 100%; max-width: 860px; }}
+  .header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }}
   .title-area {{ display: flex; align-items: center; gap: 14px; }}
-  .header-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 28px; color: #F59E0B; }}
-  h1 {{ font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }}
-  .header-actions {{ display: flex; align-items: center; gap: 10px; }}
-  .btn-secondary {{ background: #181822; color: #CBD5E1; border: 1px solid #282838; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s ease; }}
-  .btn-secondary:hover {{ background: #222230; color: #FFFFFF; border-color: #383848; }}
-  .search-bar {{ width: 100%; background: #181822; border: 1px solid #282838; border-radius: 10px; padding: 12px 18px; color: #FFFFFF; font-size: 14px; margin-bottom: 24px; outline: none; transition: border-color 0.15s ease; }}
-  .search-bar:focus {{ border-color: #F59E0B; box-shadow: 0 0 0 2px #F59E0B3F; }}
-  .bookmark-list {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }}
-  .bookmark-card {{ display: flex; align-items: center; background: #14141E; border: 1px solid #202030; border-radius: 10px; padding: 14px 16px; gap: 12px; transition: all 0.12s ease; }}
-  .bookmark-card:hover {{ background: #1A1A28; border-color: #303048; transform: translateY(-1px); }}
-  .card-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 16px; color: #F59E0B; }}
+  .header-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 26px; color: var(--accent); }}
+  h1 {{ font-size: 22px; font-weight: 600; letter-spacing: -0.02em; color: var(--text-primary); }}
+  .header-actions {{ display: flex; align-items: center; gap: 8px; }}
+
+  .btn-primary {{
+    background: #f4f4f5;
+    color: #0b0c0e;
+    border: 1px solid transparent;
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, color, transform, box-shadow;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-primary:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-primary:hover {{ background: #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }}
+  }}
+
+  .btn-secondary {{
+    background: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, border-color, color, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-secondary:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-secondary:hover {{ background: rgba(255, 255, 255, 0.05); border-color: var(--border-hover); }}
+  }}
+
+  .btn-danger {{
+    background: var(--danger-subtle);
+    color: #fca5a5;
+    border: 1px solid var(--danger-border);
+    padding: 7px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12.5px;
+    font-weight: 500;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, border-color, color, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-danger:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-danger:hover {{ background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4); color: #ffffff; }}
+  }}
+
+  .btn-danger-sm {{
+    background: var(--danger-subtle);
+    color: #fca5a5;
+    border: 1px solid var(--danger-border);
+    padding: 3px 9px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 11.5px;
+    font-weight: 500;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, border-color, color, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-danger-sm:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-danger-sm:hover {{ background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4); color: #ffffff; }}
+  }}
+
+  .search-bar {{
+    width: 100%;
+    background: #101215;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 8px 14px;
+    color: var(--text-primary);
+    font-size: 13px;
+    margin-bottom: 20px;
+    outline: none;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: border-color, box-shadow;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .search-bar:focus {{ border-color: rgba(255, 255, 255, 0.28); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15); }}
+
+  .bookmark-list {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }}
+  .bookmark-card {{
+    display: flex;
+    align-items: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 12px 14px;
+    gap: 12px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+    transition-property: background-color, border-color, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  @media (hover: hover) {{
+    .bookmark-card:hover {{ background: var(--bg-card-hover); border-color: var(--border-hover); }}
+  }}
+  .card-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 16px; color: var(--accent); flex-shrink: 0; }}
   .card-info {{ flex: 1; min-width: 0; cursor: pointer; }}
-  .card-title {{ font-size: 13.5px; font-weight: 500; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
-  .card-url {{ font-size: 11.5px; color: #64748B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }}
-  .card-delete {{ background: transparent; border: none; font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 13px; color: #64748B; width: 28px; height: 28px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.12s ease; }}
-  .card-delete:hover {{ background: #EF444420; color: #F87171; }}
-  .empty-state {{ text-align: center; padding: 64px 0; color: #64748B; grid-column: 1 / -1; }}
-  .empty-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 48px; margin-bottom: 12px; opacity: 0.5; }}
-  .empty-title {{ font-size: 18px; font-weight: 600; color: #CBD5E1; margin-bottom: 4px; }}
-  .empty-sub {{ font-size: 13px; }}
+  .card-title {{ font-size: 13px; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
+  .card-url {{ font-size: 11.5px; font-family: var(--font-mono); color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }}
+  .card-delete {{
+    background: transparent;
+    border: none;
+    font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+    font-size: 13px;
+    color: var(--text-muted);
+    width: 26px;
+    height: 26px;
+    border-radius: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, color;
+    transition-duration: 120ms;
+  }}
+  @media (hover: hover) {{
+    .card-delete:hover {{ background: var(--danger-subtle); color: #fca5a5; }}
+  }}
+
+  .empty-state {{ text-align: center; padding: 64px 0; color: var(--text-muted); grid-column: 1 / -1; }}
+  .empty-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 44px; margin-bottom: 12px; color: var(--accent); opacity: 0.8; }}
+  .empty-title {{ font-size: 17px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }}
+  .empty-sub {{ font-size: 12.5px; color: var(--text-secondary); }}
+
+  @media (prefers-reduced-motion: reduce) {{
+    *, *::before, *::after {{
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      transform: none !important;
+    }}
+  }}
+
 </style>
 </head>
 <body>
@@ -459,6 +842,7 @@ namespace Browy.Services
 
         public static string GetDownloadsHtml(IEnumerable<DownloadItem> downloads)
         {
+            string accent = BrowserSettings.Current.AccentColorHex;
             var items = downloads.ToList();
             var itemsHtml = string.Empty;
 
@@ -536,40 +920,224 @@ namespace Browy.Services
 <meta charset='UTF-8'>
 <title>Downloads - Browy</title>
 <style>
-  * {{ box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif; }}
-  body {{ background: #0D0D12; color: #F1F5F9; min-height: 100vh; padding: 48px 24px; display: flex; justify-content: center; }}
-  .container {{ width: 100%; max-width: 840px; }}
+
+  :root {{
+    --bg-main: #0b0c0e;
+    --bg-card: #141619;
+    --bg-card-hover: #181b20;
+    --border-color: rgba(255, 255, 255, 0.07);
+    --border-subtle: rgba(255, 255, 255, 0.05);
+    --border-hover: rgba(255, 255, 255, 0.16);
+    --text-primary: #f4f4f5;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --accent: {accent};
+    --accent-hover: {accent};
+    --danger-subtle: rgba(239, 68, 68, 0.12);
+    --danger-border: rgba(239, 68, 68, 0.28);
+    --font-sans: 'Segoe UI Variable Text', 'Segoe UI Variable Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'Cascadia Code', Consolas, 'SF Mono', monospace;
+  }}
+  * {{ box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }}
+
+  body {{ background-color: var(--bg-main); color: var(--text-primary); font-family: var(--font-sans); min-height: 100vh; padding: 36px 24px; display: flex; justify-content: center; }}
+  .container {{ width: 100%; max-width: 860px; }}
   .header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }}
   .title-area {{ display: flex; align-items: center; gap: 14px; }}
-  .header-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 28px; color: #10B981; }}
-  h1 {{ font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }}
-  .header-actions {{ display: flex; align-items: center; gap: 10px; }}
-  .btn-secondary {{ background: #181822; color: #CBD5E1; border: 1px solid #282838; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.15s ease; }}
-  .btn-secondary:hover {{ background: #222230; color: #FFFFFF; }}
-  .search-bar {{ width: 100%; background: #181822; border: 1px solid #282838; border-radius: 10px; padding: 12px 18px; color: #FFFFFF; font-size: 14px; margin-bottom: 24px; outline: none; transition: border-color 0.15s ease; }}
-  .search-bar:focus {{ border-color: #10B981; box-shadow: 0 0 0 2px #10B9813F; }}
-  .filter-bar {{ display: flex; gap: 8px; margin-bottom: 16px; }}
-  .filter-btn {{ background: #14141E; border: 1px solid #202030; color: #94A3B8; padding: 6px 14px; border-radius: 20px; font-size: 12.5px; font-weight: 500; cursor: pointer; transition: all 0.15s ease; }}
-  .filter-btn:hover {{ background: #1E1E2C; color: #FFFFFF; border-color: #303048; }}
-  .filter-btn.active {{ background: #10B98122; color: #34D399; border-color: #10B98166; font-weight: 600; }}
-  .download-list {{ display: flex; flex-direction: column; gap: 12px; }}
-  .download-card {{ display: flex; align-items: center; background: #14141E; border: 1px solid #202030; border-radius: 12px; padding: 16px 20px; gap: 16px; transition: all 0.12s ease; }}
-  .download-card:hover {{ background: #1A1A28; border-color: #303048; }}
-  .card-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 24px; color: #10B981; }}
+  .header-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 26px; color: var(--accent); }}
+  h1 {{ font-size: 22px; font-weight: 600; letter-spacing: -0.02em; color: var(--text-primary); }}
+  .header-actions {{ display: flex; align-items: center; gap: 8px; }}
+
+  .btn-primary {{
+    background: #f4f4f5;
+    color: #0b0c0e;
+    border: 1px solid transparent;
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, color, transform, box-shadow;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-primary:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-primary:hover {{ background: #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }}
+  }}
+
+  .btn-secondary {{
+    background: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, border-color, color, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-secondary:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-secondary:hover {{ background: rgba(255, 255, 255, 0.05); border-color: var(--border-hover); }}
+  }}
+
+  .btn-danger {{
+    background: var(--danger-subtle);
+    color: #fca5a5;
+    border: 1px solid var(--danger-border);
+    padding: 7px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12.5px;
+    font-weight: 500;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, border-color, color, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-danger:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-danger:hover {{ background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4); color: #ffffff; }}
+  }}
+
+  .btn-danger-sm {{
+    background: var(--danger-subtle);
+    color: #fca5a5;
+    border: 1px solid var(--danger-border);
+    padding: 3px 9px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 11.5px;
+    font-weight: 500;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, border-color, color, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-danger-sm:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-danger-sm:hover {{ background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4); color: #ffffff; }}
+  }}
+
+  .search-bar {{
+    width: 100%;
+    background: #101215;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 8px 14px;
+    color: var(--text-primary);
+    font-size: 13px;
+    margin-bottom: 16px;
+    outline: none;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: border-color, box-shadow;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .search-bar:focus {{ border-color: rgba(255, 255, 255, 0.28); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15); }}
+
+  .filter-bar {{ display: flex; gap: 6px; margin-bottom: 16px; }}
+  .filter-btn {{
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, border-color, color, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .filter-btn:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .filter-btn:hover {{ background: rgba(255, 255, 255, 0.04); color: var(--text-primary); }}
+  }}
+  .filter-btn.active {{ background: rgba(255, 255, 255, 0.08); color: var(--text-primary); border-color: rgba(255, 255, 255, 0.2); font-weight: 600; }}
+
+  .download-list {{ display: flex; flex-direction: column; gap: 8px; }}
+  .download-card {{
+    display: flex;
+    align-items: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 14px 18px;
+    gap: 16px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+    transition-property: background-color, border-color;
+    transition-duration: 140ms;
+  }}
+  @media (hover: hover) {{
+    .download-card:hover {{ background: var(--bg-card-hover); border-color: var(--border-hover); }}
+  }}
+  .card-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 22px; color: var(--accent); flex-shrink: 0; }}
   .card-info {{ flex: 1; min-width: 0; }}
-  .card-title {{ font-size: 14px; font-weight: 600; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
-  .card-status {{ font-size: 12px; color: #94A3B8; margin-top: 3px; }}
-  .progress-bar-container {{ height: 4px; background: #202030; border-radius: 2px; margin-top: 8px; overflow: hidden; }}
-  .progress-bar-fill {{ height: 100%; background: #10B981; border-radius: 2px; transition: width 0.3s ease; }}
-  .card-controls {{ display: flex; align-items: center; gap: 8px; }}
-  .btn-action {{ background: #202030; color: #E2E8F0; border: 1px solid #303048; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.12s ease; }}
-  .btn-action:hover {{ background: #303048; color: #FFFFFF; }}
-  .btn-action.btn-primary {{ background: #10B981; color: #FFFFFF; border-color: #059669; }}
-  .btn-action.btn-primary:hover {{ background: #059669; }}
-  .empty-state {{ text-align: center; padding: 64px 0; color: #64748B; }}
-  .empty-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 48px; margin-bottom: 12px; opacity: 0.5; }}
-  .empty-title {{ font-size: 18px; font-weight: 600; color: #CBD5E1; margin-bottom: 4px; }}
-  .empty-sub {{ font-size: 13px; }}
+  .card-title {{ font-size: 13.5px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
+  .card-status {{ font-size: 12px; color: var(--text-secondary); margin-top: 3px; font-family: var(--font-mono); }}
+  .progress-bar-container {{ height: 3px; background: rgba(255, 255, 255, 0.06); border-radius: 2px; margin-top: 8px; overflow: hidden; }}
+  .progress-bar-fill {{ height: 100%; background: var(--accent); border-radius: 2px; transition: width 150ms ease; }}
+  .card-controls {{ display: flex; align-items: center; gap: 6px; }}
+  .btn-action {{
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    padding: 5px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 11.5px;
+    font-weight: 500;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, border-color, color, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-action:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-action:hover {{ background: rgba(255, 255, 255, 0.08); border-color: var(--border-hover); }}
+  }}
+  .btn-action.btn-primary {{ background: #f4f4f5; color: #0b0c0e; border-color: transparent; }}
+  @media (hover: hover) {{
+    .btn-action.btn-primary:hover {{ background: #ffffff; }}
+  }}
+
+  .empty-state {{ text-align: center; padding: 64px 0; color: var(--text-muted); }}
+  .empty-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 44px; margin-bottom: 12px; color: var(--accent); opacity: 0.8; }}
+  .empty-title {{ font-size: 17px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }}
+  .empty-sub {{ font-size: 12.5px; color: var(--text-secondary); }}
+
+  @media (prefers-reduced-motion: reduce) {{
+    *, *::before, *::after {{
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      transform: none !important;
+    }}
+  }}
+
 </style>
 </head>
 <body>
@@ -643,6 +1211,7 @@ namespace Browy.Services
 
         public static string GetExtensionsHtml(IEnumerable<ExtensionItem> extensions)
         {
+            string accent = BrowserSettings.Current.AccentColorHex;
             var items = extensions.ToList();
             var itemsHtml = string.Empty;
 
@@ -695,38 +1264,189 @@ namespace Browy.Services
 <meta charset='UTF-8'>
 <title>Extensions - Browy</title>
 <style>
-  * {{ box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif; }}
-  body {{ background: #0D0D12; color: #F1F5F9; min-height: 100vh; padding: 48px 24px; display: flex; justify-content: center; }}
-  .container {{ width: 100%; max-width: 840px; }}
-  .header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }}
+
+  :root {{
+    --bg-main: #0b0c0e;
+    --bg-card: #141619;
+    --bg-card-hover: #181b20;
+    --border-color: rgba(255, 255, 255, 0.07);
+    --border-subtle: rgba(255, 255, 255, 0.05);
+    --border-hover: rgba(255, 255, 255, 0.16);
+    --text-primary: #f4f4f5;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --accent: {accent};
+    --accent-hover: {accent};
+    --danger-subtle: rgba(239, 68, 68, 0.12);
+    --danger-border: rgba(239, 68, 68, 0.28);
+    --font-sans: 'Segoe UI Variable Text', 'Segoe UI Variable Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'Cascadia Code', Consolas, 'SF Mono', monospace;
+  }}
+  * {{ box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }}
+
+  body {{ background-color: var(--bg-main); color: var(--text-primary); font-family: var(--font-sans); min-height: 100vh; padding: 36px 24px; display: flex; justify-content: center; }}
+  .container {{ width: 100%; max-width: 860px; }}
+  .header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }}
   .title-area {{ display: flex; align-items: center; gap: 14px; }}
-  .header-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 28px; color: #8B5CF6; }}
-  h1 {{ font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }}
-  .btn-primary {{ background: #8B5CF6; color: #FFFFFF; border: none; padding: 9px 18px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: background 0.15s ease; }}
-  .btn-primary:hover {{ background: #7C3AED; }}
-  .ext-list {{ display: flex; flex-direction: column; gap: 12px; }}
-  .ext-card {{ display: flex; align-items: flex-start; background: #14141E; border: 1px solid #202030; border-radius: 12px; padding: 18px 20px; gap: 16px; transition: all 0.12s ease; }}
-  .ext-card:hover {{ background: #1A1A28; border-color: #303048; }}
-  .ext-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 24px; color: #A78BFA; padding-top: 2px; }}
+  .header-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 26px; color: var(--accent); }}
+  h1 {{ font-size: 22px; font-weight: 600; letter-spacing: -0.02em; color: var(--text-primary); }}
+
+  .btn-primary {{
+    background: #f4f4f5;
+    color: #0b0c0e;
+    border: 1px solid transparent;
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, color, transform, box-shadow;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-primary:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-primary:hover {{ background: #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }}
+  }}
+
+  .btn-secondary {{
+    background: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, border-color, color, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-secondary:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-secondary:hover {{ background: rgba(255, 255, 255, 0.05); border-color: var(--border-hover); }}
+  }}
+
+  .btn-danger {{
+    background: var(--danger-subtle);
+    color: #fca5a5;
+    border: 1px solid var(--danger-border);
+    padding: 7px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12.5px;
+    font-weight: 500;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, border-color, color, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-danger:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-danger:hover {{ background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4); color: #ffffff; }}
+  }}
+
+  .btn-danger-sm {{
+    background: var(--danger-subtle);
+    color: #fca5a5;
+    border: 1px solid var(--danger-border);
+    padding: 3px 9px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 11.5px;
+    font-weight: 500;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, border-color, color, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-danger-sm:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-danger-sm:hover {{ background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4); color: #ffffff; }}
+  }}
+
+  .ext-list {{ display: flex; flex-direction: column; gap: 10px; }}
+  .ext-card {{
+    display: flex;
+    align-items: flex-start;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px 18px;
+    gap: 16px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+    transition-property: background-color, border-color;
+    transition-duration: 140ms;
+  }}
+  @media (hover: hover) {{
+    .ext-card:hover {{ background: var(--bg-card-hover); border-color: var(--border-hover); }}
+  }}
+  .ext-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 22px; color: var(--accent); padding-top: 2px; flex-shrink: 0; }}
   .ext-info {{ flex: 1; min-width: 0; }}
   .ext-header {{ display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }}
-  .ext-name {{ font-size: 15px; font-weight: 600; color: #F8FAFC; }}
-  .ext-version {{ font-size: 11px; background: #28283C; color: #94A3B8; padding: 2px 6px; border-radius: 4px; }}
-  .ext-desc {{ font-size: 12.5px; color: #94A3B8; line-height: 1.4; margin-bottom: 8px; }}
-  .ext-path {{ font-size: 11px; color: #64748B; font-family: Consolas, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
-  .ext-actions {{ display: flex; align-items: center; gap: 14px; margin-left: 8px; }}
-  .btn-remove {{ background: transparent; border: none; font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 14px; color: #64748B; width: 32px; height: 32px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.12s ease; }}
-  .btn-remove:hover {{ background: #EF444420; color: #F87171; }}
-  .switch {{ position: relative; display: inline-block; width: 40px; height: 22px; }}
+  .ext-name {{ font-size: 14px; font-weight: 600; color: var(--text-primary); }}
+  .ext-version {{ font-size: 11px; font-family: var(--font-mono); background: rgba(255, 255, 255, 0.06); border: 1px solid var(--border-color); color: var(--text-secondary); padding: 1px 6px; border-radius: 4px; }}
+  .ext-desc {{ font-size: 12.5px; color: var(--text-secondary); line-height: 1.45; margin-bottom: 6px; }}
+  .ext-path {{ font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
+  .ext-actions {{ display: flex; align-items: center; gap: 12px; margin-left: 8px; }}
+
+  .btn-remove {{
+    background: transparent;
+    border: none;
+    font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+    font-size: 14px;
+    color: var(--text-muted);
+    width: 28px;
+    height: 28px;
+    border-radius: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, color;
+    transition-duration: 120ms;
+  }}
+  @media (hover: hover) {{
+    .btn-remove:hover {{ background: var(--danger-subtle); color: #fca5a5; }}
+  }}
+
+  .switch {{ position: relative; display: inline-block; width: 36px; height: 20px; }}
   .switch input {{ opacity: 0; width: 0; height: 0; }}
-  .slider {{ position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #2D3748; transition: .2s; border-radius: 22px; }}
-  .slider:before {{ position: absolute; content: ''; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .2s; border-radius: 50%; }}
-  input:checked + .slider {{ background-color: #8B5CF6; }}
-  input:checked + .slider:before {{ transform: translateX(18px); }}
-  .empty-state {{ text-align: center; padding: 64px 0; color: #64748B; }}
-  .empty-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 48px; margin-bottom: 12px; opacity: 0.5; }}
-  .empty-title {{ font-size: 18px; font-weight: 600; color: #CBD5E1; margin-bottom: 4px; }}
-  .empty-sub {{ font-size: 13px; }}
+  .slider {{ position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255, 255, 255, 0.12); border-radius: 20px; transition-property: background-color; transition-duration: 140ms; }}
+  .slider:before {{ position: absolute; content: ''; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: #f4f4f5; border-radius: 50%; transition-property: transform; transition-duration: 140ms; }}
+  input:checked + .slider {{ background-color: var(--accent); }}
+  input:checked + .slider:before {{ transform: translateX(16px); }}
+
+  .empty-state {{ text-align: center; padding: 64px 0; color: var(--text-muted); }}
+  .empty-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 44px; margin-bottom: 12px; color: var(--accent); opacity: 0.8; }}
+  .empty-title {{ font-size: 17px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }}
+  .empty-sub {{ font-size: 12.5px; color: var(--text-secondary); }}
+
+  @media (prefers-reduced-motion: reduce) {{
+    *, *::before, *::after {{
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      transform: none !important;
+    }}
+  }}
+
 </style>
 </head>
 <body>
@@ -783,32 +1503,147 @@ namespace Browy.Services
 <meta charset='UTF-8'>
 <title>About Browy - System Diagnostics</title>
 <style>
-  * {{ box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif; }}
-  body {{ background: #0D0D12; color: #F1F5F9; min-height: 100vh; padding: 48px 24px; display: flex; justify-content: center; }}
-  .container {{ width: 100%; max-width: 840px; }}
-  .header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }}
+
+  :root {{
+    --bg-main: #0b0c0e;
+    --bg-card: #141619;
+    --bg-card-hover: #181b20;
+    --border-color: rgba(255, 255, 255, 0.07);
+    --border-subtle: rgba(255, 255, 255, 0.05);
+    --border-hover: rgba(255, 255, 255, 0.16);
+    --text-primary: #f4f4f5;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --accent: {accent};
+    --accent-hover: {accent};
+    --danger-subtle: rgba(239, 68, 68, 0.12);
+    --danger-border: rgba(239, 68, 68, 0.28);
+    --font-sans: 'Segoe UI Variable Text', 'Segoe UI Variable Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'Cascadia Code', Consolas, 'SF Mono', monospace;
+  }}
+  * {{ box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }}
+
+  body {{ background-color: var(--bg-main); color: var(--text-primary); font-family: var(--font-sans); min-height: 100vh; padding: 36px 24px; display: flex; justify-content: center; }}
+  .container {{ width: 100%; max-width: 860px; }}
+  .header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }}
   .title-area {{ display: flex; align-items: center; gap: 14px; }}
-  .header-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 32px; color: {accent}; }}
-  h1 {{ font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }}
-  .header-badge {{ font-size: 11px; background: {accent}22; color: {accent}; border: 1px solid {accent}44; padding: 3px 8px; border-radius: 6px; font-weight: 600; margin-left: 8px; vertical-align: middle; }}
-  .header-actions {{ display: flex; align-items: center; gap: 10px; }}
-  .btn-primary {{ background: {accent}; color: #FFFFFF; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: opacity 0.15s ease; }}
-  .btn-primary:hover {{ opacity: 0.9; }}
-  .btn-secondary {{ background: #181822; color: #CBD5E1; border: 1px solid #282838; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s ease; }}
-  .btn-secondary:hover {{ background: #222230; color: #FFFFFF; border-color: #383848; }}
-  .grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 16px; margin-bottom: 24px; }}
-  .card {{ background: #14141E; border: 1px solid #202030; border-radius: 12px; padding: 20px; }}
-  .card-header {{ display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }}
-  .card-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 18px; color: {accent}; }}
-  .card-title {{ font-size: 15px; font-weight: 600; color: #F8FAFC; }}
+  .header-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 28px; color: var(--accent); }}
+  h1 {{ font-size: 22px; font-weight: 600; letter-spacing: -0.02em; color: var(--text-primary); }}
+  .header-badge {{ font-size: 11px; font-family: var(--font-mono); background: rgba(255, 255, 255, 0.06); color: var(--text-primary); border: 1px solid var(--border-color); padding: 2px 7px; border-radius: 4px; font-weight: 500; margin-left: 8px; vertical-align: middle; }}
+  .header-actions {{ display: flex; align-items: center; gap: 8px; }}
+
+  .btn-primary {{
+    background: #f4f4f5;
+    color: #0b0c0e;
+    border: 1px solid transparent;
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, color, transform, box-shadow;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-primary:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-primary:hover {{ background: #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }}
+  }}
+
+  .btn-secondary {{
+    background: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, border-color, color, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-secondary:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-secondary:hover {{ background: rgba(255, 255, 255, 0.05); border-color: var(--border-hover); }}
+  }}
+
+  .btn-danger {{
+    background: var(--danger-subtle);
+    color: #fca5a5;
+    border: 1px solid var(--danger-border);
+    padding: 7px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12.5px;
+    font-weight: 500;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, border-color, color, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-danger:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-danger:hover {{ background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4); color: #ffffff; }}
+  }}
+
+  .btn-danger-sm {{
+    background: var(--danger-subtle);
+    color: #fca5a5;
+    border: 1px solid var(--danger-border);
+    padding: 3px 9px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 11.5px;
+    font-weight: 500;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, border-color, color, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-danger-sm:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-danger-sm:hover {{ background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4); color: #ffffff; }}
+  }}
+
+  .grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 14px; margin-bottom: 24px; }}
+  .card {{ background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 18px 20px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02); }}
+  .card-header {{ display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }}
+  .card-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 16px; color: var(--accent); }}
+  .card-title {{ font-size: 14px; font-weight: 600; color: var(--text-primary); }}
   .info-table {{ width: 100%; border-collapse: collapse; }}
-  .info-table tr {{ border-bottom: 1px solid #1C1C28; }}
+  .info-table tr {{ border-bottom: 1px solid var(--border-subtle); }}
   .info-table tr:last-child {{ border-bottom: none; }}
-  .info-table td {{ padding: 8px 0; font-size: 12.5px; }}
-  .info-table td.label {{ color: #94A3B8; width: 45%; }}
-  .info-table td.value {{ color: #F1F5F9; font-weight: 500; word-break: break-all; }}
-  .value-code {{ font-family: Consolas, monospace; font-size: 11.5px; background: #1E1E2C; padding: 2px 6px; border-radius: 4px; color: #CBD5E1; }}
-  .toast {{ position: fixed; bottom: 24px; right: 24px; background: #1E293B; border: 1px solid #334155; color: #F8FAFC; padding: 12px 20px; border-radius: 8px; font-size: 13px; font-weight: 500; display: none; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 1000; }}
+  .info-table td {{ padding: 7px 0; font-size: 12.5px; }}
+  .info-table td.label {{ color: var(--text-secondary); width: 45%; }}
+  .info-table td.value {{ color: var(--text-primary); font-weight: 500; word-break: break-all; }}
+  .value-code {{ font-family: var(--font-mono); font-size: 11.5px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); padding: 2px 6px; border-radius: 4px; color: var(--text-primary); }}
+  .toast {{ position: fixed; bottom: 24px; right: 24px; background: #141619; border: 1px solid rgba(255, 255, 255, 0.12); color: #f4f4f5; padding: 10px 16px; border-radius: 6px; font-size: 12.5px; display: none; box-shadow: 0 12px 32px rgba(0,0,0,0.6); z-index: 1000; }}
+
+  @media (prefers-reduced-motion: reduce) {{
+    *, *::before, *::after {{
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      transform: none !important;
+    }}
+  }}
+
 </style>
 </head>
 <body>
@@ -927,27 +1762,184 @@ namespace Browy.Services
 <meta charset='UTF-8'>
 <title>Keyboard Shortcuts - Browy</title>
 <style>
-  * {{ box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif; }}
-  body {{ background: #0D0D12; color: #F1F5F9; min-height: 100vh; padding: 48px 24px; display: flex; justify-content: center; }}
+
+  :root {{
+    --bg-main: #0b0c0e;
+    --bg-card: #141619;
+    --bg-card-hover: #181b20;
+    --border-color: rgba(255, 255, 255, 0.07);
+    --border-subtle: rgba(255, 255, 255, 0.05);
+    --border-hover: rgba(255, 255, 255, 0.16);
+    --text-primary: #f4f4f5;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --accent: {accent};
+    --accent-hover: {accent};
+    --danger-subtle: rgba(239, 68, 68, 0.12);
+    --danger-border: rgba(239, 68, 68, 0.28);
+    --font-sans: 'Segoe UI Variable Text', 'Segoe UI Variable Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'Cascadia Code', Consolas, 'SF Mono', monospace;
+  }}
+  * {{ box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }}
+
+  body {{ background-color: var(--bg-main); color: var(--text-primary); font-family: var(--font-sans); min-height: 100vh; padding: 36px 24px; display: flex; justify-content: center; }}
   .container {{ width: 100%; max-width: 860px; }}
   .header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }}
   .title-area {{ display: flex; align-items: center; gap: 14px; }}
-  .header-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 30px; color: {accent}; }}
-  h1 {{ font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }}
-  .btn-secondary {{ background: #181822; color: #CBD5E1; border: 1px solid #282838; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s ease; }}
-  .btn-secondary:hover {{ background: #222230; color: #FFFFFF; border-color: #383848; }}
-  .search-bar {{ width: 100%; background: #181822; border: 1px solid #282838; border-radius: 10px; padding: 12px 18px; color: #FFFFFF; font-size: 14px; margin-bottom: 24px; outline: none; transition: border-color 0.15s ease; }}
-  .search-bar:focus {{ border-color: {accent}; box-shadow: 0 0 0 2px {accent}3F; }}
-  .section {{ margin-bottom: 28px; }}
-  .section-title {{ font-size: 16px; font-weight: 600; color: #F8FAFC; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }}
-  .section-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 16px; color: {accent}; }}
-  .shortcuts-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 10px; }}
-  .shortcut-card {{ display: flex; justify-content: space-between; align-items: center; background: #14141E; border: 1px solid #202030; border-radius: 10px; padding: 12px 16px; transition: all 0.12s ease; }}
-  .shortcut-card:hover {{ background: #1A1A28; border-color: #303048; }}
-  .shortcut-desc {{ font-size: 13.5px; font-weight: 500; color: #F1F5F9; }}
+  .header-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 26px; color: var(--accent); }}
+  h1 {{ font-size: 22px; font-weight: 600; letter-spacing: -0.02em; color: var(--text-primary); }}
+  .header-actions {{ display: flex; align-items: center; gap: 8px; }}
+
+  .btn-primary {{
+    background: #f4f4f5;
+    color: #0b0c0e;
+    border: 1px solid transparent;
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, color, transform, box-shadow;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-primary:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-primary:hover {{ background: #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }}
+  }}
+
+  .btn-secondary {{
+    background: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, border-color, color, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-secondary:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-secondary:hover {{ background: rgba(255, 255, 255, 0.05); border-color: var(--border-hover); }}
+  }}
+
+  .btn-danger {{
+    background: var(--danger-subtle);
+    color: #fca5a5;
+    border: 1px solid var(--danger-border);
+    padding: 7px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12.5px;
+    font-weight: 500;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, border-color, color, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-danger:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-danger:hover {{ background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4); color: #ffffff; }}
+  }}
+
+  .btn-danger-sm {{
+    background: var(--danger-subtle);
+    color: #fca5a5;
+    border: 1px solid var(--danger-border);
+    padding: 3px 9px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 11.5px;
+    font-weight: 500;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, border-color, color, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-danger-sm:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-danger-sm:hover {{ background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4); color: #ffffff; }}
+  }}
+
+  .search-bar {{
+    width: 100%;
+    background: #101215;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 8px 14px;
+    color: var(--text-primary);
+    font-size: 13px;
+    margin-bottom: 20px;
+    outline: none;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: border-color, box-shadow;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .search-bar:focus {{ border-color: rgba(255, 255, 255, 0.28); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15); }}
+
+  .section {{ margin-bottom: 24px; }}
+  .section-title {{ font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }}
+  .section-icon {{ font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; font-size: 15px; color: var(--accent); }}
+  .shortcuts-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 8px; }}
+  .shortcut-card {{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 10px 14px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+    transition-property: background-color, border-color;
+    transition-duration: 120ms;
+  }}
+  @media (hover: hover) {{
+    .shortcut-card:hover {{ background: var(--bg-card-hover); border-color: var(--border-hover); }}
+  }}
+  .shortcut-desc {{ font-size: 12.5px; font-weight: 500; color: var(--text-primary); }}
   .shortcut-keys {{ display: flex; gap: 4px; align-items: center; }}
-  .key {{ background: #222232; border: 1px solid #333348; border-bottom: 2px solid #3b3b54; border-radius: 6px; padding: 3px 8px; font-size: 11.5px; font-weight: 600; color: #E2E8F0; font-family: 'Segoe UI', system-ui, monospace; box-shadow: 0 1px 2px rgba(0,0,0,0.3); }}
-  .plus {{ color: #64748B; font-size: 11px; }}
+  .key {{
+    background: #101215;
+    border: 1px solid var(--border-color);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.15);
+    border-radius: 5px;
+    padding: 2px 7px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+  }}
+  .plus {{ color: var(--text-muted); font-size: 10px; }}
+
+  @media (prefers-reduced-motion: reduce) {{
+    *, *::before, *::after {{
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      transform: none !important;
+    }}
+  }}
+
 </style>
 </head>
 <body>
@@ -1047,6 +2039,7 @@ namespace Browy.Services
 
         public static string GetFlagsHtml(IDictionary<string, bool>? featureFlags = null)
         {
+            string accent = BrowserSettings.Current.AccentColorHex;
             var flags = FeatureFlagsService.AllFlags;
             var sb = new System.Text.StringBuilder();
 
@@ -1092,250 +2085,210 @@ namespace Browy.Services
   <meta charset='utf-8'/>
   <title>Experiments & Flags - Browy</title>
   <style>
-    * {{ box-sizing: border-box; margin: 0; padding: 0; user-select: none; }}
-    body {{
-      background: #0B0F17;
-      color: #E2E8F0;
-      font-family: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
-      padding: 40px 24px 100px 24px;
-      display: flex;
-      justify-content: center;
+
+  :root {{
+    --bg-main: #0b0c0e;
+    --bg-card: #141619;
+    --bg-card-hover: #181b20;
+    --border-color: rgba(255, 255, 255, 0.07);
+    --border-subtle: rgba(255, 255, 255, 0.05);
+    --border-hover: rgba(255, 255, 255, 0.16);
+    --text-primary: #f4f4f5;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --accent: {accent};
+    --accent-hover: {accent};
+    --danger-subtle: rgba(239, 68, 68, 0.12);
+    --danger-border: rgba(239, 68, 68, 0.28);
+    --font-sans: 'Segoe UI Variable Text', 'Segoe UI Variable Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'Cascadia Code', Consolas, 'SF Mono', monospace;
+  }}
+  * {{ box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }}
+
+  body {{ background-color: var(--bg-main); color: var(--text-primary); font-family: var(--font-sans); min-height: 100vh; padding: 36px 24px 100px 24px; display: flex; justify-content: center; }}
+  .container {{ max-width: 860px; width: 100%; }}
+  .header {{ display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }}
+  .title-row {{ display: flex; align-items: center; gap: 14px; }}
+  .icon {{
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Segoe Fluent Icons';
+    font-size: 20px;
+    color: var(--accent);
+  }}
+  .title-text h1 {{ font-size: 22px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.02em; }}
+  .title-text p {{ font-size: 12.5px; color: var(--text-secondary); margin-top: 2px; }}
+
+  .warning-box {{
+    background: rgba(245, 158, 11, 0.08);
+    border: 1px solid rgba(245, 158, 11, 0.22);
+    border-radius: 6px;
+    padding: 12px 16px;
+    font-size: 12.5px;
+    color: #fde68a;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    line-height: 1.45;
+  }}
+  .warning-box span.icon-warn {{ font-family: 'Segoe Fluent Icons'; font-size: 16px; color: #fbbf24; flex-shrink: 0; }}
+
+  .controls-row {{ display: flex; gap: 10px; align-items: center; margin-bottom: 16px; }}
+  .search-input {{
+    flex: 1;
+    background: #101215;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 8px 14px;
+    color: var(--text-primary);
+    font-size: 13px;
+    outline: none;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: border-color, box-shadow;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .search-input:focus {{ border-color: rgba(255, 255, 255, 0.28); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15); }}
+
+  .btn-reset {{
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, border-color, color, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-reset:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-reset:hover {{ background: var(--danger-subtle); border-color: var(--danger-border); color: #fca5a5; }}
+  }}
+
+  .categories {{ display: flex; gap: 6px; overflow-x: auto; margin-bottom: 18px; padding-bottom: 4px; }}
+  .cat-pill {{
+    background: transparent;
+    border: 1px solid var(--border-color);
+    padding: 4px 10px;
+    border-radius: 14px;
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    white-space: nowrap;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, border-color, color;
+    transition-duration: 140ms;
+  }}
+  @media (hover: hover) {{
+    .cat-pill:hover {{ background: rgba(255, 255, 255, 0.04); color: var(--text-primary); }}
+  }}
+  .cat-pill.active {{ background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.2); color: var(--text-primary); font-weight: 600; }}
+
+  .flags-list {{ display: flex; flex-direction: column; gap: 8px; }}
+  .flag-card {{
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 14px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+    transition-property: background-color, border-color;
+    transition-duration: 140ms;
+  }}
+  @media (hover: hover) {{
+    .flag-card:hover {{ background: var(--bg-card-hover); border-color: var(--border-hover); }}
+  }}
+  .flag-info {{ flex: 1; min-width: 0; }}
+  .flag-header {{ display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }}
+  .flag-name {{ font-size: 13.5px; font-weight: 600; color: var(--text-primary); }}
+  .badge {{ font-size: 10px; font-family: var(--font-mono); font-weight: 600; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.04em; }}
+  .badge-modified {{ background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }}
+  .badge-default {{ background: rgba(255, 255, 255, 0.05); color: var(--text-muted); border: 1px solid var(--border-color); }}
+  .badge-cat {{ background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); border: 1px solid var(--border-subtle); }}
+  .flag-desc {{ font-size: 12px; color: var(--text-secondary); line-height: 1.4; margin-bottom: 4px; }}
+  .flag-anchor {{ font-size: 11px; font-family: var(--font-mono); color: var(--text-muted); }}
+
+  .flag-action {{ flex-shrink: 0; }}
+  .flag-select {{
+    background: #101215;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: inherit;
+    outline: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: border-color;
+    transition-duration: 140ms;
+  }}
+  .flag-select:focus {{ border-color: rgba(255, 255, 255, 0.28); }}
+
+  .relaunch-bar {{
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #141619;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 16px 36px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04);
+    border-radius: 8px;
+    padding: 12px 20px;
+    display: none;
+    align-items: center;
+    gap: 16px;
+    z-index: 1000;
+  }}
+  .relaunch-content {{ display: flex; align-items: center; gap: 12px; }}
+  .relaunch-text {{ font-size: 12.5px; color: var(--text-primary); }}
+  .btn-relaunch {{
+    background: #f4f4f5;
+    color: #0b0c0e;
+    border: 1px solid transparent;
+    padding: 6px 14px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, transform;
+    transition-duration: 140ms;
+  }}
+  .btn-relaunch:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-relaunch:hover {{ background: #ffffff; }}
+  }}
+
+  @media (prefers-reduced-motion: reduce) {{
+    *, *::before, *::after {{
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      transform: none !important;
     }}
-    .container {{
-      max-width: 900px;
-      width: 100%;
-    }}
-    .header {{
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 24px;
-    }}
-    .title-row {{
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }}
-    .icon {{
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      background: rgba(245, 158, 11, 0.15);
-      border: 1px solid rgba(245, 158, 11, 0.3);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: 'Segoe Fluent Icons';
-      font-size: 22px;
-      color: #F59E0B;
-    }}
-    .title-text h1 {{
-      font-size: 24px;
-      font-weight: 600;
-      color: #F8FAFC;
-      letter-spacing: -0.3px;
-    }}
-    .title-text p {{
-      font-size: 13px;
-      color: #94A3B8;
-      margin-top: 2px;
-    }}
-    .warning-box {{
-      background: rgba(245, 158, 11, 0.08);
-      border: 1px solid rgba(245, 158, 11, 0.25);
-      border-radius: 10px;
-      padding: 14px 18px;
-      font-size: 13px;
-      color: #FCD34D;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 24px;
-      line-height: 1.5;
-    }}
-    .warning-box span.icon-warn {{
-      font-family: 'Segoe Fluent Icons';
-      font-size: 18px;
-    }}
-    .controls-row {{
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      margin-bottom: 20px;
-    }}
-    .search-input {{
-      flex: 1;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
-      padding: 10px 14px;
-      color: #F8FAFC;
-      font-size: 14px;
-      outline: none;
-      transition: all 0.15s ease;
-    }}
-    .search-input:focus {{
-      border-color: #3B82F6;
-      background: rgba(255, 255, 255, 0.08);
-    }}
-    .btn-reset {{
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      color: #E2E8F0;
-      padding: 9px 16px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: background 0.15s ease;
-    }}
-    .btn-reset:hover {{
-      background: rgba(239, 68, 68, 0.15);
-      border-color: rgba(239, 68, 68, 0.3);
-      color: #FCA5A5;
-    }}
-    .categories {{
-      display: flex;
-      gap: 8px;
-      overflow-x: auto;
-      margin-bottom: 24px;
-      padding-bottom: 4px;
-    }}
-    .cat-pill {{
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      padding: 5px 12px;
-      border-radius: 16px;
-      font-size: 12px;
-      color: #94A3B8;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: all 0.15s ease;
-    }}
-    .cat-pill.active, .cat-pill:hover {{
-      background: rgba(59, 130, 246, 0.2);
-      border-color: rgba(59, 130, 246, 0.4);
-      color: #60A5FA;
-    }}
-    .flags-list {{
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }}
-    .flag-card {{
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 12px;
-      padding: 16px 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 20px;
-      transition: border-color 0.15s ease, background 0.15s ease;
-    }}
-    .flag-card:hover {{
-      background: rgba(255, 255, 255, 0.05);
-      border-color: rgba(255, 255, 255, 0.12);
-    }}
-    .flag-info {{
-      flex: 1;
-    }}
-    .flag-header {{
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 4px;
-    }}
-    .flag-name {{
-      font-size: 15px;
-      font-weight: 600;
-      color: #F8FAFC;
-    }}
-    .badge {{
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      font-weight: 700;
-      padding: 2px 7px;
-      border-radius: 10px;
-    }}
-    .badge-default {{
-      background: rgba(148, 163, 184, 0.15);
-      color: #94A3B8;
-    }}
-    .badge-modified {{
-      background: rgba(59, 130, 246, 0.2);
-      color: #93C5FD;
-      border: 1px solid rgba(59, 130, 246, 0.3);
-    }}
-    .badge-cat {{
-      background: rgba(255, 255, 255, 0.05);
-      color: #94A3B8;
-    }}
-    .flag-desc {{
-      font-size: 13px;
-      color: #94A3B8;
-      line-height: 1.45;
-      margin-bottom: 6px;
-    }}
-    .flag-anchor {{
-      font-size: 11px;
-      font-family: Consolas, monospace;
-      color: #64748B;
-    }}
-    .flag-action {{
-      min-width: 160px;
-    }}
-    .flag-select {{
-      width: 100%;
-      background: #1E293B;
-      color: #F8FAFC;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 8px;
-      padding: 8px 12px;
-      font-size: 13px;
-      outline: none;
-      cursor: pointer;
-    }}
-    .flag-select:focus {{
-      border-color: #3B82F6;
-    }}
-    .relaunch-bar {{
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #1E293B;
-      border: 1px solid rgba(59, 130, 246, 0.4);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-      padding: 14px 24px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      gap: 20px;
-      z-index: 1000;
-    }}
-    .relaunch-text {{
-      font-size: 13px;
-      color: #F8FAFC;
-      font-weight: 500;
-    }}
-    .btn-relaunch {{
-      background: #3B82F6;
-      border: none;
-      color: #FFFFFF;
-      padding: 8px 18px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.15s ease;
-    }}
-    .btn-relaunch:hover {{
-      background: #2563EB;
-    }}
-  </style>
+  }}
+
+</style>
 </head>
 <body>
   <div class='container'>
@@ -1480,319 +2433,284 @@ namespace Browy.Services
   <meta charset='UTF-8'>
   <title>Search Engines &amp; Bangs - Browy</title>
   <style>
-    * {{ box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif; }}
-    body {{
-      background: #0D0D12;
-      color: #F8FAFC;
-      min-height: 100vh;
-      padding: 40px 24px 80px;
-      display: flex;
-      justify-content: center;
+
+  :root {{
+    --bg-main: #0b0c0e;
+    --bg-card: #141619;
+    --bg-card-hover: #181b20;
+    --border-color: rgba(255, 255, 255, 0.07);
+    --border-subtle: rgba(255, 255, 255, 0.05);
+    --border-hover: rgba(255, 255, 255, 0.16);
+    --text-primary: #f4f4f5;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --accent: {accent};
+    --accent-hover: {accent};
+    --danger-subtle: rgba(239, 68, 68, 0.12);
+    --danger-border: rgba(239, 68, 68, 0.28);
+    --font-sans: 'Segoe UI Variable Text', 'Segoe UI Variable Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'Cascadia Code', Consolas, 'SF Mono', monospace;
+  }}
+  * {{ box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }}
+
+  body {{ background-color: var(--bg-main); color: var(--text-primary); font-family: var(--font-sans); min-height: 100vh; padding: 36px 24px 80px; display: flex; justify-content: center; }}
+  .container {{ width: 100%; max-width: 860px; }}
+  .header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }}
+  .title-row {{ display: flex; align-items: center; gap: 14px; }}
+  .icon {{
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Segoe Fluent Icons';
+    font-size: 20px;
+    color: var(--accent);
+  }}
+  h1 {{ font-size: 22px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.02em; }}
+  p {{ font-size: 12.5px; color: var(--text-secondary); margin-top: 2px; }}
+
+  .btn-primary {{
+    background: #f4f4f5;
+    color: #0b0c0e;
+    border: 1px solid transparent;
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, color, transform, box-shadow;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-primary:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-primary:hover {{ background: #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }}
+  }}
+
+  .btn-secondary {{
+    background: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, border-color, color, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-secondary:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-secondary:hover {{ background: rgba(255, 255, 255, 0.05); border-color: var(--border-hover); }}
+  }}
+
+  .btn-danger {{
+    background: var(--danger-subtle);
+    color: #fca5a5;
+    border: 1px solid var(--danger-border);
+    padding: 7px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12.5px;
+    font-weight: 500;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, border-color, color, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-danger:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-danger:hover {{ background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4); color: #ffffff; }}
+  }}
+
+  .btn-danger-sm {{
+    background: var(--danger-subtle);
+    color: #fca5a5;
+    border: 1px solid var(--danger-border);
+    padding: 3px 9px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 11.5px;
+    font-weight: 500;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, border-color, color, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-danger-sm:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-danger-sm:hover {{ background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4); color: #ffffff; }}
+  }}
+
+  .search-row {{ display: flex; gap: 10px; margin-bottom: 16px; }}
+  .search-input {{
+    flex: 1;
+    background: #101215;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 8px 14px;
+    color: var(--text-primary);
+    font-size: 13px;
+    outline: none;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: border-color, box-shadow;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .search-input:focus {{ border-color: rgba(255, 255, 255, 0.28); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15); }}
+
+  .bang-simulator {{
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin-bottom: 20px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  }}
+  .sim-title {{ font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }}
+  .sim-desc {{ font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; }}
+  .sim-form {{ display: flex; gap: 8px; }}
+  .sim-input {{
+    flex: 1;
+    background: #101215;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 7px 12px;
+    color: var(--text-primary);
+    font-size: 12.5px;
+    font-family: var(--font-mono);
+    outline: none;
+    transition-property: border-color;
+    transition-duration: 140ms;
+  }}
+  .sim-input:focus {{ border-color: rgba(255, 255, 255, 0.28); }}
+
+  .add-form {{
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 18px 20px;
+    margin-bottom: 20px;
+    display: none;
+    flex-direction: column;
+    gap: 12px;
+  }}
+  .add-form h2 {{ font-size: 15px; font-weight: 600; color: var(--text-primary); }}
+  .form-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }}
+  .form-group {{ display: flex; flex-direction: column; gap: 4px; }}
+  .form-group label {{ font-size: 11.5px; font-weight: 500; color: var(--text-secondary); }}
+  .form-group input {{
+    background: #101215;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 7px 12px;
+    color: var(--text-primary);
+    font-size: 12.5px;
+    font-family: var(--font-mono);
+    outline: none;
+  }}
+  .form-group input:focus {{ border-color: rgba(255, 255, 255, 0.28); }}
+  .form-actions {{ display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }}
+
+  .engines-list {{ display: flex; flex-direction: column; gap: 8px; }}
+  .engine-card {{
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+    transition-property: background-color, border-color;
+    transition-duration: 120ms;
+  }}
+  @media (hover: hover) {{
+    .engine-card:hover {{ background: var(--bg-card-hover); border-color: var(--border-hover); }}
+  }}
+  .engine-icon {{
+    font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
+    font-size: 18px;
+    color: var(--accent);
+    width: 34px;
+    height: 34px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }}
+  .engine-info {{ flex: 1; min-width: 0; }}
+  .engine-name-row {{ display: flex; align-items: center; gap: 8px; margin-bottom: 3px; flex-wrap: wrap; }}
+  .engine-name {{ font-size: 13.5px; font-weight: 600; color: var(--text-primary); }}
+  .bang-pill {{
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-primary);
+    font-weight: 600;
+  }}
+  .badge {{ font-size: 10px; font-family: var(--font-mono); font-weight: 600; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.04em; }}
+  .badge-default-active {{ background: rgba(255, 255, 255, 0.08); color: var(--text-primary); border: 1px solid var(--border-hover); }}
+  .badge-builtin {{ background: rgba(255, 255, 255, 0.04); color: var(--text-muted); border: 1px solid var(--border-subtle); }}
+  .badge-custom {{ background: rgba(16, 185, 129, 0.12); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.25); }}
+  .engine-url {{ font-size: 11.5px; color: var(--text-muted); font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
+  .engine-actions {{ display: flex; gap: 6px; align-items: center; }}
+  .btn-action {{
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 4px 10px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-family: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, border-color, color, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }}
+  .btn-action:not(:disabled):active {{ transform: scale(0.96); }}
+  @media (hover: hover) {{
+    .btn-action:hover {{ background: rgba(255, 255, 255, 0.06); color: var(--text-primary); border-color: var(--border-hover); }}
+  }}
+
+  @media (prefers-reduced-motion: reduce) {{
+    *, *::before, *::after {{
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      transform: none !important;
     }}
-    .container {{
-      width: 100%;
-      max-width: 900px;
-    }}
-    .header {{
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
-    }}
-    .title-row {{
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }}
-    .icon {{
-      font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
-      font-size: 32px;
-      color: {accent};
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      width: 52px;
-      height: 52px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 14px;
-    }}
-    h1 {{
-      font-size: 24px;
-      font-weight: 600;
-      letter-spacing: -0.02em;
-    }}
-    p {{
-      font-size: 13.5px;
-      color: #94A3B8;
-      margin-top: 4px;
-    }}
-    .btn-primary {{
-      background: {accent};
-      color: #FFFFFF;
-      border: none;
-      padding: 9px 16px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      transition: opacity 0.15s ease;
-    }}
-    .btn-primary:hover {{
-      opacity: 0.9;
-    }}
-    .search-row {{
-      display: flex;
-      gap: 12px;
-      margin-bottom: 20px;
-    }}
-    .search-input {{
-      flex: 1;
-      background: #14141E;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 10px;
-      padding: 10px 16px;
-      color: #F8FAFC;
-      font-size: 13.5px;
-      outline: none;
-      transition: border-color 0.15s ease;
-    }}
-    .search-input:focus {{
-      border-color: {accent};
-      box-shadow: 0 0 0 2px {accent}33;
-    }}
-    .bang-simulator {{
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 12px;
-      padding: 18px 20px;
-      margin-bottom: 24px;
-    }}
-    .sim-title {{
-      font-size: 13.5px;
-      font-weight: 600;
-      color: #F8FAFC;
-      margin-bottom: 6px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }}
-    .sim-desc {{
-      font-size: 12.5px;
-      color: #94A3B8;
-      margin-bottom: 12px;
-    }}
-    .sim-form {{
-      display: flex;
-      gap: 10px;
-    }}
-    .sim-input {{
-      flex: 1;
-      background: #181824;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 8px;
-      padding: 8px 14px;
-      color: #F8FAFC;
-      font-size: 13px;
-      font-family: Consolas, monospace;
-      outline: none;
-    }}
-    .sim-input:focus {{
-      border-color: {accent};
-    }}
-    .add-form {{
-      background: #14141E;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 24px;
-      display: none;
-      flex-direction: column;
-      gap: 14px;
-    }}
-    .add-form h2 {{
-      font-size: 16px;
-      font-weight: 600;
-    }}
-    .form-grid {{
-      display: grid;
-      grid-template-columns: 1fr 140px;
-      gap: 12px;
-    }}
-    .form-group {{
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }}
-    .form-group label {{
-      font-size: 12px;
-      color: #94A3B8;
-      font-weight: 500;
-    }}
-    .form-group input {{
-      background: #181824;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
-      padding: 8px 12px;
-      color: #F8FAFC;
-      font-size: 13px;
-      outline: none;
-    }}
-    .form-group input:focus {{
-      border-color: {accent};
-    }}
-    .form-actions {{
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-      margin-top: 6px;
-    }}
-    .btn-secondary {{
-      background: #1F1F2E;
-      color: #CBD5E1;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      padding: 8px 14px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 500;
-    }}
-    .btn-secondary:hover {{
-      background: #28283C;
-      color: #FFFFFF;
-    }}
-    .engines-list {{
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }}
-    .engine-card {{
-      background: #14141E;
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 12px;
-      padding: 14px 18px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      transition: border-color 0.15s ease, background 0.15s ease;
-    }}
-    .engine-card:hover {{
-      background: #181824;
-      border-color: rgba(255, 255, 255, 0.12);
-    }}
-    .engine-icon {{
-      font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
-      font-size: 20px;
-      color: {accent};
-      width: 38px;
-      height: 38px;
-      background: rgba(255, 255, 255, 0.04);
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }}
-    .engine-info {{
-      flex: 1;
-      overflow: hidden;
-    }}
-    .engine-name-row {{
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 4px;
-    }}
-    .engine-name {{
-      font-size: 14.5px;
-      font-weight: 600;
-      color: #F8FAFC;
-    }}
-    .bang-pill {{
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      padding: 2px 7px;
-      border-radius: 6px;
-      font-family: Consolas, monospace;
-      font-size: 11.5px;
-      color: {accent};
-      font-weight: 600;
-    }}
-    .badge {{
-      font-size: 10.5px;
-      font-weight: 600;
-      padding: 2px 7px;
-      border-radius: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
-    }}
-    .badge-default-active {{
-      background: {accent}2A;
-      color: {accent};
-      border: 1px solid {accent}55;
-    }}
-    .badge-builtin {{
-      background: rgba(148, 163, 184, 0.12);
-      color: #94A3B8;
-    }}
-    .badge-custom {{
-      background: rgba(16, 185, 129, 0.15);
-      color: #34D399;
-      border: 1px solid rgba(16, 185, 129, 0.3);
-    }}
-    .engine-url {{
-      font-size: 12px;
-      color: #64748B;
-      font-family: Consolas, monospace;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }}
-    .engine-actions {{
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-shrink: 0;
-    }}
-    .btn-action {{
-      background: #1C1C28;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      color: #CBD5E1;
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }}
-    .btn-action:hover {{
-      background: #262638;
-      color: #FFFFFF;
-      border-color: rgba(255, 255, 255, 0.18);
-    }}
-    .btn-danger-sm {{
-      background: transparent;
-      border: 1px solid rgba(239, 68, 68, 0.2);
-      color: #F87171;
-      font-family: 'Segoe Fluent Icons', 'Segoe MDL2 Assets';
-      width: 28px;
-      height: 28px;
-      border-radius: 6px;
-      font-size: 13px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.15s ease;
-    }}
-    .btn-danger-sm:hover {{
-      background: rgba(239, 68, 68, 0.15);
-      border-color: rgba(239, 68, 68, 0.4);
-    }}
-  </style>
+  }}
+
+</style>
 </head>
 <body>
   <div class='container'>

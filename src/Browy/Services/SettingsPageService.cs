@@ -80,16 +80,18 @@ namespace Browy.Services
   .brand-icon {
     width: 22px;
     height: 22px;
-    border-radius: 5px;
+    border-radius: 6px;
     background: #f4f4f5;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 12px;
-    font-family: var(--font-mono);
-    font-weight: 700;
     color: #0b0c0e;
-    line-height: 1;
+  }
+
+  .brand-icon svg {
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
   }
 
   .brand-title {
@@ -110,9 +112,13 @@ namespace Browy.Services
     font-weight: 400;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
-    transition-property: background-color, color;
+    transition-property: background-color, color, transform;
     transition-duration: 120ms;
     transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .nav-item:not(:disabled):active {
+    transform: scale(0.98);
   }
 
   @media (hover: hover) {
@@ -305,6 +311,38 @@ namespace Browy.Services
   .accent-swatch.active {
     box-shadow: 0 0 0 2px var(--bg-card), 0 0 0 3.5px #f4f4f5;
     transform: scale(1.15);
+  }
+
+  input[type="color"] {
+    -webkit-appearance: none;
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    background: transparent;
+    cursor: pointer;
+    vertical-align: middle;
+    transition-property: transform, border-color;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  @media (hover: hover) {
+    input[type="color"]:hover {
+      transform: scale(1.15);
+      border-color: var(--border-hover);
+    }
+  }
+
+  input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+    border-radius: 50%;
+  }
+
+  input[type="color"]::-webkit-color-swatch {
+    border: none;
+    border-radius: 50%;
   }
 
   /* Buttons */
@@ -527,7 +565,9 @@ namespace Browy.Services
   <!-- Navigation Sidebar -->
   <div class="sidebar">
     <div class="brand">
-      <div class="brand-icon">B</div>
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24"><path d="M4 4h9a5 5 0 0 1 5 5 5 5 0 0 1-5 5H4V4zm0 10h10a5 5 0 0 1 5 5 5 5 0 0 1-5 5H4v-10z"></path></svg>
+      </div>
       <div class="brand-title">Settings</div>
     </div>
     <div class="nav-item active" onclick="switchSection('general', this)">
@@ -575,6 +615,7 @@ namespace Browy.Services
             <option value="DuckDuckGo" {{(currentEngine == "DuckDuckGo" ? "selected" : "")}}>DuckDuckGo</option>
             <option value="Bing" {{(currentEngine == "Bing" ? "selected" : "")}}>Bing</option>
             <option value="Brave" {{(currentEngine == "Brave" ? "selected" : "")}}>Brave Search</option>
+            <option value="Ecosia" {{(currentEngine == "Ecosia" ? "selected" : "")}}>Ecosia</option>
           </select>
         </div>
 
@@ -1036,6 +1077,7 @@ namespace Browy.Services
     if (engine === 'DuckDuckGo') url = 'https://duckduckgo.com/?q=';
     if (engine === 'Bing') url = 'https://www.bing.com/search?q=';
     if (engine === 'Brave') url = 'https://search.brave.com/search?q=';
+    if (engine === 'Ecosia') url = 'https://www.ecosia.org/search?q=';
     
     postAction('set_search_engine', { name: engine, url: url });
     showToast('Default search engine updated to ' + engine + '.');

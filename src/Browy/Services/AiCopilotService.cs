@@ -456,7 +456,7 @@ namespace Browy.Services
             // 2. Persona Specialized Local Syntheses
             string response = "";
             string snapshotNotice = !string.IsNullOrEmpty(screenshotBase64)
-                ? $"\n\n📷 *Visual Viewport Snapshot analyzed ({screenshotBase64.Length / 1024} KB PNG)*"
+                ? $"\n\n*Visual Viewport Snapshot analyzed ({screenshotBase64.Length / 1024} KB PNG)*"
                 : "";
 
             if (persona == "Code Analyst")

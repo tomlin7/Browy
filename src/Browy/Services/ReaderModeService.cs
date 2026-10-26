@@ -300,7 +300,9 @@ namespace Browy.Services
             font-size: 13px;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition-property: background-color, border-color, color, transform;
+            transition-duration: 140ms;
+            transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
             user-select: none;
             outline: none;
         }}

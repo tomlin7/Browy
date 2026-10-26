@@ -5416,7 +5416,7 @@ namespace Browy
                                     var bar = document.createElement('div');
                                     bar.id = barId;
                                     bar.style = 'position:fixed;top:0;left:0;right:0;z-index:999999;background:#181824;color:#F8FAFC;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #3B82F6;box-shadow:0 4px 20px rgba(0,0,0,0.5);font-family:system-ui,sans-serif;font-size:13px;';
-                                    bar.innerHTML = '<span>🌐 Translated to <strong>' + targetLang + '</strong> by Browy AI Agent</span>' +
+                                    bar.innerHTML = '<span>Translated to <strong>' + targetLang + '</strong> by Browy AI Agent</span>' +
                                                     '<div style=""display:flex;gap:10px;""><button onclick=""document.getElementById(\'' + barId + '\').remove()"" style=""background:#3B82F6;color:#fff;border:none;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;"">Dismiss</button></div>';
                                     document.body.prepend(bar);
                                 }})();";

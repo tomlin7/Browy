@@ -18,19 +18,23 @@ namespace Browy.Services
 <title>Settings - Browy</title>
 <style>
   :root {
-    --bg-main: #0c0d0e;
-    --bg-card: rgba(255, 255, 255, 0.025);
-    --bg-card-hover: rgba(255, 255, 255, 0.05);
-    --border-color: rgba(255, 255, 255, 0.08);
+    --bg-main: #0b0c0e;
+    --bg-sidebar: #0f1013;
+    --bg-card: #141619;
+    --bg-card-hover: #181b20;
+    --border-color: rgba(255, 255, 255, 0.07);
     --border-subtle: rgba(255, 255, 255, 0.05);
-    --text-primary: #fafafa;
+    --border-hover: rgba(255, 255, 255, 0.16);
+    --text-primary: #f4f4f5;
     --text-secondary: #a1a1aa;
     --text-muted: #71717a;
-    --accent: #fafafa;
+    --accent: {{settings.AccentColorHex}};
     --accent-hover: #ffffff;
     --danger: #ef4444;
-    --danger-hover: #dc2626;
-    --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --danger-subtle: rgba(239, 68, 68, 0.12);
+    --danger-border: rgba(239, 68, 68, 0.28);
+    --font-sans: 'Segoe UI Variable Text', 'Segoe UI Variable Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'Cascadia Code', Consolas, 'SF Mono', monospace;
   }
 
   * {
@@ -38,12 +42,14 @@ namespace Browy.Services
     margin: 0;
     padding: 0;
     user-select: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   body {
     background-color: var(--bg-main);
     color: var(--text-primary);
-    font-family: var(--font-family);
+    font-family: var(--font-sans);
     display: flex;
     height: 100vh;
     overflow: hidden;
@@ -51,61 +57,75 @@ namespace Browy.Services
 
   /* Left Sidebar Navigation */
   .sidebar {
-    width: 240px;
-    background: rgba(18, 18, 24, 0.7);
+    width: 236px;
+    background: var(--bg-sidebar);
     border-right: 1px solid var(--border-color);
-    padding: 28px 14px;
+    padding: 24px 12px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
     flex-shrink: 0;
+    overscroll-behavior: contain;
   }
 
   .brand {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 0 12px 20px 12px;
+    padding: 0 10px 18px 10px;
     border-bottom: 1px solid var(--border-color);
-    margin-bottom: 12px;
+    margin-bottom: 10px;
   }
 
   .brand-icon {
-    width: 24px;
-    height: 24px;
-    border-radius: 5px;
-    background: #fafafa;
-    display: flex;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    background: #f4f4f5;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 13px;
-    font-family: 'Cascadia Code', Consolas, monospace;
-    font-weight: 700;
-    color: #09090b;
+    color: #0b0c0e;
+  }
+
+  .brand-icon svg {
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
   }
 
   .brand-title {
-    font-size: 14px;
+    font-size: 13.5px;
     font-weight: 600;
-    letter-spacing: -0.2px;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
   }
 
   .nav-item {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 8px 12px;
+    padding: 7px 10px;
     border-radius: 6px;
     color: var(--text-secondary);
     font-size: 13px;
     font-weight: 400;
     cursor: pointer;
-    transition: background-color 0.15s ease, color 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, color, transform;
+    transition-duration: 120ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
   }
 
-  .nav-item:hover {
-    background: rgba(255, 255, 255, 0.04);
-    color: var(--text-primary);
+  .nav-item:not(:disabled):active {
+    transform: scale(0.98);
+  }
+
+  @media (hover: hover) {
+    .nav-item:hover {
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-primary);
+    }
   }
 
   .nav-item.active {
@@ -120,6 +140,10 @@ namespace Browy.Services
     width: 16px;
     text-align: center;
     color: var(--text-muted);
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .nav-item.active .nav-icon {
@@ -131,51 +155,56 @@ namespace Browy.Services
     flex: 1;
     overflow-y: auto;
     padding: 36px 48px;
+    overscroll-behavior: contain;
   }
 
   .content-section {
     display: none;
-    max-width: 780px;
+    max-width: 800px;
   }
 
   .content-section.active {
     display: block;
-    animation: fadeIn 0.18s ease-out;
+    animation: fadeIn 0.15s cubic-bezier(0.2, 0, 0, 1);
   }
 
   @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(6px); }
+    from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: translateY(0); }
   }
 
   .section-title {
-    font-size: 24px;
+    font-size: 22px;
     font-weight: 600;
-    letter-spacing: -0.5px;
-    margin-bottom: 6px;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    margin-bottom: 4px;
   }
 
   .section-subtitle {
     font-size: 13px;
-    color: var(--text-secondary);
-    margin-bottom: 26px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-bottom: 24px;
   }
 
   /* Settings Card & Groups */
   .settings-group {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
-    border-radius: 12px;
-    margin-bottom: 22px;
+    border-radius: 8px;
+    margin-bottom: 20px;
     overflow: hidden;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
   }
 
   .settings-row {
-    padding: 16px 20px;
+    padding: 14px 18px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     border-bottom: 1px solid var(--border-subtle);
+    gap: 16px;
   }
 
   .settings-row:last-child {
@@ -183,78 +212,173 @@ namespace Browy.Services
   }
 
   .row-info {
-    max-width: 65%;
+    flex: 1;
+    min-width: 0;
   }
 
   .row-title {
-    font-size: 13.5px;
+    font-size: 13px;
     font-weight: 500;
-    margin-bottom: 3px;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+    letter-spacing: -0.01em;
   }
 
   .row-desc {
     font-size: 12px;
     color: var(--text-secondary);
+    line-height: 1.45;
   }
 
-  /* Select dropdown */
+  /* Form Controls */
   select {
-    background: rgba(255, 255, 255, 0.07);
+    background-color: #101215;
     border: 1px solid var(--border-color);
     color: var(--text-primary);
-    padding: 8px 14px;
-    border-radius: 7px;
+    padding: 6px 12px;
+    border-radius: 6px;
     font-size: 12.5px;
     font-family: inherit;
     outline: none;
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: border-color, background-color, box-shadow;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  @media (hover: hover) {
+    select:hover {
+      border-color: var(--border-hover);
+      background-color: #141619;
+    }
   }
 
   select:focus {
-    border-color: var(--accent);
+    border-color: rgba(255, 255, 255, 0.28);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15);
+  }
+
+  select option {
+    background: #141619;
+    color: #f4f4f5;
+  }
+
+  input[type="text"], input[type="password"] {
+    background: #101215;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-family: var(--font-mono);
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: border-color, background-color, box-shadow;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  input[type="text"]:focus, input[type="password"]:focus {
+    border-color: rgba(255, 255, 255, 0.28);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15);
+    background: #121417;
   }
 
   /* Accent Swatches */
   .accent-swatch {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
     cursor: pointer;
     border: 2px solid transparent;
-    transition: all 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: transform, box-shadow;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
   }
-  .accent-swatch:hover {
-    transform: scale(1.18);
+
+  @media (hover: hover) {
+    .accent-swatch:hover {
+      transform: scale(1.15);
+    }
   }
+
+  .accent-swatch:not(:disabled):active {
+    transform: scale(0.96);
+  }
+
   .accent-swatch.active {
-    border-color: #FFFFFF;
-    box-shadow: 0 0 0 2px var(--accent);
-    transform: scale(1.18);
+    box-shadow: 0 0 0 2px var(--bg-card), 0 0 0 3.5px #f4f4f5;
+    transform: scale(1.15);
+  }
+
+  input[type="color"] {
+    -webkit-appearance: none;
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    background: transparent;
+    cursor: pointer;
+    vertical-align: middle;
+    transition-property: transform, border-color;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  @media (hover: hover) {
+    input[type="color"]:hover {
+      transform: scale(1.15);
+      border-color: var(--border-hover);
+    }
+  }
+
+  input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+    border-radius: 50%;
+  }
+
+  input[type="color"]::-webkit-color-swatch {
+    border: none;
+    border-radius: 50%;
   }
 
   /* Buttons */
   .btn {
-    padding: 8px 16px;
-    border-radius: 7px;
+    padding: 6px 14px;
+    border-radius: 6px;
     font-size: 12.5px;
     font-weight: 500;
     font-family: inherit;
     cursor: pointer;
     border: 1px solid transparent;
-    transition: all 0.15s ease;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, border-color, color, transform, box-shadow;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .btn:not(:disabled):active {
+    transform: scale(0.96);
   }
 
   .btn-primary {
-    background: #fafafa;
-    color: #09090b;
+    background: #f4f4f5;
+    color: #0b0c0e;
     font-weight: 500;
   }
 
-  .btn-primary:hover {
-    background: #ffffff;
+  @media (hover: hover) {
+    .btn-primary:hover {
+      background: #ffffff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
   }
 
   .btn-secondary {
@@ -263,62 +387,78 @@ namespace Browy.Services
     color: var(--text-primary);
   }
 
-  .btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.15);
+  @media (hover: hover) {
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--border-hover);
+    }
   }
 
   .btn-danger {
-    background: rgba(239, 68, 68, 0.15);
-    border-color: rgba(239, 68, 68, 0.3);
+    background: var(--danger-subtle);
+    border-color: var(--danger-border);
     color: #fca5a5;
   }
 
-  .btn-danger:hover {
-    background: rgba(239, 68, 68, 0.25);
+  @media (hover: hover) {
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #ffffff;
+    }
   }
 
   /* Toggle Switch */
   .toggle-switch {
     position: relative;
-    width: 42px;
-    height: 22px;
+    width: 38px;
+    height: 20px;
     display: inline-block;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .toggle-switch input {
     opacity: 0;
     width: 0;
     height: 0;
+    position: absolute;
   }
 
   .toggle-slider {
     position: absolute;
     cursor: pointer;
     top: 0; left: 0; right: 0; bottom: 0;
-    background-color: rgba(255, 255, 255, 0.15);
-    border-radius: 22px;
-    transition: 0.2s;
+    background-color: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 20px;
+    transition-property: background-color, border-color;
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
   }
 
   .toggle-slider:before {
     position: absolute;
     content: "";
-    height: 16px;
-    width: 16px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
+    height: 14px;
+    width: 14px;
+    left: 2px;
+    bottom: 2px;
+    background-color: #f4f4f5;
     border-radius: 50%;
-    transition: 0.2s;
+    transition-property: transform, background-color;
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
   }
 
   input:checked + .toggle-slider {
-    background-color: var(--accent);
+    background-color: #f4f4f5;
+    border-color: #f4f4f5;
   }
 
   input:checked + .toggle-slider:before {
-    transform: translateX(20px);
+    transform: translateX(18px);
+    background-color: #0b0c0e;
   }
 
   /* Shortcuts Table */
@@ -330,74 +470,93 @@ namespace Browy.Services
 
   .shortcuts-table th {
     text-align: left;
-    padding: 12px 18px;
+    padding: 10px 18px;
     font-size: 11px;
     color: var(--text-muted);
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.06em;
     border-bottom: 1px solid var(--border-color);
   }
 
   .shortcuts-table td {
-    padding: 12px 18px;
+    padding: 11px 18px;
     border-bottom: 1px solid var(--border-subtle);
   }
 
   .kbd {
     display: inline-block;
-    padding: 3px 8px;
+    padding: 2px 7px;
     font-size: 11px;
-    font-family: monospace;
-    background: rgba(255, 255, 255, 0.08);
+    font-family: var(--font-mono);
+    background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--border-color);
-    border-radius: 5px;
-    color: #e2e8f0;
+    border-radius: 4px;
+    color: #e4e4e7;
   }
 
   .key-pill {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--border-color);
-    border-radius: 6px;
-    padding: 4px 10px;
-    color: #38bdf8;
-    font-family: monospace;
+    border-radius: 5px;
+    padding: 4px 8px;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
     font-size: 11.5px;
     cursor: pointer;
-    transition: all 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, border-color, color, transform;
+    transition-duration: 120ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
     display: inline-flex;
     align-items: center;
     gap: 4px;
     user-select: none;
   }
 
-  .key-pill:hover {
-    background: rgba(56, 189, 248, 0.15);
-    border-color: #38bdf8;
+  .key-pill:not(:disabled):active {
+    transform: scale(0.96);
+  }
+
+  @media (hover: hover) {
+    .key-pill:hover {
+      background: rgba(255, 255, 255, 0.09);
+      border-color: var(--border-hover);
+    }
   }
 
   .key-pill.recording {
-    background: rgba(239, 68, 68, 0.2);
-    border-color: #ef4444;
+    background: var(--danger-subtle);
+    border-color: var(--danger-border);
     color: #fca5a5;
   }
 
   /* Toast Notification */
   .toast {
     position: fixed;
-    bottom: 28px;
-    right: 28px;
-    background: #1e293b;
-    border: 1px solid #3b82f6;
-    color: #f8fafc;
-    padding: 12px 20px;
-    border-radius: 8px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-    font-size: 13px;
+    bottom: 24px;
+    right: 24px;
+    background: #141619;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #f4f4f5;
+    padding: 10px 16px;
+    border-radius: 6px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    font-size: 12.5px;
     display: none;
     align-items: center;
     gap: 8px;
     z-index: 999;
+  }
+
+  /* Reduced Motion Guard */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      transform: none !important;
+    }
   }
 </style>
 </head>
@@ -406,7 +565,9 @@ namespace Browy.Services
   <!-- Navigation Sidebar -->
   <div class="sidebar">
     <div class="brand">
-      <div class="brand-icon">B</div>
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24"><path d="M4 4h9a5 5 0 0 1 5 5 5 5 0 0 1-5 5H4V4zm0 10h10a5 5 0 0 1 5 5 5 5 0 0 1-5 5H4v-10z"></path></svg>
+      </div>
       <div class="brand-title">Settings</div>
     </div>
     <div class="nav-item active" onclick="switchSection('general', this)">
@@ -454,6 +615,7 @@ namespace Browy.Services
             <option value="DuckDuckGo" {{(currentEngine == "DuckDuckGo" ? "selected" : "")}}>DuckDuckGo</option>
             <option value="Bing" {{(currentEngine == "Bing" ? "selected" : "")}}>Bing</option>
             <option value="Brave" {{(currentEngine == "Brave" ? "selected" : "")}}>Brave Search</option>
+            <option value="Ecosia" {{(currentEngine == "Ecosia" ? "selected" : "")}}>Ecosia</option>
           </select>
         </div>
 
@@ -515,9 +677,9 @@ namespace Browy.Services
               <div class="accent-swatch {{(settings.AccentColorHex == "#EC4899" ? "active" : "")}}" style="background: #EC4899;" onclick="onSelectAccentColor('#EC4899')" title="Rose Quartz"></div>
               <div class="accent-swatch {{(settings.AccentColorHex == "#06B6D4" ? "active" : "")}}" style="background: #06B6D4;" onclick="onSelectAccentColor('#06B6D4')" title="Cyber Cyan"></div>
               <div class="accent-swatch {{(settings.AccentColorHex == "#64748B" ? "active" : "")}}" style="background: #64748B;" onclick="onSelectAccentColor('#64748B')" title="Midnight Slate"></div>
-              <input type="color" id="customAccentPicker" value="{{settings.AccentColorHex}}" onchange="onSelectAccentColor(this.value)" title="Custom Color Picker" style="width: 26px; height: 26px; border: none; border-radius: 50%; cursor: pointer; background: transparent; padding: 0;">
+              <input type="color" id="customAccentPicker" value="{{settings.AccentColorHex}}" onchange="onSelectAccentColor(this.value)" title="Custom Color Picker" style="width: 24px; height: 24px; border: 1px solid var(--border-color); border-radius: 50%; cursor: pointer; background: transparent; padding: 0;">
             </div>
-            <div style="font-size: 11px; color: #64748B;">Active Tint: <span id="activeAccentText" style="color: {{settings.AccentColorHex}}; font-weight: 600;">{{settings.AccentColorHex}}</span></div>
+            <div style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">Active Tint: <span id="activeAccentText" style="color: {{settings.AccentColorHex}}; font-weight: 600;">{{settings.AccentColorHex}}</span></div>
           </div>
         </div>
 
@@ -617,7 +779,7 @@ namespace Browy.Services
             <div class="row-title">OpenAI API Key</div>
             <div class="row-desc">Bearer token for OpenAI API requests (stored locally).</div>
           </div>
-          <input type="password" id="openAiKeyInput" placeholder="sk-..." value="{{settings.OpenAiApiKey}}" style="background: rgba(255, 255, 255, 0.07); border: 1px solid var(--border-color); color: white; padding: 8px 12px; border-radius: 6px; width: 220px;" onchange="saveAiConfig()">
+          <input type="password" id="openAiKeyInput" placeholder="sk-..." value="{{settings.OpenAiApiKey}}" style="width: 220px;" onchange="saveAiConfig()">
         </div>
 
         <div class="settings-row" id="anthropicKeyRow">
@@ -625,7 +787,7 @@ namespace Browy.Services
             <div class="row-title">Anthropic API Key</div>
             <div class="row-desc">API key for Claude models (stored locally).</div>
           </div>
-          <input type="password" id="anthropicKeyInput" placeholder="sk-ant-..." value="{{settings.AnthropicApiKey}}" style="background: rgba(255, 255, 255, 0.07); border: 1px solid var(--border-color); color: white; padding: 8px 12px; border-radius: 6px; width: 220px;" onchange="saveAiConfig()">
+          <input type="password" id="anthropicKeyInput" placeholder="sk-ant-..." value="{{settings.AnthropicApiKey}}" style="width: 220px;" onchange="saveAiConfig()">
         </div>
 
         <div class="settings-row" id="ollamaEndpointRow">
@@ -633,15 +795,15 @@ namespace Browy.Services
             <div class="row-title">Ollama Endpoint</div>
             <div class="row-desc">Local Ollama instance URL (default: http://localhost:11434).</div>
           </div>
-          <input type="text" id="ollamaEndpointInput" placeholder="http://localhost:11434" value="{{settings.OllamaEndpoint}}" style="background: rgba(255, 255, 255, 0.07); border: 1px solid var(--border-color); color: white; padding: 8px 12px; border-radius: 6px; width: 220px;" onchange="saveAiConfig()">
+          <input type="text" id="ollamaEndpointInput" placeholder="http://localhost:11434" value="{{settings.OllamaEndpoint}}" style="width: 220px;" onchange="saveAiConfig()">
         </div>
 
-        <div class="settings-row">
+        <div class="settings-row" id="aiModelInputRow">
           <div class="row-info">
             <div class="row-title">Selected Model Name</div>
             <div class="row-desc">e.g. gpt-4o-mini, gpt-4o, claude-3-5-sonnet-20241022, llama3, etc.</div>
           </div>
-          <input type="text" id="aiModelInput" placeholder="gpt-4o-mini" value="{{settings.SelectedAiModel}}" style="background: rgba(255, 255, 255, 0.07); border: 1px solid var(--border-color); color: white; padding: 8px 12px; border-radius: 6px; width: 220px;" onchange="saveAiConfig()">
+          <input type="text" id="aiModelInput" placeholder="gpt-4o-mini" value="{{settings.SelectedAiModel}}" style="width: 220px;" onchange="saveAiConfig()">
         </div>
       </div>
     </div>
@@ -713,7 +875,7 @@ namespace Browy.Services
 
     <!-- SHORTCUTS MANAGER -->
     <div id="shortcuts" class="content-section">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
         <h1 class="section-title" style="margin: 0;">Keyboard Shortcuts</h1>
         <button class="btn btn-secondary" onclick="resetAllShortcuts()">Reset to Defaults</button>
       </div>
@@ -721,11 +883,11 @@ namespace Browy.Services
 
       <div style="margin-bottom: 16px;">
         <input type="text" id="shortcutSearch" placeholder="Search shortcuts (e.g. Tab, Palette, DevTools, Back)..."
-               style="width: 100%; background: #171720; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 10px 14px; color: white; font-size: 13px;"
+               style="width: 100%; padding: 8px 14px;"
                oninput="filterShortcuts(this.value)">
       </div>
 
-      <div id="shortcutConflict" style="display:none; background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; border-radius: 8px; padding: 10px 14px; color: #fca5a5; font-size: 13px; margin-bottom: 16px;"></div>
+      <div id="shortcutConflict" style="display:none; background: var(--danger-subtle); border: 1px solid var(--danger-border); border-radius: 6px; padding: 10px 14px; color: #fca5a5; font-size: 12.5px; margin-bottom: 16px;"></div>
 
       <div class="settings-group">
         <table class="shortcuts-table" id="shortcutsTable">
@@ -846,7 +1008,7 @@ namespace Browy.Services
         <div class="settings-row">
           <div class="row-info">
             <div class="row-title">Version</div>
-            <div class="row-desc">0.3.0 (Windows 11 Fluent Edition with Shield & Reader Mode)</div>
+            <div class="row-desc">0.3.0 (Windows 11 Fluent Edition with Shield &amp; Reader Mode)</div>
           </div>
         </div>
         <div class="settings-row">
@@ -858,7 +1020,7 @@ namespace Browy.Services
         <div class="settings-row">
           <div class="row-info">
             <div class="row-title">Diagnostics &amp; System Hub</div>
-            <div class="row-desc">View hardware specs, memory usage, runtime stats, and WebView2 diagnostics (<code style="color: var(--accent);">browy://version</code>).</div>
+            <div class="row-desc">View hardware specs, memory usage, runtime stats, and WebView2 diagnostics (<code style="color: var(--accent); font-family: var(--font-mono);">browy://version</code>).</div>
           </div>
           <button class="btn btn-secondary" onclick="window.location.href='browy://version'">Open browy://version</button>
         </div>
@@ -888,7 +1050,7 @@ namespace Browy.Services
     const toast = document.getElementById('toast');
     toast.textContent = message;
     toast.style.display = 'flex';
-    setTimeout(() => { toast.style.display = 'none'; }, 2600);
+    setTimeout(() => { toast.style.display = 'none'; }, 2400);
   }
 
   function postAction(action, data = {}) {
@@ -915,6 +1077,7 @@ namespace Browy.Services
     if (engine === 'DuckDuckGo') url = 'https://duckduckgo.com/?q=';
     if (engine === 'Bing') url = 'https://www.bing.com/search?q=';
     if (engine === 'Brave') url = 'https://search.brave.com/search?q=';
+    if (engine === 'Ecosia') url = 'https://www.ecosia.org/search?q=';
     
     postAction('set_search_engine', { name: engine, url: url });
     showToast('Default search engine updated to ' + engine + '.');
@@ -1067,93 +1230,181 @@ namespace Browy.Services
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cannot Reach Site - Browy</title>
 <style>
+  :root {
+    --bg-main: #0b0c0e;
+    --bg-card: #141619;
+    --border-color: rgba(255, 255, 255, 0.07);
+    --border-hover: rgba(255, 255, 255, 0.16);
+    --text-primary: #f4f4f5;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --font-sans: 'Segoe UI Variable Text', 'Segoe UI Variable Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'Cascadia Code', Consolas, 'SF Mono', monospace;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
   body {
-    background: #0f0f14;
-    color: #e2e8f0;
-    font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
     display: flex;
     align-items: center;
     justify-content: center;
     height: 100vh;
+    padding: 24px;
     margin: 0;
-    user-select: none;
   }
+
   .card {
-    background: #171720;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 14px;
-    padding: 36px 42px;
-    max-width: 520px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 32px 36px;
+    max-width: 480px;
+    width: 100%;
     text-align: center;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.03);
   }
-  .icon {
-    font-size: 38px;
+
+  .icon-wrap {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     margin-bottom: 16px;
     color: #ef4444;
   }
+
+  .icon-wrap svg {
+    width: 22px;
+    height: 22px;
+    stroke: currentColor;
+    stroke-width: 1.75;
+    fill: none;
+  }
+
   h1 {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 600;
+    letter-spacing: -0.01em;
     margin-bottom: 8px;
+    color: var(--text-primary);
   }
+
   .url {
-    color: #94a3b8;
-    font-size: 13px;
+    color: var(--text-muted);
+    font-size: 12.5px;
+    font-family: var(--font-mono);
     word-break: break-all;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
   }
+
   .status {
     display: inline-block;
-    background: rgba(239, 68, 68, 0.15);
+    background: rgba(239, 68, 68, 0.1);
     color: #fca5a5;
     font-size: 11px;
-    padding: 3px 8px;
-    border-radius: 5px;
-    margin-bottom: 20px;
+    font-family: var(--font-mono);
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    margin-bottom: 18px;
   }
+
   p {
     font-size: 12.5px;
-    color: #cbd5e1;
-    line-height: 1.6;
+    color: var(--text-secondary);
+    line-height: 1.5;
     margin-bottom: 24px;
   }
+
   .actions {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     justify-content: center;
   }
-  button {
-    background: #3b82f6;
-    color: white;
-    border: none;
-    padding: 9px 18px;
-    border-radius: 7px;
+
+  .btn {
+    padding: 7px 16px;
+    border-radius: 6px;
     font-size: 12.5px;
     font-weight: 500;
+    font-family: inherit;
     cursor: pointer;
-    transition: background 0.15s;
+    border: 1px solid transparent;
+    -webkit-tap-highlight-color: transparent;
+    transition-property: background-color, border-color, color, transform;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
   }
-  button:hover { background: #2563eb; }
-  button.secondary {
-    background: rgba(255,255,255,0.08);
-    color: #e2e8f0;
+
+  .btn:not(:disabled):active {
+    transform: scale(0.96);
   }
-  button.secondary:hover { background: rgba(255,255,255,0.14); }
+
+  .btn-primary {
+    background: #f4f4f5;
+    color: #0b0c0e;
+  }
+
+  @media (hover: hover) {
+    .btn-primary:hover {
+      background: #ffffff;
+    }
+  }
+
+  .btn-secondary {
+    background: transparent;
+    border-color: var(--border-color);
+    color: var(--text-primary);
+  }
+
+  @media (hover: hover) {
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--border-hover);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      transition-duration: 0.001ms !important;
+      transform: none !important;
+    }
+  }
 </style>
 </head>
 <body>
   <div class="card">
-    <div class="icon">&#x26A0;</div>
+    <div class="icon-wrap">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+    </div>
     <h1>This site can’t be reached</h1>
     <div class="url">{{failedUrl}}</div>
     <div class="status">{{errorStatus}}</div>
     <p>Check your internet connection, verify the address, or try searching for the page.</p>
     <div class="actions">
-      <button onclick="location.reload()">Try Again</button>
-      <button class="secondary" onclick="window.location.href='https://www.google.com/search?q=' + encodeURIComponent('{{failedUrl}}')">Search Google</button>
+      <button class="btn btn-primary" onclick="location.reload()">Try Again</button>
+      <button class="btn btn-secondary" onclick="window.location.href='https://www.google.com/search?q=' + encodeURIComponent('{{failedUrl}}')">Search Google</button>
     </div>
   </div>
 </body>
